@@ -125,7 +125,7 @@ const AndrecitoLibrary: React.FC<AndrecitoLibraryProps> = ({ onBack, onLogout, o
             <div className="flex items-center gap-3 overflow-hidden">
                <Bot className="w-10 h-10 text-white opacity-90" />
                <div className="text-left min-w-0">
-                 <h1 className="text-lg md:text-xl font-montserrat font-bold leading-none tracking-tight truncate">Sistema ANDRECITO</h1>
+                 <h1 className="text-lg md:text-xl font-montserrat font-bold leading-none tracking-tight truncate">Sistema de Consultas</h1>
                  <p className="text-army-gold text-[10px] md:text-xs font-bold tracking-widest uppercase mt-1 truncate">Biblioteca Digital</p>
                </div>
             </div>

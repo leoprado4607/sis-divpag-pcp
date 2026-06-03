@@ -176,7 +176,7 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
             <div className="flex items-center gap-3">
                <Bot size={32} className="text-white opacity-90" />
                <div className="text-left">
-                  <h1 className="text-lg md:text-xl font-montserrat font-bold leading-none">Sistema ANDRECITO</h1>
+                  <h1 className="text-lg md:text-xl font-montserrat font-bold leading-none">Sistema de Consultas</h1>
                   <p className="text-army-gold text-[10px] uppercase font-bold tracking-widest mt-1">Análise de Legislação Militar</p>
                </div>
             </div>
