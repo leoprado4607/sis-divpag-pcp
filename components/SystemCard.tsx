@@ -8,27 +8,20 @@ interface SystemCardProps {
   onNavigate?: (route: string) => void;
 }
 
+const accentMap = {
+  primary: { bar: 'bg-army-green', icon: 'bg-army-green/10 text-army-green', badge: 'text-army-green' },
+  secondary: { bar: 'bg-army-blue', icon: 'bg-army-blue/10 text-army-blue', badge: 'text-army-blue' },
+  accent: { bar: 'bg-army-gold', icon: 'bg-army-gold/10 text-yellow-700', badge: 'text-yellow-700' },
+};
+
 const SystemCard: React.FC<SystemCardProps> = React.memo(({ system, onNavigate }) => {
   const { title, description, url, icon: Icon, iconImage, variant, isUnderConstruction, internalRoute } = system;
+  const accent = accentMap[variant];
 
-  // Modern styling mapping based on variant (all grounded in Army aesthetic)
-  const styles = {
-    primary: 'border-l-4 border-army-green hover:border-l-8',
-    secondary: 'border-l-4 border-army-blue hover:border-l-8',
-    accent: 'border-l-4 border-army-gold hover:border-l-8',
-  };
-
-  const iconColors = {
-    primary: 'text-army-green',
-    secondary: 'text-army-blue',
-    accent: 'text-yellow-600',
-  };
-
-  // Helper to render title with italics support (text between *)
   const renderTitle = (text: string) => {
     if (!text.includes('*')) return text;
-    return text.split('*').map((part, index) => 
-      index % 2 === 1 ? <span key={index} className="italic">{part}</span> : part
+    return text.split('*').map((part, i) =>
+      i % 2 === 1 ? <span key={i} className="italic">{part}</span> : part
     );
   };
 
@@ -40,69 +33,57 @@ const SystemCard: React.FC<SystemCardProps> = React.memo(({ system, onNavigate }
   };
 
   const Wrapper = internalRoute ? 'div' : 'a';
-  const wrapperProps = internalRoute 
+  const wrapperProps = internalRoute
     ? { onClick: handleClick, role: 'button', className: 'cursor-pointer' }
     : { href: url, target: "_blank", rel: "noopener noreferrer" };
 
   return (
-    <Wrapper 
+    <Wrapper
       {...wrapperProps}
-      className={`
-        group relative flex flex-col justify-between
-        bg-white rounded-xl shadow-md hover:shadow-2xl 
-        transition-all duration-300 ease-out transform
-        p-[1.2rem] overflow-hidden cursor-pointer h-full
-        ${styles[variant]}
-      `}
+      className="group relative flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden cursor-pointer h-full"
     >
-      {/* Construction Ribbon */}
+      {/* Top accent bar */}
+      <div className={`h-1 w-full ${accent.bar}`} />
+
+      {/* Construction badge */}
       {isUnderConstruction && (
-        <div className="absolute top-5 -right-12 w-40 bg-red-600 text-white text-[7px] font-bold py-1 text-center transform rotate-45 shadow-sm uppercase z-20 border-b border-red-800 tracking-wider">
+        <div className="absolute top-4 right-4 bg-red-100 text-red-600 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-red-200 z-10">
           Em construção
         </div>
       )}
 
-      <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110">
-        {iconImage ? (
-          <img src={iconImage} alt="" className="w-24 h-24 md:w-32 md:h-32 object-contain grayscale" />
-        ) : (
-          <Icon size={120} />
-        )}
-      </div>
-
-      <div className="relative z-10">
-        <div className={`
-          mb-4 inline-flex p-3 rounded-lg bg-gray-50 
-          ${iconColors[variant]} group-hover:bg-gray-100 transition-colors
-        `}>
+      <div className="p-6 flex flex-col flex-grow">
+        {/* Icon */}
+        <div className={`mb-4 inline-flex p-3 rounded-xl ${accent.icon} w-fit`}>
           {iconImage ? (
-            <img src={iconImage} alt="" className="w-8 h-8 md:w-10 md:h-10 object-contain" />
+            <img src={iconImage} alt="" className="w-8 h-8 object-contain" />
           ) : (
-            <Icon size={32} />
+            <Icon size={28} />
           )}
         </div>
-        
-        <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-army-green transition-colors">
+
+        {/* Title */}
+        <h3 className="text-lg font-bold text-slate-800 mb-1.5 group-hover:text-army-green transition-colors leading-snug">
           {renderTitle(title)}
         </h3>
-        
-        <p className="text-sm text-gray-500 mb-4 line-clamp-2 font-medium">
+
+        {/* Description */}
+        <p className="text-sm text-slate-500 leading-relaxed line-clamp-2 flex-grow">
           {description}
         </p>
-      </div>
 
-      <div className="relative z-10 mt-auto pt-4 border-t border-gray-100 flex items-center justify-between text-sm font-medium text-gray-500 group-hover:text-army-green">
-        <span>Acessar Sistema</span>
-        {internalRoute ? (
-             <ArrowRight size={16} className="ml-2 transform group-hover:translate-x-1 transition-transform" />
-        ) : (
-             <ExternalLink size={16} className="ml-2 transform group-hover:translate-x-1 transition-transform" />
-        )}
+        {/* Footer */}
+        <div className={`mt-5 flex items-center gap-1.5 text-xs font-semibold ${accent.badge} group-hover:gap-2.5 transition-all`}>
+          <span>Acessar</span>
+          {internalRoute
+            ? <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+            : <ExternalLink size={13} />
+          }
+        </div>
       </div>
     </Wrapper>
   );
 });
 
 SystemCard.displayName = 'SystemCard';
-
 export default SystemCard;
