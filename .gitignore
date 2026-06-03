@@ -1,0 +1,53 @@
+# Logs and temporary files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+/dist
+/dist-ssr
+/out
+
+# Environment variables (CRITICAL: NEVER COMMIT THESE TO SRC CONTROL)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+auth_key.json
+jwt_secret.txt
+service-account.json
+creds.json
+*key*.json
+credential.json
+credentials.json
+
+# IDE / Editor configuration
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Testing
+/coverage
+
+# Cache repositories
+.npm
+.eslintcache
+.parcel-cache
+.vite
+.nuxt
+.next
+
+# AI Studio prompt history (filenames with colons are invalid on Windows)
+migrated_prompt_history/

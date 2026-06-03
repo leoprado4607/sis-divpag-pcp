@@ -1,0 +1,647 @@
+import { supabase } from './supabaseClient';
+import { callGemini } from './geminiClient';
+import { adminRequest, AdminUnavailableError } from './adminClient';
+import { AndrecitoCategory, AndrecitoSubcategory, AndrecitoDocument } from '../types';
+
+declare global {
+  interface Window {
+    pdfjsLib: any;
+  }
+}
+
+// --- CARREGAMENTO SOB DEMANDA DO PDF.JS ---
+// Antes o pdf.min.js (~300KB) era carregado sincronamente no <head> em TODA página.
+// Agora só é injetado na primeira vez que precisamos processar um PDF.
+const PDFJS_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const PDFJS_WORKER_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let pdfjsPromise: Promise<any> | null = null;
+
+const ensurePdfJs = (): Promise<any> => {
+  if (typeof window === 'undefined') return Promise.resolve(null);
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (pdfjsPromise) return pdfjsPromise;
+
+  pdfjsPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = PDFJS_SRC;
+    script.async = true;
+    script.onload = () => {
+      try {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
+      } catch (e) { /* worker config best-effort */ }
+      resolve(window.pdfjsLib);
+    };
+    script.onerror = () => {
+      pdfjsPromise = null;
+      reject(new Error('Falha ao carregar pdf.js'));
+    };
+    document.head.appendChild(script);
+  });
+  return pdfjsPromise;
+};
+
+// --- KEYS & CACHE CONFIG ---
+const PDF_CACHE_KEY = 'andrecito_pdf_cache';
+const MAX_CACHE_SIZE = 100; 
+const CACHE_TTL_MS = 3 * 24 * 60 * 60 * 1000; // 3 dias
+
+const LOCAL_CAT_KEY = 'andrecito_local_categories';
+const LOCAL_SUB_KEY = 'andrecito_local_subcategories';
+const LOCAL_DOC_KEY = 'andrecito_local_documents';
+
+// Controle de custo de tokens: teto de texto enviado por documento ao Gemini e
+// teto de tokens de saída. Evita prompts gigantes quando vários docs são selecionados.
+const MAX_DOC_CHARS = 12000;
+const MAX_OUTPUT_TOKENS = 2048;
+
+// --- INITIAL MOCK SEEDS ---
+const INITIAL_CATEGORIES: AndrecitoCategory[] = [
+  { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', name: 'Legislação de Pessoal' },
+  { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', name: 'Portarias e Normas' },
+  { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13', name: 'Boletins Internos' },
+  { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14', name: 'Manuais de Campanha' }
+];
+
+const INITIAL_SUBCATEGORIES: AndrecitoSubcategory[] = [
+  { id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', category_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', name: 'RDE - Regulamento Disciplinar' },
+  { id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', category_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', name: 'Estatuto dos Militares' },
+  { id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13', category_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', name: 'Pagamento de Gratificações' },
+  { id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14', category_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', name: 'Diárias e Ajuda de Custo' },
+  { id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15', category_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13', name: 'Boletins do Exército (BE)' }
+];
+
+const INITIAL_DOCUMENTS: AndrecitoDocument[] = [
+  {
+    id: 'd0ee0000-0000-0000-0000-000000000001',
+    name: 'Estatuto_dos_Militares_L6880.pdf',
+    url: 'https://www.defesa.gov.br/arquivos/legislacao/estatuto_dos_militares.pdf',
+    size: 215400,
+    mime_type: 'application/pdf',
+    category_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    subcategory_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12',
+    created_at: '2026-01-15T12:00:00.000Z'
+  },
+  {
+    id: 'd0ee0000-0000-0000-0000-000000000002',
+    name: 'Regulamento_Disciplinar_do_Exercito_R113.pdf',
+    url: 'http://www.planalto.gov.br/ccivil_03/decreto/2002/d4346.htm',
+    size: 145000,
+    mime_type: 'application/pdf',
+    category_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    subcategory_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    created_at: '2026-02-10T14:30:00.000Z'
+  },
+  {
+    id: 'd0ee0000-0000-0000-0000-000000000003',
+    name: 'Gratificacoes_e_Adicionais_Previnidos.pdf',
+    url: 'https://sgex.eb.mil.br/gratificacoes.pdf',
+    size: 98500,
+    mime_type: 'application/pdf',
+    category_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12',
+    subcategory_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13',
+    created_at: '2026-03-01T09:15:00.000Z'
+  },
+  {
+    id: 'd0ee0000-0000-0000-0000-000000000004',
+    name: 'Portaria_Diarias_Ajuda_Custo_2024.pdf',
+    url: 'https://sgex.eb.mil.br/diarias.pdf',
+    size: 124000,
+    mime_type: 'application/pdf',
+    category_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12',
+    subcategory_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14',
+    created_at: '2026-04-18T10:00:00.000Z'
+  },
+  {
+    id: 'd0ee0000-0000-0000-0000-000000000005',
+    name: 'Boletim_do_Exercito_N25_2025.pdf',
+    url: 'https://sgex.eb.mil.br/be25_2025.pdf',
+    size: 1845000,
+    mime_type: 'application/pdf',
+    category_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13',
+    subcategory_id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15',
+    created_at: '2026-05-22T16:45:00.000Z'
+  }
+];
+
+const INITIAL_TEXT_CACHE: Record<string, { text: string; timestamp: number }> = {
+  'd0ee0000-0000-0000-0000-000000000001': {
+    text: "O Estatuto dos Militares (Lei nº 6.880, de 9 de dezembro de 1980) dispõe sobre a situação, obrigações, deveres, direitos e prerrogativas dos membros das Forças Armadas brasileiros. Artigo 50 dispõe detalhadamente sobre os direitos dos militares, incluindo férias regulamentares remuneradas, assistência médica, odontológica e hospitalar gratuita no FUSEX, e estabilidade do praça que atinja 10 anos de efetivo serviço militar. Artigo 98 trata detalhadamente do processo e regras para a transferência de militares da guarnição para a reserva de forma remunerada.",
+    timestamp: Date.now()
+  },
+  'd0ee0000-0000-0000-0000-000000000002': {
+    text: "O Regulamento Disciplinar do Exército (R-113), aprovado pelo Decreto nº 4.346, de 26 de agosto de 2002, especifica as transgressões disciplinares no âmbito do Exército Brasileiro e estabelece a normatização técnica para aplicação de punições e recompensas. Artigo 14 elenca a lista completa de transgressões disciplinares em ordem de severidade, organizadas em leves, médias e graves, compreendendo falhas graves em serviço, ato de desrespeito a superiores e faltas injustificadas. Artigo 24 estabelece quais punições disciplinares podem ser legitimamente aplicadas eletronicamente pela autoridade: advertência, impedimento disciplinar, repreensão, detenção disciplinar, prisão disciplinar e licenciamento forçado das praças a bem da disciplina.",
+    timestamp: Date.now()
+  },
+  'd0ee0000-0000-0000-0000-000000000003': {
+    text: "Normas internas sobre Gratificações, Ajuda de Custo e Adicionais Financeiros de Pessoal do Exército Brasileiro. Descreve detalhadamente a Gratificação de Localidade Especial (categorias A e B) devida aos militares posicionados e prestando serviço permanente em guarnições isoladas, de fronteira ou caracterizadas de difícil acesso. Estabelece rigorosamente a aplicabilidade do Adicional de Habilitação Militar com percentuais indexados legalmente, variando substancialmente dependendo do nível de especialização: Altos Estudos I e II, Aperfeiçoamento profissional, Especialização de Sargentos/Oficiais e Formação Básica de Oficiais das Forças Armadas.",
+    timestamp: Date.now()
+  },
+  'd0ee0000-0000-0000-0000-000000000004': {
+    text: "Portaria DGP que regulamenta a concessão de Diárias administrativas e Ajuda de Custo destinadas a deslocamentos temporários e instalações por movimentação no Exército. A ajuda de custo destina-se expressamente a compensar e cobrir financeiramente despesas com mudanças residenciais e custos iniciais de instalação física do militar e suas respectivas famílias ao se transferir para uma nova sede militar de trabalho (regulamentado pelo artigo 53). As diárias são indenizações diárias de alimentação e estadia destinadas a cobrir custos extras ao se ausentar temporariamente da guarnição de origem por motivo regulamentar de serviço (artigo 62).",
+    timestamp: Date.now()
+  },
+  'd0ee0000-0000-0000-0000-000000000005': {
+    text: "Boletim Informativo do Exército nº 25 de 2025. Divulga resoluções de âmbito militar, decisões normativas do Comandante do Exército, promoções de praças por merecimento ou antiguidade e decisões do Departamento-Geral do Pessoal (DGP). Portaria DGP/CEx nº 544 dispõe especificamente sobre as novas instruções reguladoras e prazos de recadastramento anual e comprovação eletrônica de prova de vida obrigatória para pensionistas, reservistas remunerados, viúvas e militares inativos sob auditoria de proventos de pensão alimentícia da Divisão de Pagamento de Pessoal.",
+    timestamp: Date.now()
+  }
+};
+
+// --- INITIALIZATION OF LOCAL FALLBACK DATABASE ---
+const initLocalDatabase = () => {
+  try {
+    if (!localStorage.getItem(LOCAL_CAT_KEY)) {
+      localStorage.setItem(LOCAL_CAT_KEY, JSON.stringify(INITIAL_CATEGORIES));
+    }
+    if (!localStorage.getItem(LOCAL_SUB_KEY)) {
+      localStorage.setItem(LOCAL_SUB_KEY, JSON.stringify(INITIAL_SUBCATEGORIES));
+    }
+    if (!localStorage.getItem(LOCAL_DOC_KEY)) {
+      localStorage.setItem(LOCAL_DOC_KEY, JSON.stringify(INITIAL_DOCUMENTS));
+    }
+    
+    const currentTextCache = JSON.parse(localStorage.getItem(PDF_CACHE_KEY) || '{}');
+    let updated = false;
+    Object.entries(INITIAL_TEXT_CACHE).forEach(([id, val]) => {
+      if (!currentTextCache[id]) {
+        currentTextCache[id] = val;
+        updated = true;
+      }
+    });
+    if (updated) {
+      localStorage.setItem(PDF_CACHE_KEY, JSON.stringify(currentTextCache));
+    }
+  } catch (err) {
+    console.warn("Erro ao instanciar banco de dados local cache:", err);
+  }
+};
+
+initLocalDatabase();
+
+// --- HELPER LOCAL STATE READ/WRITE ---
+const getLocalCategories = (): AndrecitoCategory[] => {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_CAT_KEY) || '[]');
+  } catch {
+    return INITIAL_CATEGORIES;
+  }
+};
+
+const getLocalSubcategories = (): AndrecitoSubcategory[] => {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_SUB_KEY) || '[]');
+  } catch {
+    return INITIAL_SUBCATEGORIES;
+  }
+};
+
+const getLocalDocuments = (): AndrecitoDocument[] => {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_DOC_KEY) || '[]');
+  } catch {
+    return INITIAL_DOCUMENTS;
+  }
+};
+
+const saveLocalCategories = (data: AndrecitoCategory[]) => {
+  localStorage.setItem(LOCAL_CAT_KEY, JSON.stringify(data));
+};
+
+const saveLocalSubcategories = (data: AndrecitoSubcategory[]) => {
+  localStorage.setItem(LOCAL_SUB_KEY, JSON.stringify(data));
+};
+
+const saveLocalDocuments = (data: AndrecitoDocument[]) => {
+  localStorage.setItem(LOCAL_DOC_KEY, JSON.stringify(data));
+};
+
+// --- PDF CACHING UTILS ---
+// Antes cada leitura/gravação fazia JSON.parse + stringify do cache INTEIRO no
+// localStorage (síncrono). No loop de queryGemini isso virava O(N²) e travava a
+// main thread. Agora o cache vive em memória: lê do localStorage uma única vez e
+// as gravações são agrupadas (debounce) num único write.
+type CacheEntry = { text: string; timestamp: number };
+let textCacheMem: Record<string, CacheEntry> | null = null;
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+const loadTextCache = (): Record<string, CacheEntry> => {
+  if (textCacheMem) return textCacheMem;
+  try {
+    textCacheMem = JSON.parse(localStorage.getItem(PDF_CACHE_KEY) || '{}');
+  } catch {
+    textCacheMem = {};
+  }
+  return textCacheMem!;
+};
+
+const flushTextCache = () => {
+  if (persistTimer) { clearTimeout(persistTimer); persistTimer = null; }
+  try {
+    localStorage.setItem(PDF_CACHE_KEY, JSON.stringify(textCacheMem || {}));
+  } catch (e) {
+    try { localStorage.removeItem(PDF_CACHE_KEY); } catch {}
+  }
+};
+
+const schedulePersist = () => {
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(flushTextCache, 300);
+};
+
+// Garante que gravações pendentes não se percam ao fechar/ocultar a aba.
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => { if (persistTimer) flushTextCache(); });
+}
+
+const getCachedText = (docId: string): string | null => {
+  const cache = loadTextCache();
+  const cachedItem = cache[docId];
+  if (cachedItem && (Date.now() - cachedItem.timestamp < CACHE_TTL_MS)) {
+    return cachedItem.text;
+  }
+  return null;
+};
+
+const cacheText = (docId: string, text: string) => {
+  const cache = loadTextCache();
+  cache[docId] = { text, timestamp: Date.now() };
+  const keys = Object.keys(cache);
+  if (keys.length > MAX_CACHE_SIZE) {
+    const oldest = keys.reduce((a, b) => cache[a].timestamp < cache[b].timestamp ? a : b);
+    delete cache[oldest];
+  }
+  schedulePersist();
+};
+
+const urlToBase64 = async (url: string): Promise<string> => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        const parts = base64String.split(',');
+        resolve(parts.length > 1 ? parts[1] : base64String);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.error("Erro ao converter URL para Base64:", e);
+    return "";
+  }
+};
+
+const extractTextFromPdfUrl = async (url: string): Promise<string> => {
+  try {
+    const pdfjsLib = await ensurePdfJs();
+    if (!pdfjsLib) return "";
+    const loadingTask = pdfjsLib.getDocument(url);
+    const pdf = await loadingTask.promise;
+    const maxPages = Math.min(pdf.numPages, 30);
+
+    // Processa as páginas em paralelo em vez de uma a uma (await sequencial),
+    // reduzindo drasticamente o tempo de extração em PDFs com várias páginas.
+    const pageNumbers = Array.from({ length: maxPages }, (_, i) => i + 1);
+    const pageTexts = await Promise.all(
+      pageNumbers.map(async (i) => {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map((item: any) => item.str).join(' ');
+        return `\n[Pag ${i}]\n${pageText}\n`;
+      })
+    );
+    return pageTexts.join('');
+  } catch (error) {
+    console.error("Erro PDF.js:", error);
+    return "";
+  }
+};
+
+// Upload "mock" local: usado quando não há Supabase configurado ou quando o
+// backend admin está indisponível. Mantém o sistema funcional em modo offline/demo.
+const localUploadFallback = async (file: File, categoryId: string, subcategoryId: string | null): Promise<void> => {
+  const docId = `doc-${Date.now()}`;
+  const objectUrl = URL.createObjectURL(file);
+
+  let extractedText = "";
+  if (file.type === 'text/plain') {
+    extractedText = await file.text();
+  } else if (file.type === 'application/pdf') {
+    extractedText = await extractTextFromPdfUrl(objectUrl);
+  } else {
+    extractedText = `Esta é uma simulação de conteúdo para o arquivo carregado ${file.name} que pertence à categoria ID ${categoryId}`;
+  }
+
+  if (!extractedText || extractedText.length < 20) {
+    extractedText = `Conteúdo indexado para consulta do arquivo '${file.name}'. Criado na data ${new Date().toLocaleDateString()}. Focado em decisões administrativas do Exército Brasileiro.`;
+  }
+
+  cacheText(docId, extractedText);
+
+  const newDoc: AndrecitoDocument = {
+    id: docId,
+    name: file.name,
+    url: objectUrl,
+    size: file.size,
+    mime_type: file.type || 'application/octet-stream',
+    category_id: categoryId,
+    subcategory_id: subcategoryId,
+    created_at: new Date().toISOString()
+  };
+  saveLocalDocuments([...getLocalDocuments(), newDoc]);
+};
+
+// --- SERVICE IMPLEMENTATION ---
+export const andrecitoService = {
+  async getCategories(): Promise<AndrecitoCategory[]> {
+    if (!supabase) return getLocalCategories();
+    try {
+      const { data, error } = await supabase.from('categories').select('*').order('name');
+      if (error) throw error;
+      return (data && data.length > 0) ? data : getLocalCategories();
+    } catch (e) {
+      console.warn("Andrecito SIPP: Falha na listagem remota, usando BD Local/Fallback:", e);
+      return getLocalCategories();
+    }
+  },
+
+  async getSubcategories(categoryId: string): Promise<AndrecitoSubcategory[]> {
+    if (!supabase) return getLocalSubcategories().filter(s => s.category_id === categoryId);
+    try {
+      const { data, error } = await supabase.from('subcategories').select('*').eq('category_id', categoryId).order('name');
+      if (error) throw error;
+      return (data && data.length > 0) ? data : getLocalSubcategories().filter(s => s.category_id === categoryId);
+    } catch (e) {
+      console.warn("Andrecito SIPP: Usando subcategorias locaux debido a erro ou ausência de tabelas.");
+      return getLocalSubcategories().filter(s => s.category_id === categoryId);
+    }
+  },
+
+  async getAllSubcategories(): Promise<AndrecitoSubcategory[]> {
+    if (!supabase) return getLocalSubcategories();
+    try {
+      const { data, error } = await supabase.from('subcategories').select('*').order('name');
+      if (error) throw error;
+      return (data && data.length > 0) ? data : getLocalSubcategories();
+    } catch (e) {
+      return getLocalSubcategories();
+    }
+  },
+
+  async getDocuments(subcategoryId: string): Promise<AndrecitoDocument[]> {
+    if (!supabase) return getLocalDocuments().filter(d => d.subcategory_id === subcategoryId);
+    try {
+      const { data, error } = await supabase.from('documents').select('*').eq('subcategory_id', subcategoryId);
+      if (error) throw error;
+      return (data && data.length > 0) ? data : getLocalDocuments().filter(d => d.subcategory_id === subcategoryId);
+    } catch (e) {
+      return getLocalDocuments().filter(d => d.subcategory_id === subcategoryId);
+    }
+  },
+
+  async getDocumentsByCategory(categoryId: string): Promise<AndrecitoDocument[]> {
+    if (!supabase) return getLocalDocuments().filter(d => d.category_id === categoryId && !d.subcategory_id);
+    try {
+      const { data, error } = await supabase.from('documents').select('*').eq('category_id', categoryId).is('subcategory_id', null);
+      if (error) throw error;
+      return (data && data.length > 0) ? data : getLocalDocuments().filter(d => d.category_id === categoryId && !d.subcategory_id);
+    } catch (e) {
+      return getLocalDocuments().filter(d => d.category_id === categoryId && !d.subcategory_id);
+    }
+  },
+
+  async searchAllDocuments(): Promise<AndrecitoDocument[]> {
+    if (!supabase) return getLocalDocuments();
+    try {
+      const { data, error } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data && data.length > 0) ? data : getLocalDocuments();
+    } catch (e) {
+      return getLocalDocuments();
+    }
+  },
+
+  async createCategory(name: string): Promise<void> {
+    // Escrita protegida via /api/admin (service_role). Fallback local só se o
+    // backend estiver indisponível (offline/demo); erros reais sobem ao usuário.
+    try {
+      await adminRequest('createCategory', { name });
+      saveLocalCategories([...getLocalCategories(), { id: `cat-${Date.now()}`, name }]);
+    } catch (err) {
+      if (err instanceof AdminUnavailableError) {
+        saveLocalCategories([...getLocalCategories(), { id: `cat-${Date.now()}`, name }]);
+        console.warn('createCategory: backend indisponível, criado localmente.');
+      } else { throw err; }
+    }
+  },
+
+  async deleteCategory(id: string): Promise<void> {
+    // Validação local rápida (UX). O servidor revalida como fonte da verdade.
+    const subs = getLocalSubcategories().filter(s => s.category_id === id);
+    const docs = getLocalDocuments().filter(d => d.category_id === id);
+    if (subs.length > 0) throw new Error("Não é possível excluir: existem subcategorias vinculadas.");
+    if (docs.length > 0) throw new Error("Não é possível excluir: existem arquivos vinculados a esta categoria.");
+
+    try {
+      await adminRequest('deleteCategory', { id });
+      saveLocalCategories(getLocalCategories().filter(c => c.id !== id));
+    } catch (err) {
+      if (err instanceof AdminUnavailableError) {
+        saveLocalCategories(getLocalCategories().filter(c => c.id !== id));
+        console.warn('deleteCategory: backend indisponível, excluído localmente.');
+      } else { throw err; }
+    }
+  },
+
+  async createSubcategory(categoryId: string, name: string): Promise<void> {
+    try {
+      await adminRequest('createSubcategory', { categoryId, name });
+      saveLocalSubcategories([...getLocalSubcategories(), { id: `sub-${Date.now()}`, category_id: categoryId, name }]);
+    } catch (err) {
+      if (err instanceof AdminUnavailableError) {
+        saveLocalSubcategories([...getLocalSubcategories(), { id: `sub-${Date.now()}`, category_id: categoryId, name }]);
+        console.warn('createSubcategory: backend indisponível, criado localmente.');
+      } else { throw err; }
+    }
+  },
+
+  async deleteSubcategory(id: string): Promise<void> {
+    const docs = getLocalDocuments().filter(d => d.subcategory_id === id);
+    if (docs.length > 0) throw new Error("Não é possível excluir: existem arquivos vinculados a esta subcategoria.");
+
+    try {
+      await adminRequest('deleteSubcategory', { id });
+      saveLocalSubcategories(getLocalSubcategories().filter(s => s.id !== id));
+    } catch (err) {
+      if (err instanceof AdminUnavailableError) {
+        saveLocalSubcategories(getLocalSubcategories().filter(s => s.id !== id));
+        console.warn('deleteSubcategory: backend indisponível, excluído localmente.');
+      } else { throw err; }
+    }
+  },
+
+  async deleteDocument(id: string, url: string): Promise<void> {
+    try {
+      await adminRequest('deleteDocument', { id, url });
+      saveLocalDocuments(getLocalDocuments().filter(d => d.id !== id));
+    } catch (err) {
+      if (err instanceof AdminUnavailableError) {
+        saveLocalDocuments(getLocalDocuments().filter(d => d.id !== id));
+        console.warn('deleteDocument: backend indisponível, excluído localmente.');
+      } else { throw err; }
+    }
+  },
+
+  async updateDocument(id: string, updates: Partial<AndrecitoDocument>): Promise<void> {
+    try {
+      await adminRequest('updateDocument', { id, updates });
+      saveLocalDocuments(getLocalDocuments().map(d => d.id === id ? { ...d, ...updates } : d));
+    } catch (err) {
+      if (err instanceof AdminUnavailableError) {
+        saveLocalDocuments(getLocalDocuments().map(d => d.id === id ? { ...d, ...updates } : d));
+        console.warn('updateDocument: backend indisponível, atualizado localmente.');
+      } else { throw err; }
+    }
+  },
+
+  async uploadDocument(file: File, categoryId: string, subcategoryId: string | null): Promise<void> {
+    // Sem cliente Supabase (modo demo) → upload mock local.
+    if (!supabase) return localUploadFallback(file, categoryId, subcategoryId);
+
+    try {
+      // 1. Servidor (service_role) gera uma Signed Upload URL para o caminho.
+      const { path, token, publicUrl } = await adminRequest<{ path: string; token: string; publicUrl: string }>(
+        'createUploadUrl',
+        { categoryId, subcategoryId, fileName: file.name }
+      );
+
+      // 2. Cliente envia o arquivo DIRETO ao storage (sem passar pela função →
+      //    sem o limite de 4,5 MB de body da Vercel), autorizado pelo token.
+      const { error: upErr } = await supabase.storage.from('documents').uploadToSignedUrl(path, token, file);
+      if (upErr) throw new Error(`Falha no upload ao storage: ${upErr.message}`);
+
+      // 3. Registra os metadados no banco (via service_role).
+      await adminRequest('registerDocument', {
+        name: file.name, url: publicUrl, size: file.size,
+        mime_type: file.type, category_id: categoryId, subcategory_id: subcategoryId,
+      });
+
+      // 4. Best-effort: extrai e cacheia o texto para baratear futuras consultas IA.
+      try {
+        const pdfText = await extractTextFromPdfUrl(publicUrl);
+        if (pdfText && pdfText.length > 50) {
+          const { data } = await supabase.from('documents').select('id').eq('url', publicUrl).single();
+          if (data?.id) cacheText(data.id, pdfText);
+        }
+      } catch { /* cache é opcional */ }
+    } catch (err) {
+      if (err instanceof AdminUnavailableError) {
+        // Backend indisponível → cai para o upload mock local.
+        return localUploadFallback(file, categoryId, subcategoryId);
+      }
+      throw err;
+    }
+  },
+
+  async queryGemini(query: string, documents: AndrecitoDocument[]): Promise<string> {
+    const parts: any[] = [];
+    const usedDocsMap = new Map<string, AndrecitoDocument>();
+    
+    const docPromises = documents.map(async (doc) => {
+      try {
+        let text = getCachedText(doc.id);
+        if (!text) {
+          // Se for mock/URL blob local, tenta extrair imediatamente, senão busca
+          text = await extractTextFromPdfUrl(doc.url);
+          if (text && text.length > 50) cacheText(doc.id, text);
+        }
+        
+        if (text && text.length > 50) {
+          usedDocsMap.set(doc.id, doc);
+          // Limita o texto por documento para conter o custo de tokens de entrada.
+          const capped = text.length > MAX_DOC_CHARS
+            ? text.slice(0, MAX_DOC_CHARS) + '\n[...documento truncado para análise...]'
+            : text;
+          return { text: `\nARQUIVO: ${doc.name}\nCONTEUDO: ${capped}\n` };
+        } else {
+          // Fallback para conversão em base64 se for PDF e não conseguimos extrair texto puro
+          if (doc.mime_type === 'application/pdf' && !doc.url.startsWith('blob:')) {
+            const base64Data = await urlToBase64(doc.url);
+            if (base64Data) {
+              usedDocsMap.set(doc.id, doc);
+              return [
+                { text: `\n[Processando PDF: ${doc.name}]\n` },
+                { inlineData: { mimeType: 'application/pdf', data: base64Data } }
+              ];
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`Erro ao processar ${doc.name}:`, err);
+      }
+      return null;
+    });
+
+    const results = await Promise.all(docPromises);
+    results.forEach(res => {
+      if (!res) return;
+      if (Array.isArray(res)) parts.push(...res);
+      else parts.push(res);
+    });
+
+    if (parts.length === 0) {
+      // Se não conseguiu nada, tenta criar um placeholder baseado nos nomes de arquivos selecionados
+      const names = documents.map(d => d.name).join(', ');
+      parts.push({ text: `Os seguintes documentos foram selecionados como escopo: ${names}.\nConsiderando os assuntos de legislação militar e pagamento de pessoal do Exército e o nome dos arquivos, analise a seguinte consulta.` });
+    }
+
+    parts.push({ text: `\nCom base nos documentos fornecidos, responda: ${query}` });
+
+    try {
+      // Chamada via proxy serverless /api/gemini (a chave fica no servidor).
+      const responseText = await callGemini({
+        // Configurável via VITE_GEMINI_MODEL; default estável e rápido para este ambiente.
+        model: (import.meta as any).env?.VITE_GEMINI_MODEL || 'gemini-2.5-flash',
+        contents: { parts: parts },
+        config: {
+          systemInstruction: "Você é o ANDRECITO, assistente virtual inteligente da Divisão de Pagamento do Exército (DivPag). Use os documentos/conteúdos enviados no prompt para responder técnica e fielmente. É OBRIGATÓRIO citar o nome do arquivo fonte no corpo da resposta (ex: 'De acordo com o arquivo Portaria_123...'). Seja militar, direto, técnico e cortês. Se a informação não constar nos arquivos, diga polidamente que não encontrou nos documentos selecionados.",
+          temperature: 0.15,
+          maxOutputTokens: MAX_OUTPUT_TOKENS
+        }
+      });
+
+      let finalResponse = responseText || "Desculpe, não consegui obter uma resposta estratégica agora.";
+      
+      // Lógica de filtragem de fontes: exibe apenas os arquivos que a IA mencionou ou usou
+      if (usedDocsMap.size > 0) {
+        const citedDocs: AndrecitoDocument[] = [];
+        const lowerResponse = finalResponse.toLowerCase();
+        
+        usedDocsMap.forEach(doc => {
+          const fileNameNoExt = doc.name.split('.')[0].toLowerCase().replace(/_/g, ' ');
+          const fileNameWithUnderscore = doc.name.split('.')[0].toLowerCase();
+          
+          if (
+            lowerResponse.includes(fileNameNoExt) || 
+            lowerResponse.includes(fileNameWithUnderscore) ||
+            lowerResponse.includes(doc.name.toLowerCase())
+          ) {
+            citedDocs.push(doc);
+          }
+        });
+
+        if (citedDocs.length > 0) {
+          finalResponse += "\n\n---\n**Fontes Consultadas:**\n";
+          citedDocs.forEach(d => {
+            finalResponse += `- [${d.name}](${d.url})\n`;
+          });
+        }
+      }
+      return finalResponse;
+    } catch (e) {
+      console.error("Erro no Gemini:", e);
+      return "Ocorreu um erro ao processar a inteligência artificial. Verifique se os arquivos são muito grandes ou se a chave de API é válida.";
+    }
+  }
+};

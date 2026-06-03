@@ -1,0 +1,102 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Portal Div Pg Pes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@400;700;900&family=Montserrat:wght@400;600;700;800&family=Oswald:wght@500;700&family=Roboto+Slab:wght@400;700;900&family=Titillium+Web:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+      .skeleton-shimmer {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 2s infinite linear;
+      }
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+      body {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background-color: #f8fafc;
+        margin: 0;
+      }
+      #root {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* PRINT STYLES - SOLUÇÃO DEFINITIVA PARA CORTES EM MÚLTIPLAS PÁGINAS */
+      @media print {
+        /* Esconde elementos indesejados */
+        .no-print, header.no-print, aside.no-print, footer.no-print, .sticky {
+          display: none !important;
+        }
+        
+        /* Reseta containers de tela inteira */
+        html, body, #root, main, .flex, .flex-col, .flex-1, .h-screen, .min-h-screen {
+          height: auto !important;
+          min-height: 0 !important;
+          max-height: none !important;
+          overflow: visible !important;
+          display: block !important;
+          position: static !important;
+          background: white !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        /* Ajusta o container do conteúdo de resposta */
+        .max-w-4xl, .animate-fade-in-up, .rounded-2xl {
+          max-width: 100% !important;
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          box-shadow: none !important;
+          border: none !important;
+          overflow: visible !important;
+        }
+
+        /* Markdown prose print settings */
+        .prose {
+          max-width: 100% !important;
+          color: black !important;
+          font-size: 12pt !important;
+          line-height: 1.5 !important;
+          overflow: visible !important;
+          display: block !important;
+        }
+
+        /* Garante que imagens e blocos não quebrem no meio de forma feia */
+        p, h1, h2, h3, h4, li, blockquote {
+          orphans: 3;
+          widows: 3;
+        }
+
+        h1, h2, h3 {
+          page-break-after: avoid;
+        }
+
+        /* Remove scrollbars */
+        ::-webkit-scrollbar {
+          display: none;
+        }
+
+        @page {
+          margin: 2cm;
+          size: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
