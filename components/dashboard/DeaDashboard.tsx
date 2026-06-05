@@ -38,6 +38,140 @@ const DEA_AI_PASSWORDS = (import.meta.env.VITE_DEA_AI_PASSWORD || 'gs4607,admin'
   .map((s: string) => s.trim())
   .filter(Boolean);
 
+// Cores institucionais (RGB) usadas no PDF.
+const PDF_C = {
+  green: { r: 26, g: 60, b: 26 },
+  gold: { r: 189, g: 156, b: 77 },
+  text: { r: 38, g: 38, b: 38 },
+  muted: { r: 120, g: 120, b: 120 },
+  rule: { r: 222, g: 226, b: 230 },
+};
+
+// Gera um PDF profissional a partir do parecer em Markdown: cabeçalho
+// institucional, hierarquia de títulos, listas, tabelas, divisores, quebra de
+// texto, paginação e rodapé com numeração. Substitui o dump cru anterior
+// (doc.text(texto, 20, 20)) que estourava a página.
+const exportParecerPdf = (markdown: string, year: string) => {
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 48;
+  const contentW = pageW - margin * 2;
+  const bottomLimit = pageH - 48;
+
+  // Remove marcadores inline de Markdown que não renderizamos (negrito/itálico/código).
+  const clean = (s: string) => s.replace(/\*\*/g, '').replace(/(^|\s)\*(\S)/g, '$1$2').replace(/`/g, '').trim();
+
+  // Cabeçalho institucional (só na 1ª página).
+  doc.setFillColor(PDF_C.green.r, PDF_C.green.g, PDF_C.green.b);
+  doc.rect(0, 0, pageW, 72, 'F');
+  doc.setFillColor(PDF_C.gold.r, PDF_C.gold.g, PDF_C.gold.b);
+  doc.rect(0, 72, pageW, 4, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(17);
+  doc.text('Parecer Estratégico IA', margin, 38);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.text(`Painel DEA  ·  Exercício ${year}  ·  Divisão de Pagamento de Pessoal`, margin, 58);
+
+  let y = 104;
+
+  const ensure = (h: number) => {
+    if (y + h > bottomLimit) {
+      doc.addPage();
+      y = 56;
+    }
+  };
+
+  const writeLines = (text: string, opts: { size: number; bold?: boolean; color?: { r: number; g: number; b: number }; indent?: number; gap?: number }) => {
+    const indent = opts.indent || 0;
+    const lineH = opts.size + 4;
+    doc.setFont('helvetica', opts.bold ? 'bold' : 'normal');
+    doc.setFontSize(opts.size);
+    const c = opts.color || PDF_C.text;
+    doc.setTextColor(c.r, c.g, c.b);
+    const wrapped = doc.splitTextToSize(text, contentW - indent);
+    for (const w of wrapped) {
+      ensure(lineH);
+      doc.text(w, margin + indent, y);
+      y += lineH;
+    }
+    if (opts.gap) y += opts.gap;
+  };
+
+  for (const raw of markdown.split(/\r?\n/)) {
+    const line = raw.replace(/\s+$/, '');
+    if (!line.trim()) { y += 5; continue; }
+
+    // Divisor horizontal
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+      ensure(14);
+      doc.setDrawColor(PDF_C.rule.r, PDF_C.rule.g, PDF_C.rule.b);
+      doc.line(margin, y, pageW - margin, y);
+      y += 14;
+      continue;
+    }
+
+    // Títulos (#, ##, ###)
+    const h = line.match(/^(#{1,4})\s+(.*)/);
+    if (h) {
+      const level = h[1].length;
+      const size = level === 1 ? 15 : level === 2 ? 13 : 11.5;
+      y += level <= 2 ? 8 : 5;
+      writeLines(clean(h[2]), { size, bold: true, color: PDF_C.green, gap: 5 });
+      continue;
+    }
+
+    // Linha de tabela (| a | b |). Pula a linha separadora |---|---|.
+    if (/^\s*\|/.test(line)) {
+      if (/^\s*\|?[\s:|-]+\|?\s*$/.test(line)) continue;
+      const cells = line.split('|').map(c => clean(c)).filter(c => c.length);
+      if (cells.length) writeLines(cells.join('   ·   '), { size: 9.5, gap: 2 });
+      continue;
+    }
+
+    // Lista com marcador (-, *)
+    const b = line.match(/^\s*[-*]\s+(.*)/);
+    if (b) {
+      ensure(14);
+      doc.setFillColor(PDF_C.gold.r, PDF_C.gold.g, PDF_C.gold.b);
+      doc.circle(margin + 4, y - 3, 1.6, 'F');
+      writeLines(clean(b[1]), { size: 10, indent: 16, gap: 2 });
+      continue;
+    }
+
+    // Lista numerada (1. 2. ...)
+    const n = line.match(/^\s*(\d+)\.\s+(.*)/);
+    if (n) {
+      ensure(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(PDF_C.green.r, PDF_C.green.g, PDF_C.green.b);
+      doc.text(`${n[1]}.`, margin, y);
+      writeLines(clean(n[2]), { size: 10, indent: 18, gap: 2 });
+      continue;
+    }
+
+    // Parágrafo comum
+    writeLines(clean(line), { size: 10, gap: 5 });
+  }
+
+  // Rodapé com numeração e origem, em todas as páginas.
+  const total = doc.getNumberOfPages();
+  const stamp = new Date().toLocaleDateString('pt-BR');
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(PDF_C.muted.r, PDF_C.muted.g, PDF_C.muted.b);
+    doc.text(`Gerado via Google Gemini  ·  ${stamp}`, margin, pageH - 26);
+    doc.text(`Página ${i} de ${total}`, pageW - margin, pageH - 26, { align: 'right' });
+  }
+
+  doc.save(`Parecer_IA_DEA_${year}.pdf`);
+};
+
 const CODOM_MAP: Record<string, string> = {
   '24406': 'Cmdo 7ª Bda Inf Mtz', '024406': 'Cmdo 7ª Bda Inf Mtz',
   '3004': '7º BE Cmb', '003004': '7º BE Cmb',
@@ -200,7 +334,7 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
                         <h3 className="text-xl font-bold flex items-center gap-3 text-army-green font-montserrat"><BrainCircuit size={28} className="text-army-gold" /> Parecer Estratégico IA</h3>
                         <p className="text-[10px] text-slate-400 uppercase font-bold mt-1 tracking-widest">Relatório gerado via Google Gemini</p>
                     </div>
-                    <button onClick={() => { const doc = new jsPDF(); doc.text(aiAnalysis, 20, 20); doc.save('dea_analise.pdf'); }} className="text-xs font-black text-army-green border-2 border-army-green px-6 py-2 rounded-xl flex items-center gap-2 hover:bg-army-green hover:text-white transition-all shadow-sm"><Download size={16} /> EXPORTAR PDF</button>
+                    <button onClick={() => exportParecerPdf(aiAnalysis, selectedYear)} className="text-xs font-black text-army-green border-2 border-army-green px-6 py-2 rounded-xl flex items-center gap-2 hover:bg-army-green hover:text-white transition-all shadow-sm"><Download size={16} /> EXPORTAR PDF</button>
                 </div>
                 <div className="prose prose-slate max-w-none prose-sm leading-relaxed text-slate-700"><ReactMarkdown>{aiAnalysis}</ReactMarkdown></div>
             </div>
