@@ -1,6 +1,6 @@
 // Utilitário compartilhado para ler o corpo JSON de uma requisição serverless,
 // com fallback à leitura crua do stream quando req.body não vem populado.
-import { MAX_BODY_BYTES } from './_gemini';
+import { MAX_BODY_BYTES } from './_gemini.js';
 
 export async function readJsonBody(req: any): Promise<any> {
   // O Vercel normalmente já popula req.body para JSON.

@@ -7,10 +7,10 @@
 //   SUPABASE_URL                 (ou VITE_SUPABASE_URL)
 //   SUPABASE_SERVICE_ROLE_KEY    (Settings → API → service_role secret)
 //   ADMIN_PASSWORD               (senha que o admin digita no login)
-import { isRequestAllowed, getClientIp } from './_gemini';
-import { checkRateLimitAsync } from './_ratelimit';
-import { readJsonBody } from './_http';
-import { getAdminSupabase, DOCUMENTS_BUCKET } from './_supabaseAdmin';
+import { isRequestAllowed, getClientIp } from './_gemini.js';
+import { checkRateLimitAsync } from './_ratelimit.js';
+import { readJsonBody } from './_http.js';
+import { getAdminSupabase, DOCUMENTS_BUCKET } from './_supabaseAdmin.js';
 
 function sanitizeFileName(name: string): string {
   return (name || 'arquivo').replace(/[^a-zA-Z0-9.\-_]/g, '_');

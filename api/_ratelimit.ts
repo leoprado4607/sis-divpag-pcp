@@ -7,7 +7,7 @@
 //   1. Vercel → Storage → criar um banco "Upstash for Redis" (Marketplace).
 //   2. Conectar ao projeto: as envs UPSTASH_REDIS_REST_URL/TOKEN (ou
 //      KV_REST_API_URL/TOKEN) são injetadas automaticamente.
-import { checkRateLimit } from './_gemini';
+import { checkRateLimit } from './_gemini.js';
 
 interface RateResult { allowed: boolean; retryAfterSec: number; }
 

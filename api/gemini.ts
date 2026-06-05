@@ -5,9 +5,9 @@
 //   ALLOWED_ORIGINS              — (opcional) origens extras separadas por vírgula
 //   GEMINI_RATE_LIMIT            — (opcional) máx. de requisições por janela (default 20)
 //   GEMINI_RATE_WINDOW_SEC       — (opcional) tamanho da janela em segundos (default 60)
-import { runGemini, isRequestAllowed, getClientIp } from './_gemini';
-import { checkRateLimitAsync } from './_ratelimit';
-import { readJsonBody } from './_http';
+import { runGemini, isRequestAllowed, getClientIp } from './_gemini.js';
+import { checkRateLimitAsync } from './_ratelimit.js';
+import { readJsonBody } from './_http.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
