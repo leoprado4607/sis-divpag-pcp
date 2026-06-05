@@ -17,24 +17,36 @@ const AndrecitoLogin: React.FC<AndrecitoLoginProps> = ({ onLogin, onBack }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleAdminLogin = (e: React.FormEvent) => {
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (username.toLowerCase() !== 'admin') {
+      alert('Credenciais inválidas. Verifique o usuário e a senha.');
+      return;
+    }
     setLoading(true);
-    
-    // Simulação de autenticação com restrição de usuário
-    setTimeout(() => {
-        const savedPass = localStorage.getItem('andrecito_admin_pass') || 'gs4607';
-        // Apenas permite login se o usuário for 'admin' e a senha coincidir
-        if (username.toLowerCase() === 'admin' && password === savedPass) {
-            // Guarda a senha como token de admin: o /api/admin a revalida no servidor
-            // (contra ADMIN_PASSWORD) antes de qualquer escrita com service_role.
-            setAdminToken(password);
-            onLogin('admin');
-        } else {
-            alert('Credenciais inválidas. Verifique o usuário e a senha.');
-            setLoading(false);
-        }
-    }, 800);
+
+    // A senha é validada no SERVIDOR (fonte da verdade = ADMIN_PASSWORD no /api/admin),
+    // e não mais contra um valor fixo embutido no bundle. Enviamos uma ação de
+    // verificação inócua: 401 = senha incorreta; 400 (ação desconhecida, já passou
+    // pela autenticação) = senha correta; 503/404/rede = backend admin indisponível
+    // (ex.: `npm run dev`) → libera localmente para não travar o desenvolvimento.
+    try {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': password },
+        body: JSON.stringify({ action: '__verify__' }),
+      });
+      if (res.status === 401) {
+        alert('Credenciais inválidas. Verifique o usuário e a senha.');
+        setLoading(false);
+        return;
+      }
+    } catch {
+      /* sem rede: segue para o modo local (dev/offline) */
+    }
+
+    setAdminToken(password);
+    onLogin('admin');
   };
 
   return (
