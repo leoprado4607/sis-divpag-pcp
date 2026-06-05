@@ -8,12 +8,30 @@ interface QuickLinkItem {
   url?: string;
 }
 
+const CACHE_KEY = 'sipp_quicklinks_cache';
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
+
 const QuickLinks: React.FC = () => {
   const [items, setItems] = useState<QuickLinkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    // 1) Mostra o cache imediatamente (sem spinner) se ainda estiver fresco.
+    let hadCache = false;
+    try {
+      const raw = sessionStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const cached = JSON.parse(raw);
+        if (Array.isArray(cached.items) && Date.now() - cached.ts < CACHE_TTL_MS) {
+          setItems(cached.items);
+          setLoading(false);
+          hadCache = true;
+        }
+      }
+    } catch { /* cache inválido: ignora */ }
+
+    // 2) Revalida em segundo plano (stale-while-revalidate).
     const fetchSheet = async () => {
       try {
         const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdDFMSydOAXDTnthTO6iwQMbaAEPD6ZLwCwpnj0Y3g2UlJkOmJ-Sue2HpI6JnqNLwkaIQbBt4PPdZ5/pub?gid=670175073&single=true&output=csv";
@@ -45,9 +63,13 @@ const QuickLinks: React.FC = () => {
           }).filter(item => item.title);
 
           setItems(parsedItems);
+          try {
+            sessionStorage.setItem(CACHE_KEY, JSON.stringify({ items: parsedItems, ts: Date.now() }));
+          } catch { /* storage cheio/indisponível: ignora */ }
         }
       } catch {
-        setError(true);
+        // Se já mostramos dados do cache, não troca a tela por um erro.
+        if (!hadCache) setError(true);
       } finally {
         setLoading(false);
       }

@@ -7,13 +7,13 @@ interface HeaderProps {
 }
 
 const EXTRA_LOGOS_DATA = [
-  { url: "https://lh3.googleusercontent.com/d/1xdUw2iB9ixWETbq9B77H_Ip937CF7oh9=s0", title: "Cmdo 7ª Bda Inf Mtz (024406)" },
-  { url: "https://lh3.googleusercontent.com/d/1R1agYPtBLHlI2GsW4mr6Ry_qncnEtGrA=s0", title: "17º GAC (056507)" },
-  { url: "https://lh3.googleusercontent.com/d/1o8Q9KVdJnoHR-FzxH9HkwX0AiHUdQIgl=s0", title: "16º BI Mtz (007807)" },
-  { url: "https://lh3.googleusercontent.com/d/15dPk1zPec-_d7t2p8fX6FTXtEPnrtVJy=s0", title: "7º BE Cmb (003004)" },
-  { url: "https://lh3.googleusercontent.com/d/1N6EIH4ZgktZ0E_0SI2cx1fuiGFL4_18a=s0", title: "17ª Cia Com" },
-  { url: "https://lh3.googleusercontent.com/d/1VfbwpTP92s65vPKWPFYhBV5Rv11L5FCL=s0", title: "7º Pel PE (065623)" },
-  { url: "https://lh3.googleusercontent.com/d/1p2CvvRSclGlg3sLz1FzlYuoLasFKjInd=s0", title: "HGuN (061200)" }
+  { url: "https://lh3.googleusercontent.com/d/1xdUw2iB9ixWETbq9B77H_Ip937CF7oh9=s160", title: "Cmdo 7ª Bda Inf Mtz (024406)" },
+  { url: "https://lh3.googleusercontent.com/d/1R1agYPtBLHlI2GsW4mr6Ry_qncnEtGrA=s160", title: "17º GAC (056507)" },
+  { url: "https://lh3.googleusercontent.com/d/1o8Q9KVdJnoHR-FzxH9HkwX0AiHUdQIgl=s160", title: "16º BI Mtz (007807)" },
+  { url: "https://lh3.googleusercontent.com/d/15dPk1zPec-_d7t2p8fX6FTXtEPnrtVJy=s160", title: "7º BE Cmb (003004)" },
+  { url: "https://lh3.googleusercontent.com/d/1N6EIH4ZgktZ0E_0SI2cx1fuiGFL4_18a=s160", title: "17ª Cia Com" },
+  { url: "https://lh3.googleusercontent.com/d/1VfbwpTP92s65vPKWPFYhBV5Rv11L5FCL=s160", title: "7º Pel PE (065623)" },
+  { url: "https://lh3.googleusercontent.com/d/1p2CvvRSclGlg3sLz1FzlYuoLasFKjInd=s160", title: "HGuN (061200)" }
 ];
 
 const Header: React.FC<HeaderProps> = ({ showExtraLogos = false }) => {

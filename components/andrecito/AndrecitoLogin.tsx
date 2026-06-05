@@ -67,7 +67,7 @@ const AndrecitoLogin: React.FC<AndrecitoLoginProps> = ({ onLogin, onBack }) => {
                 {/* Brasão */}
                 <div className="mb-6 filter drop-shadow-2xl transition-transform hover:scale-105 duration-500">
                     <img 
-                        src="https://lh3.googleusercontent.com/d/1z58eVvaJZ55IAZ_ebEeLXzpPZCXO2fBU=s0" 
+                        src="https://lh3.googleusercontent.com/d/1z58eVvaJZ55IAZ_ebEeLXzpPZCXO2fBU=s240"
                         referrerPolicy="no-referrer"
                         alt="Brasão" 
                         className="w-24 h-24 object-contain"
@@ -143,7 +143,7 @@ const AndrecitoLogin: React.FC<AndrecitoLoginProps> = ({ onLogin, onBack }) => {
             {/* Imagem com Ken Burns */}
             <div 
                 className="absolute inset-0 bg-cover bg-center animate-ken-burns opacity-60"
-                style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/d/19VJzsC8nHnsqNqKAlgJUuUS_22zkLmmy=s0")' }}
+                style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/d/19VJzsC8nHnsqNqKAlgJUuUS_22zkLmmy=s1280")' }}
             ></div>
             
             {/* Overlays */}
