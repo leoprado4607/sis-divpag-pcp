@@ -51,8 +51,11 @@ const LOCAL_DOC_KEY = 'andrecito_local_documents';
 
 // Controle de custo de tokens: teto de texto enviado por documento ao Gemini e
 // teto de tokens de saída. Evita prompts gigantes quando vários docs são selecionados.
+// OBS: o gemini-2.5-flash é "thinking" — os tokens de raciocínio contam dentro de
+// maxOutputTokens. Mantemos um teto folgado e desligamos o thinking (ver chamada
+// abaixo) para que respostas longas não voltem truncadas.
 const MAX_DOC_CHARS = 12000;
-const MAX_OUTPUT_TOKENS = 2048;
+const MAX_OUTPUT_TOKENS = 4096;
 
 // --- INITIAL MOCK SEEDS ---
 const INITIAL_CATEGORIES: AndrecitoCategory[] = [
@@ -607,7 +610,10 @@ export const andrecitoService = {
         config: {
           systemInstruction: "Você é o ANDRECITO, assistente virtual inteligente da Divisão de Pagamento do Exército (DivPag). Use os documentos/conteúdos enviados no prompt para responder técnica e fielmente. É OBRIGATÓRIO citar o nome do arquivo fonte no corpo da resposta (ex: 'De acordo com o arquivo Portaria_123...'). Seja militar, direto, técnico e cortês. Se a informação não constar nos arquivos, diga polidamente que não encontrou nos documentos selecionados.",
           temperature: 0.15,
-          maxOutputTokens: MAX_OUTPUT_TOKENS
+          maxOutputTokens: MAX_OUTPUT_TOKENS,
+          // Desliga o "thinking" do 2.5-flash: todo o orçamento vira resposta,
+          // evitando que respostas longas (vários documentos) voltem truncadas.
+          thinkingConfig: { thinkingBudget: 0 }
         }
       });
 
