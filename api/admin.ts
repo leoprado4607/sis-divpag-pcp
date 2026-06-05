@@ -7,6 +7,7 @@
 //   SUPABASE_URL                 (ou VITE_SUPABASE_URL)
 //   SUPABASE_SERVICE_ROLE_KEY    (Settings → API → service_role secret)
 //   ADMIN_PASSWORD               (senha que o admin digita no login)
+import { timingSafeEqual } from 'node:crypto';
 import { isRequestAllowed, getClientIp } from './_gemini.js';
 import { checkRateLimitAsync } from './_ratelimit.js';
 import { readJsonBody } from './_http.js';
@@ -14,6 +15,15 @@ import { getAdminSupabase, DOCUMENTS_BUCKET } from './_supabaseAdmin.js';
 
 function sanitizeFileName(name: string): string {
   return (name || 'arquivo').replace(/[^a-zA-Z0-9.\-_]/g, '_');
+}
+
+// Comparação em tempo constante: evita que um atacante deduza a senha de admin
+// medindo o tempo de resposta (timing attack) numa comparação de strings comum.
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(String(a));
+  const bufB = Buffer.from(String(b));
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
 }
 
 export default async function handler(req: any, res: any) {
@@ -39,7 +49,7 @@ export default async function handler(req: any, res: any) {
   if (!adminPassword) {
     return res.status(503).json({ error: 'Administração não configurada no servidor (ADMIN_PASSWORD ausente).' });
   }
-  if ((req.headers['x-admin-token'] || '') !== adminPassword) {
+  if (!safeEqual(req.headers['x-admin-token'] || '', adminPassword)) {
     return res.status(401).json({ error: 'Credenciais de administrador inválidas.' });
   }
 
