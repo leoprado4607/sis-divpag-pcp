@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Save, Plus, Trash2, LayoutGrid, FileEdit, Folder, FileText, Edit2, Menu, X, ShieldCheck, LogOut, Settings } from 'lucide-react';
 import { notesService } from '../../services/notesService';
+import { sanitizeNoteHtml } from '../../services/sanitizeHtml';
 import { GeneralSubject, SpecificSubject, Note } from '../../types';
 
 interface NotesAdminProps {
@@ -76,8 +77,10 @@ const NotesAdmin: React.FC<NotesAdminProps> = ({ onBack, isAuthenticated }) => {
     await notesService.saveNote({
       general_subject_id: selGenId,
       specific_subject_id: selSpecId,
-      main_text: editorContent,
-      closing_text: closingText,
+      // Sanitiza ao gravar: o que é persistido (e depois servido ao público) já
+      // sai limpo de scripts/handlers, preservando a formatação colada do Word.
+      main_text: sanitizeNoteHtml(editorContent),
+      closing_text: sanitizeNoteHtml(closingText),
       last_edited: new Date().toISOString()
     });
     setSaving(false);
@@ -277,7 +280,7 @@ const NotesAdmin: React.FC<NotesAdminProps> = ({ onBack, isAuthenticated }) => {
                         contentEditable
                         suppressContentEditableWarning
                         onBlur={(e) => setEditorContent(e.currentTarget.innerHTML)}
-                        dangerouslySetInnerHTML={{ __html: editorContent }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeNoteHtml(editorContent) }}
                         style={{ minHeight: '400px' }}
                       />
                     </div>
@@ -290,7 +293,7 @@ const NotesAdmin: React.FC<NotesAdminProps> = ({ onBack, isAuthenticated }) => {
                         contentEditable
                         suppressContentEditableWarning
                         onBlur={(e) => setClosingText(e.currentTarget.innerHTML)}
-                        dangerouslySetInnerHTML={{ __html: closingText }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeNoteHtml(closingText) }}
                       />
                     </div>
                   </div>

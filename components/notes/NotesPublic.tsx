@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { ArrowLeft, Search, Copy, Check, Printer, FileText, Filter, X } from 'lucide-react';
 import { notesService } from '../../services/notesService';
+import { sanitizeNoteHtml } from '../../services/sanitizeHtml';
 import { GeneralSubject, SpecificSubject, Note } from '../../types';
 
 interface NotesPublicProps {
@@ -195,16 +196,16 @@ const NotesPublic: React.FC<NotesPublicProps> = ({ onBack }) => {
                   </div>
 
                   {/* Rich Content Render (Main) */}
-                  <div 
+                  <div
                     className="prose max-w-none mb-12 text-sm md:text-base text-justify"
-                    dangerouslySetInnerHTML={{ __html: currentNote.main_text }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeNoteHtml(currentNote.main_text) }}
                   />
                 </div>
 
                 {/* Rich Content Render (Closing) */}
-                <div 
+                <div
                   className="mt-12 pt-8 border-t border-gray-100 text-sm font-medium prose max-w-none"
-                  dangerouslySetInnerHTML={{ __html: currentNote.closing_text }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeNoteHtml(currentNote.closing_text) }}
                 />
               </div>
             </div>
