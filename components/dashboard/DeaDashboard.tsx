@@ -121,10 +121,15 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
       if (!nonPaidContext) { setAiAnalysis(`Não foram identificados processos pendentes em ${selectedYear} para análise.`); setAiLoading(false); return; }
 
       // Chamada via proxy serverless /api/gemini (a chave fica no servidor).
+      // IMPORTANTE: o gemini-2.5-flash é um modelo "thinking" — os tokens de
+      // raciocínio contam dentro de maxOutputTokens. Com 2048, o pensamento
+      // consumia quase todo o orçamento e o parecer voltava truncado/vazio.
+      // Desligamos o thinking (thinkingBudget: 0) e ampliamos o teto de saída,
+      // garantindo que o relatório completo caiba na resposta.
       const text = await callGemini({
         model: GEMINI_MODEL,
         contents: `Você é um analista estratégico militar. Analise os motivos de atraso nos processos de DEA de ${selectedYear} listados abaixo e forneça um parecer executivo sobre os principais gargalos identificados: \n\n${nonPaidContext}. Cite padrões de irregularidades se houver.`,
-        config: { maxOutputTokens: 2048 },
+        config: { maxOutputTokens: 4096, thinkingConfig: { thinkingBudget: 0 } },
       });
       setAiAnalysis(text || 'Sem resposta da IA.');
     } catch (error: any) {
