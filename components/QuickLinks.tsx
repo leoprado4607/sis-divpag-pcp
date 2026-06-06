@@ -116,7 +116,6 @@ const QuickLinks: React.FC = () => {
                 transition-all duration-200
               `}
             >
-              <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-xl bg-gradient-to-r from-army-green via-army-gold to-army-blue opacity-60" />
               <span className={`text-[9px] font-bold uppercase tracking-widest mb-1.5 line-clamp-1 text-center transition-colors ${item.url ? 'text-slate-400 group-hover:text-army-green' : 'text-slate-400'}`}>
                 {item.title}
               </span>
