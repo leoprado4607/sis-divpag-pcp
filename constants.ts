@@ -14,7 +14,7 @@ export const SYSTEM_LINKS: SystemLink[] = [
     description: 'Portarias, Decretos, DIEx e Pareceres',
     url: '#',
     icon: Search,
-    variant: 'secondary',
+    variant: 'accent',
     internalRoute: 'andrecito-app'
   },
   {
@@ -23,7 +23,7 @@ export const SYSTEM_LINKS: SystemLink[] = [
     description: 'Relação CPEx X SiCaPEx',
     url: '#',
     icon: GitCompare,
-    variant: 'secondary',
+    variant: 'accent',
     internalRoute: 'comparison-app'
   },
   {
@@ -32,7 +32,7 @@ export const SYSTEM_LINKS: SystemLink[] = [
     description: 'Dados estatísticos e análise',
     url: '#',
     icon: BarChart3,
-    variant: 'primary',
+    variant: 'accent',
     internalRoute: 'dea-dashboard'
   },
   {
@@ -50,6 +50,6 @@ export const SYSTEM_LINKS: SystemLink[] = [
     description: 'Pecuniária, diárias e Grat Rep',
     url: 'https://ebcalc.net/',
     icon: Calculator,
-    variant: 'primary'
+    variant: 'accent'
   }
 ];
