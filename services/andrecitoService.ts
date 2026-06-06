@@ -720,7 +720,9 @@ export const andrecitoService = {
           maxOutputTokens: MAX_OUTPUT_TOKENS,
           // Desliga o "thinking" do 2.5-flash: todo o orçamento vira resposta,
           // evitando que respostas longas (vários documentos) voltem truncadas.
-          thinkingConfig: { thinkingBudget: 0 },
+          // thinkingBudget: 0 removido — combinação com responseMimeType:'application/json'
+          // pode impedir o modelo de gerar JSON válido sem tokens de raciocínio.
+          thinkingConfig: { thinkingBudget: -1 },
           // Força resposta em JSON com forma fixa { resposta, fontesUtilizadas }.
           responseMimeType: 'application/json',
           responseSchema: {
@@ -797,9 +799,10 @@ export const andrecitoService = {
         }
       }
       return finalResponse;
-    } catch (e) {
+    } catch (e: any) {
       console.error("Erro no Gemini:", e);
-      return "Ocorreu um erro ao processar a inteligência artificial. Verifique se os arquivos são muito grandes ou se a chave de API é válida.";
+      const msg = e?.message || '';
+      return `Ocorreu um erro ao consultar a IA.${msg ? `\n\n**Detalhe:** ${msg}` : ' Verifique se a chave de API é válida e tente novamente.'}`;
     }
   }
 };
