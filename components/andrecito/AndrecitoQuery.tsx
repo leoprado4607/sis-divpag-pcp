@@ -29,6 +29,7 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
   const [expandedCat, setExpandedCat] = useState<string>('');
   const [estimatedDocCount, setEstimatedDocCount] = useState(0);
   const [query, setQuery] = useState('');
+  const [lastQuery, setLastQuery] = useState('');
   const [response, setResponse] = useState('');
   const [loading, setLoading] = useState(false);
   const [processingStep, setProcessingStep] = useState('');
@@ -71,7 +72,8 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
     
     setLoading(true);
     setResponse('');
-    
+    setLastQuery(query.trim());
+
     try {
       setProcessingStep('Localizando documentos...');
       const subPromises = selectedSubcats.map(id => andrecitoService.getDocuments(id));
@@ -100,68 +102,212 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
   const handleDownloadPDF = useCallback(() => {
     if (!response) return;
 
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
-    const contentWidth = pageWidth - (margin * 2);
-    let cursorY = 40;
-
-    const addHeader = (pdfDoc: jsPDF) => {
-      pdfDoc.setFont("helvetica", "bold");
-      pdfDoc.setFontSize(14);
-      pdfDoc.setTextColor(26, 60, 26); // Army Green
-      pdfDoc.text("SISTEMA ANDRECITO - ANÁLISE DE LEGISLAÇÃO MILITAR", pageWidth / 2, 15, { align: "center" });
-      
-      pdfDoc.setFontSize(9);
-      pdfDoc.setTextColor(189, 156, 77); // Army Gold
-      pdfDoc.text("DIVISÃO DE PAGAMENTO DE PESSOAL / B ADM GU NATAL", pageWidth / 2, 21, { align: "center" });
-      
-      pdfDoc.setDrawColor(189, 156, 77);
-      pdfDoc.setLineWidth(0.5);
-      pdfDoc.line(margin, 25, pageWidth - margin, 25);
+    // Paleta institucional (RGB).
+    const C = {
+      green: [26, 60, 26] as const,
+      gold: [189, 156, 77] as const,
+      text: [40, 40, 40] as const,
+      muted: [125, 125, 125] as const,
+      rule: [223, 227, 231] as const,
+      link: [21, 101, 192] as const,
+      box: [246, 247, 245] as const,
+      white: [255, 255, 255] as const,
     };
 
-    addHeader(doc);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    doc.setTextColor(50, 50, 50);
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 48;
+    const contentW = pageW - margin * 2;
+    const bottomLimit = pageH - 60;
+    let y = 0;
 
-    const cleanText = response
-      .replace(/[*#_]/g, '')
-      .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
-      .trim();
-    
-    const lines = doc.splitTextToSize(cleanText, contentWidth);
+    const setFill = (c: readonly number[]) => doc.setFillColor(c[0], c[1], c[2]);
+    const setText = (c: readonly number[]) => doc.setTextColor(c[0], c[1], c[2]);
+    const setDraw = (c: readonly number[]) => doc.setDrawColor(c[0], c[1], c[2]);
 
-    lines.forEach((line: string) => {
-      if (cursorY > pageHeight - margin) {
-        doc.addPage();
-        addHeader(doc);
-        cursorY = 40;
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
-        doc.setTextColor(50, 50, 50);
+    // Cabeçalho de continuação (páginas 2+): faixa fina verde com identificação.
+    const runningHeader = () => {
+      setFill(C.green); doc.rect(0, 0, pageW, 30, 'F');
+      setFill(C.gold); doc.rect(0, 30, pageW, 2, 'F');
+      setText(C.white); doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
+      doc.text('SISTEMA ANDRECITO', margin, 19);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
+      doc.text('Análise de Legislação Militar', pageW - margin, 19, { align: 'right' });
+      y = 56;
+    };
+
+    const newPage = () => { doc.addPage(); runningHeader(); };
+    const ensure = (h: number) => { if (y + h > bottomLimit) newPage(); };
+
+    // Remove marcadores inline que não renderizamos diretamente (mantém _ de nomes
+    // de arquivo). O **negrito** é tratado à parte em writeRich.
+    const cleanInline = (s: string) =>
+      s.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[`*]/g, '').trim();
+
+    // Escreve texto com quebra automática, suportando **negrito** inline.
+    const writeRich = (
+      text: string,
+      opts: { size: number; color?: readonly number[]; indent?: number; gap?: number; bold?: boolean }
+    ) => {
+      const indent = opts.indent || 0;
+      const lineH = opts.size + 5;
+      const startX = margin + indent;
+      const maxW = contentW - indent;
+      const color = opts.color || C.text;
+
+      // Tokeniza em segmentos preservando o estado de negrito.
+      const segs: { t: string; b: boolean }[] = [];
+      const re = /\*\*([^*]+)\*\*/g;
+      let last = 0, m: RegExpExecArray | null;
+      while ((m = re.exec(text)) !== null) {
+        if (m.index > last) segs.push({ t: text.slice(last, m.index), b: !!opts.bold });
+        segs.push({ t: m[1], b: true });
+        last = m.index + m[0].length;
       }
-      doc.text(line, margin, cursorY);
-      cursorY += 6;
-    });
-    
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text(
-        `Gerado em ${new Date().toLocaleString('pt-BR')} - Página ${i} de ${pageCount}`, 
-        pageWidth / 2, 
-        pageHeight - 10, 
-        { align: "center" }
-      );
+      if (last < text.length) segs.push({ t: text.slice(last), b: !!opts.bold });
+
+      // Quebra cada segmento em palavras (preservando espaços) já limpas.
+      const words: { t: string; b: boolean }[] = [];
+      segs.forEach(s => {
+        cleanInline(s.t).split(/(\s+)/).forEach(p => { if (p.length) words.push({ t: p, b: s.b }); });
+      });
+
+      setText(color);
+      ensure(lineH);
+      let x = startX;
+      words.forEach(w => {
+        doc.setFont('helvetica', w.b ? 'bold' : 'normal');
+        const ww = doc.getTextWidth(w.t);
+        const isSpace = !w.t.trim().length;
+        if (x + ww > startX + maxW && !isSpace) { y += lineH; ensure(lineH); x = startX; }
+        if (x === startX && isSpace) return; // descarta espaço no início da linha
+        doc.text(w.t, x, y);
+        x += ww;
+      });
+      y += lineH + (opts.gap || 0);
+    };
+
+    // --- Separa o corpo da resposta da seção "Fontes Consultadas" ---
+    const sources: { name: string; url: string }[] = [];
+    let body = response;
+    const fIdx = response.indexOf('**Fontes Consultadas:**');
+    if (fIdx !== -1) {
+      body = response.slice(0, fIdx).replace(/\n*-{3,}\s*$/, '').trim();
+      const block = response.slice(fIdx);
+      const linkRe = /\[([^\]]+)\]\(([^)]+)\)/g;
+      let lm: RegExpExecArray | null;
+      while ((lm = linkRe.exec(block)) !== null) sources.push({ name: lm[1], url: lm[2] });
     }
 
-    doc.save(`andrecito_consulta_${Date.now()}.pdf`);
-  }, [response]);
+    // --- Cabeçalho institucional (1ª página) ---
+    setFill(C.green); doc.rect(0, 0, pageW, 82, 'F');
+    setFill(C.gold); doc.rect(0, 82, pageW, 4, 'F');
+    setText(C.white);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(19);
+    doc.text('Sistema ANDRECITO', margin, 40);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+    doc.text('Análise de Legislação Militar  ·  Divisão de Pagamento de Pessoal', margin, 60);
+    doc.setFontSize(8.5); setText(C.gold);
+    doc.text(new Date().toLocaleDateString('pt-BR'), pageW - margin, 40, { align: 'right' });
+    y = 112;
+
+    // --- Box com a consulta realizada ---
+    if (lastQuery) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); setText(C.gold);
+      ensure(60); doc.text('CONSULTA', margin, y); y += 8;
+      doc.setFont('helvetica', 'italic'); doc.setFontSize(10.5);
+      const qLines = doc.splitTextToSize(lastQuery, contentW - 28) as string[];
+      const boxH = qLines.length * 14 + 20;
+      ensure(boxH);
+      setFill(C.box); setDraw(C.rule); doc.setLineWidth(0.5);
+      doc.roundedRect(margin, y, contentW, boxH, 5, 5, 'FD');
+      setFill(C.gold); doc.rect(margin, y, 3.5, boxH, 'F');
+      setText(C.text);
+      let qy = y + 17;
+      qLines.forEach(l => { doc.text(l, margin + 16, qy); qy += 14; });
+      y += boxH + 20;
+    }
+
+    // --- Corpo (renderização leve de Markdown) ---
+    body.split(/\r?\n/).forEach(raw => {
+      const line = raw.replace(/\s+$/, '');
+      if (!line.trim()) { y += 5; return; }
+
+      // Divisor
+      if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+        ensure(16); setDraw(C.rule); doc.setLineWidth(0.5);
+        doc.line(margin, y, pageW - margin, y); y += 16; return;
+      }
+      // Títulos markdown (#, ##, ###)
+      const h = line.match(/^(#{1,4})\s+(.*)/);
+      if (h) {
+        const lvl = h[1].length;
+        y += lvl <= 2 ? 8 : 5;
+        writeRich(h[2], { size: lvl === 1 ? 15 : lvl === 2 ? 13 : 11.5, color: C.green, bold: true, gap: 5 });
+        return;
+      }
+      // Subtítulo "em negrito puro" (ex.: **1. Natureza...:**) → destaque verde
+      const sub = line.match(/^\*\*(.+?)\*\*:?\s*$/);
+      if (sub) {
+        y += 6; writeRich(sub[1].replace(/:$/, ''), { size: 11.5, color: C.green, bold: true, gap: 4 });
+        return;
+      }
+      // Lista numerada
+      const n = line.match(/^\s*(\d+)\.\s+(.*)/);
+      if (n) {
+        ensure(15);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); setText(C.green);
+        doc.text(`${n[1]}.`, margin, y);
+        writeRich(n[2], { size: 10, indent: 18, gap: 3 });
+        return;
+      }
+      // Lista com marcador
+      const b = line.match(/^\s*[-*]\s+(.*)/);
+      if (b) {
+        ensure(15); setFill(C.gold); doc.circle(margin + 4, y - 3, 1.7, 'F');
+        writeRich(b[1], { size: 10, indent: 16, gap: 3 });
+        return;
+      }
+      // Parágrafo
+      writeRich(line, { size: 10.5, gap: 6 });
+    });
+
+    // --- Seção "Fontes Consultadas" com links clicáveis ---
+    if (sources.length) {
+      y += 8; ensure(60);
+      setDraw(C.rule); doc.setLineWidth(0.5); doc.line(margin, y, pageW - margin, y); y += 20;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); setText(C.green);
+      doc.text('Fontes Consultadas', margin, y);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); setText(C.muted);
+      doc.text('Clique no nome do documento para abrir ou baixar.', pageW - margin, y, { align: 'right' });
+      y += 18;
+
+      sources.forEach(s => {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+        const lines = doc.splitTextToSize(s.name, contentW - 18) as string[];
+        ensure(lines.length * 13 + 6);
+        setFill(C.gold); doc.circle(margin + 4, y - 3, 1.9, 'F');
+        setText(C.link);
+        let ly = y;
+        lines.forEach(ln => { doc.textWithLink(ln, margin + 16, ly, { url: s.url }); ly += 13; });
+        y = ly + 5;
+      });
+    }
+
+    // --- Rodapé com numeração (todas as páginas) ---
+    const total = doc.getNumberOfPages();
+    const stamp = new Date().toLocaleString('pt-BR');
+    for (let i = 1; i <= total; i++) {
+      doc.setPage(i);
+      setDraw(C.rule); doc.setLineWidth(0.5); doc.line(margin, pageH - 40, pageW - margin, pageH - 40);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); setText(C.muted);
+      doc.text(`ANDRECITO · Gerado via IA · ${stamp}`, margin, pageH - 26);
+      doc.text(`Página ${i} de ${total}`, pageW - margin, pageH - 26, { align: 'right' });
+    }
+
+    doc.save(`Andrecito_Consulta_${new Date().toISOString().slice(0, 10)}.pdf`);
+  }, [response, lastQuery]);
 
   // Memoiza a árvore de categorias da sidebar: sem isso, cada tecla digitada na
   // caixa de consulta reconstrói toda a lista de pastas. Só recalcula quando o
