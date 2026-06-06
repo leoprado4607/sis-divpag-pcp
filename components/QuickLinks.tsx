@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Loader2, AlertCircle, TrendingUp } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 
 interface QuickLinkItem {
   title: string;
@@ -100,10 +100,6 @@ const QuickLinks: React.FC = () => {
 
   return (
     <div className="w-full mb-10">
-      <div className="flex items-center gap-2 mb-4">
-        <TrendingUp size={14} className="text-army-gold" />
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Indicadores em tempo real</span>
-      </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {items.map((item, index) => {
           const Wrapper = item.url ? 'a' : 'div';
