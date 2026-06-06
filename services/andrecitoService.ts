@@ -57,6 +57,52 @@ const LOCAL_DOC_KEY = 'andrecito_local_documents';
 const MAX_DOC_CHARS = 12000;
 const MAX_OUTPUT_TOKENS = 4096;
 
+// --- FILTRAGEM DE RELEVÂNCIA (pré-envio ao Gemini) ---
+// Antes de mandar os documentos selecionados para a IA, pontuamos cada um pela
+// presença dos termos da consulta no seu conteúdo (e nome do arquivo). Mantemos
+// TODOS os documentos com alguma relevância — sem teto de quantidade — apenas
+// descartando os de relevância ZERO, que só inflariam os tokens de entrada sem
+// contribuir para a resposta. É um ranqueamento leve por sobreposição de termos
+// (sem chamada extra de embeddings): rápido, gratuito e determinístico.
+const SCORE_STOPWORDS_PT = new Set([
+  'que','qual','quais','quanto','quantos','como','onde','quando','porque','por',
+  'para','com','sem','sobre','dos','das','nos','nas','uma','uns','umas','ele',
+  'ela','seu','sua','seus','suas','este','esta','isso','aos','pelo','pela','ser',
+  'são','foi','tem','ter','meu','minha','nao','não','sim','mais','menos','muito'
+]);
+
+const normalizeForScore = (text: string): string =>
+  text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+// Extrai os termos significativos da consulta (≥3 chars, sem stopwords, sem
+// duplicatas). Se a consulta só tiver palavras vazias, retorna [] → o chamador
+// trata como "sem sinal" e envia todos os documentos (fallback seguro).
+const extractQueryTokens = (query: string): string[] =>
+  Array.from(new Set(
+    normalizeForScore(query)
+      .split(/[^a-z0-9]+/)
+      .filter(t => t.length >= 3 && !SCORE_STOPWORDS_PT.has(t))
+  ));
+
+// Pontua um documento: soma as ocorrências (limitadas por termo, para que um
+// único termo repetido não domine) de cada token da consulta no texto pesquisável
+// (nome do arquivo + conteúdo). Score 0 = nenhum termo aparece.
+const scoreRelevance = (queryTokens: string[], haystack: string): number => {
+  if (queryTokens.length === 0) return 0;
+  const normalized = normalizeForScore(haystack);
+  let score = 0;
+  for (const tok of queryTokens) {
+    let idx = normalized.indexOf(tok);
+    let count = 0;
+    while (idx !== -1 && count < 25) {
+      count++;
+      idx = normalized.indexOf(tok, idx + tok.length);
+    }
+    score += count;
+  }
+  return score;
+};
+
 // --- INITIAL MOCK SEEDS ---
 const INITIAL_CATEGORIES: AndrecitoCategory[] = [
   { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', name: 'Legislação de Pessoal' },
@@ -551,7 +597,12 @@ export const andrecitoService = {
     const parts: any[] = [];
     const usedDocsMap = new Map<string, AndrecitoDocument>();
     
-    const docPromises = documents.map(async (doc) => {
+    // Cada documento vira uma "entrada" com: as parts que iriam ao Gemini, o texto
+    // usado para pontuar relevância (nome + conteúdo) e se é um anexo base64 (PDF
+    // que não pôde ser extraído — sem texto para pontuar de forma confiável).
+    type DocEntry = { doc: AndrecitoDocument; parts: any[]; scoreText: string; isBinary: boolean };
+
+    const docPromises = documents.map(async (doc): Promise<DocEntry | null> => {
       try {
         let text = getCachedText(doc.id);
         if (!text) {
@@ -559,24 +610,33 @@ export const andrecitoService = {
           text = await extractTextFromPdfUrl(doc.url);
           if (text && text.length > 50) cacheText(doc.id, text);
         }
-        
+
         if (text && text.length > 50) {
-          usedDocsMap.set(doc.id, doc);
           // Limita o texto por documento para conter o custo de tokens de entrada.
           const capped = text.length > MAX_DOC_CHARS
             ? text.slice(0, MAX_DOC_CHARS) + '\n[...documento truncado para análise...]'
             : text;
-          return { text: `\nARQUIVO: ${doc.name}\nCONTEUDO: ${capped}\n` };
+          return {
+            doc,
+            parts: [{ text: `\nARQUIVO: ${doc.name}\nCONTEUDO: ${capped}\n` }],
+            scoreText: `${doc.name} ${text}`,
+            isBinary: false,
+          };
         } else {
           // Fallback para conversão em base64 se for PDF e não conseguimos extrair texto puro
           if (doc.mime_type === 'application/pdf' && !doc.url.startsWith('blob:')) {
             const base64Data = await urlToBase64(doc.url);
             if (base64Data) {
-              usedDocsMap.set(doc.id, doc);
-              return [
-                { text: `\n[Processando PDF: ${doc.name}]\n` },
-                { inlineData: { mimeType: 'application/pdf', data: base64Data } }
-              ];
+              return {
+                doc,
+                parts: [
+                  { text: `\n[Processando PDF: ${doc.name}]\n` },
+                  { inlineData: { mimeType: 'application/pdf', data: base64Data } }
+                ],
+                // Sem texto extraído → só dá para pontuar pelo nome do arquivo.
+                scoreText: doc.name,
+                isBinary: true,
+              };
             }
           }
         }
@@ -586,11 +646,29 @@ export const andrecitoService = {
       return null;
     });
 
-    const results = await Promise.all(docPromises);
-    results.forEach(res => {
-      if (!res) return;
-      if (Array.isArray(res)) parts.push(...res);
-      else parts.push(res);
+    const entries = (await Promise.all(docPromises)).filter((e): e is DocEntry => e !== null);
+
+    // --- RANQUEAMENTO POR RELEVÂNCIA (sem limite de quantidade) ---
+    const queryTokens = extractQueryTokens(query);
+    const scored = entries.map(e => ({ entry: e, score: scoreRelevance(queryTokens, e.scoreText) }));
+
+    // Anexos binários (base64) não têm texto confiável para pontuar; preservamos
+    // os que casam pelo nome, mas nunca descartamos um binário só por score textual
+    // baixo (não conseguimos avaliar seu conteúdo).
+    const hasTextSignal = scored.some(s => !s.entry.isBinary && s.score > 0);
+
+    // Se nenhum documento textual pontuou (ex.: consulta usa sinônimos), não temos
+    // sinal de relevância — enviamos todos como fallback seguro. Caso contrário,
+    // mantemos os relevantes (score > 0) e todos os binários, ordenados por score.
+    const selected = (hasTextSignal
+      ? scored.filter(s => s.score > 0 || s.entry.isBinary)
+      : scored)
+      .sort((a, b) => b.score - a.score)
+      .map(s => s.entry);
+
+    selected.forEach(e => {
+      usedDocsMap.set(e.doc.id, e.doc);
+      parts.push(...e.parts);
     });
 
     if (parts.length === 0) {
