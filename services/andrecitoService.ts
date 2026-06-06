@@ -619,7 +619,7 @@ export const andrecitoService = {
     }
   },
 
-  async queryGemini(query: string, documents: AndrecitoDocument[]): Promise<string> {
+  async queryGemini(query: string, documents: AndrecitoDocument[], userType?: string): Promise<string> {
     const parts: any[] = [];
     const usedDocsMap = new Map<string, AndrecitoDocument>();
     
@@ -714,6 +714,11 @@ export const andrecitoService = {
         // Configurável via VITE_GEMINI_MODEL; default estável e rápido para este ambiente.
         model: (import.meta as any).env?.VITE_GEMINI_MODEL || 'gemini-2.5-flash',
         contents: { parts: parts },
+        _meta: {
+          query,
+          documents: documents.map(d => d.name),
+          userType: userType || 'guest',
+        },
         config: {
           systemInstruction: "Você é o ANDRECITO, assistente virtual da Divisão de Pagamento do Exército (DivPag). Responda técnica e fielmente APENAS com base nos documentos fornecidos (cada um identificado por uma linha 'ARQUIVO: <nome>'). Em cada afirmação relevante, cite no corpo da resposta o nome do arquivo fonte (ex.: 'Conforme o arquivo Portaria_123...'). REGRA OBRIGATÓRIA: o campo 'fontesUtilizadas' deve conter TODOS os arquivos que você citar ou usar no corpo da resposta, sem exceção e sem omitir nenhum — copie cada nome EXATAMENTE como aparece após 'ARQUIVO:', sem inventar, abreviar ou alterar pontuação/espaços. Se citou no texto, tem de estar na lista. Seja militar, direto, técnico e cortês. Se a informação não constar nos arquivos, diga polidamente que não encontrou nos documentos selecionados e deixe 'fontesUtilizadas' vazia.",
           temperature: GEMINI_TEMPERATURE,

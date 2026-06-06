@@ -147,6 +147,52 @@ export default async function handler(req: any, res: any) {
         return res.status(200).json({ ok: true });
       }
 
+      case 'getAnalytics': {
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+        const [totalRes, recentRes] = await Promise.all([
+          db.from('andrecito_logs').select('*', { count: 'exact', head: true }),
+          db.from('andrecito_logs')
+            .select('query_text, ip_hash, tokens_estimated, user_type, created_at, documents_used')
+            .gte('created_at', thirtyDaysAgo)
+            .order('created_at', { ascending: false })
+            .limit(500),
+        ]);
+
+        const rows: any[] = recentRes.data || [];
+
+        const uniqueIps = new Set(rows.map((r) => r.ip_hash).filter(Boolean)).size;
+
+        const dailyMap: Record<string, number> = {};
+        rows.forEach((r) => {
+          const day = (r.created_at as string).slice(0, 10);
+          dailyMap[day] = (dailyMap[day] || 0) + 1;
+        });
+        const dailyUsage = Object.entries(dailyMap)
+          .map(([date, count]) => ({ date, count }))
+          .sort((a, b) => a.date.localeCompare(b.date));
+
+        const tokensArr = rows.map((r) => r.tokens_estimated as number).filter(Boolean);
+        const avgTokens = tokensArr.length
+          ? Math.round(tokensArr.reduce((a, b) => a + b, 0) / tokensArr.length)
+          : 0;
+
+        return res.status(200).json({
+          totalQueries: totalRes.count ?? 0,
+          last30Days: rows.length,
+          uniqueIps30Days: uniqueIps,
+          avgTokens,
+          dailyUsage,
+          recentQueries: rows.slice(0, 50).map((r) => ({
+            query_text: r.query_text,
+            user_type: r.user_type,
+            tokens_estimated: r.tokens_estimated,
+            documents_used: r.documents_used,
+            created_at: r.created_at,
+          })),
+        });
+      }
+
       default:
         return res.status(400).json({ error: 'Ação desconhecida.' });
     }

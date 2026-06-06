@@ -1,12 +1,56 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  ArrowLeft, Bot, Search, Library, Settings, LogOut, Menu, X,
-  FolderPlus, Upload, HardDrive, Trash2, Plus, FileText, CheckCircle, Database, Files, Trash, AlertCircle, Clock, FilterX, ChevronRight, Folder
+import {
+  ArrowLeft, Bot, Search, Library, Settings, LogOut,
+  FolderPlus, Upload, Trash2, FileText, Database, Files, Trash, Clock, ChevronRight, Folder,
+  BarChart2, Users, Activity, Zap, RefreshCw, MessageSquare
 } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 import { andrecitoService } from '../../services/andrecitoService';
+import { adminRequest } from '../../services/adminClient';
 import { AndrecitoCategory, AndrecitoSubcategory, AndrecitoDocument } from '../../types';
 import { ViewState, UserRole } from './AndrecitoApp';
+
+interface AnalyticsData {
+  totalQueries: number;
+  last30Days: number;
+  uniqueIps30Days: number;
+  avgTokens: number;
+  dailyUsage: { date: string; count: number }[];
+  recentQueries: {
+    query_text: string;
+    user_type: string;
+    tokens_estimated: number;
+    documents_used: string[];
+    created_at: string;
+  }[];
+}
+
+const PT_STOPWORDS = new Set([
+  'de','da','do','das','dos','a','o','as','os','e','em','que','por','para','com',
+  'se','na','no','nas','nos','um','uma','ao','aos','como','ou','mais','mas','não',
+  'é','foi','ser','tem','ter','seu','sua','seus','suas','este','esta','esse','essa',
+  'qual','quando','onde','quem','há','até','já','sobre','entre','após','desde',
+  'qual','quais','me','meu','minha','nos','nós','ele','ela','eles','elas','isso',
+]);
+
+function topKeywords(queries: { query_text: string }[], n = 10): { word: string; count: number }[] {
+  const freq: Record<string, number> = {};
+  queries.forEach(({ query_text }) => {
+    query_text
+      .toLowerCase()
+      .replace(/[^a-záéíóúãõâêôàüç\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length >= 4 && !PT_STOPWORDS.has(w))
+      .forEach(w => { freq[w] = (freq[w] || 0) + 1; });
+  });
+  return Object.entries(freq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([word, count]) => ({ word, count }));
+}
 
 interface AndrecitoAdminProps {
   onBack: () => void;
@@ -25,10 +69,32 @@ const formatSize = (bytes: number) => {
 };
 
 const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNavigate, currentView, userRole }) => {
+  const [adminTab, setAdminTab] = useState<'manage' | 'analytics'>('manage');
   const [categories, setCategories] = useState<AndrecitoCategory[]>([]);
   const [subcategories, setSubcategories] = useState<AndrecitoSubcategory[]>([]);
   const [documents, setDocuments] = useState<AndrecitoDocument[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState('');
+
+  const fetchAnalytics = async () => {
+    setAnalyticsLoading(true);
+    setAnalyticsError('');
+    try {
+      const data = await adminRequest<AnalyticsData>('getAnalytics');
+      setAnalytics(data);
+    } catch (e: any) {
+      setAnalyticsError(e?.message || 'Erro ao carregar estatísticas.');
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (adminTab === 'analytics' && !analytics) fetchAnalytics();
+  }, [adminTab]);
 
   // Estados de Gerenciamento
   const [docSearch, setDocSearch] = useState('');
@@ -212,6 +278,149 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
       </header>
 
       <main className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar bg-slate-100">
+        {/* Abas internas do Admin */}
+        <div className="max-w-7xl mx-auto mb-6">
+          <div className="flex gap-2 bg-white rounded-xl p-1 border border-slate-200 w-fit shadow-sm">
+            <button
+              onClick={() => setAdminTab('manage')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${adminTab === 'manage' ? 'bg-army-green text-white shadow-sm' : 'text-slate-500 hover:text-army-green'}`}
+            >
+              <Settings size={14} /> Gerenciar
+            </button>
+            <button
+              onClick={() => setAdminTab('analytics')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${adminTab === 'analytics' ? 'bg-army-green text-white shadow-sm' : 'text-slate-500 hover:text-army-green'}`}
+            >
+              <BarChart2 size={14} /> Estatísticas
+            </button>
+          </div>
+        </div>
+
+        {adminTab === 'analytics' && (
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Header da aba */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-black text-army-green uppercase tracking-widest">Painel de Uso — Andrecito</h2>
+                <p className="text-[11px] text-slate-400 mt-0.5">Consultas registradas nos últimos 30 dias</p>
+              </div>
+              <button
+                onClick={fetchAnalytics}
+                disabled={analyticsLoading}
+                className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-army-green px-3 py-2 rounded-lg bg-white border border-slate-200 transition-all disabled:opacity-50"
+              >
+                <RefreshCw size={13} className={analyticsLoading ? 'animate-spin' : ''} /> Atualizar
+              </button>
+            </div>
+
+            {analyticsError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600">{analyticsError}</div>
+            )}
+
+            {analyticsLoading && !analytics && (
+              <div className="flex items-center justify-center py-20 text-slate-400 text-sm gap-3">
+                <RefreshCw size={20} className="animate-spin" /> Carregando estatísticas...
+              </div>
+            )}
+
+            {analytics && (
+              <>
+                {/* Cards de resumo */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Total de Consultas', value: analytics.totalQueries, icon: <MessageSquare size={18} />, color: 'text-army-green' },
+                    { label: 'Últimos 30 dias', value: analytics.last30Days, icon: <Activity size={18} />, color: 'text-blue-600' },
+                    { label: 'Usuários únicos (30d)', value: analytics.uniqueIps30Days, icon: <Users size={18} />, color: 'text-purple-600' },
+                    { label: 'Tokens médios/consulta', value: analytics.avgTokens.toLocaleString('pt-BR'), icon: <Zap size={18} />, color: 'text-army-gold' },
+                  ].map(card => (
+                    <div key={card.label} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+                      <div className={`${card.color} mb-2`}>{card.icon}</div>
+                      <div className={`text-2xl font-black ${card.color}`}>{card.value}</div>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{card.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Gráfico de uso diário */}
+                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                  <h3 className="text-xs font-black text-army-green uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <BarChart2 size={16} /> Consultas por Dia (últimos 30 dias)
+                  </h3>
+                  {analytics.dailyUsage.length === 0 ? (
+                    <p className="text-center text-slate-400 text-sm py-8">Nenhuma consulta registrada no período.</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={analytics.dailyUsage.map(d => ({ ...d, dia: d.date.slice(5).replace('-', '/') }))}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis dataKey="dia" tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#94a3b8' }} width={28} />
+                        <Tooltip
+                          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
+                          formatter={(v: any) => [v, 'Consultas']}
+                          labelFormatter={(l) => `Dia ${l}`}
+                        />
+                        <Bar dataKey="count" fill="#4a7c59" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Palavras mais pesquisadas */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <h3 className="text-xs font-black text-army-green uppercase tracking-widest mb-4">Termos Mais Pesquisados</h3>
+                    {analytics.recentQueries.length === 0 ? (
+                      <p className="text-center text-slate-400 text-sm py-4">Sem dados.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {topKeywords(analytics.recentQueries).map(({ word, count }, i) => {
+                          const maxCount = topKeywords(analytics.recentQueries)[0]?.count || 1;
+                          return (
+                            <div key={word} className="flex items-center gap-3">
+                              <span className="text-[10px] font-black text-slate-300 w-4 text-right">{i + 1}</span>
+                              <div className="flex-1">
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="text-xs font-bold text-slate-700 capitalize">{word}</span>
+                                  <span className="text-[10px] font-black text-army-green">{count}×</span>
+                                </div>
+                                <div className="w-full bg-slate-100 h-1.5 rounded-full">
+                                  <div className="bg-army-green h-full rounded-full" style={{ width: `${(count / maxCount) * 100}%` }} />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Consultas recentes */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <h3 className="text-xs font-black text-army-green uppercase tracking-widest mb-4">Consultas Recentes</h3>
+                    <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                      {analytics.recentQueries.length === 0 ? (
+                        <p className="text-center text-slate-400 text-sm py-4">Nenhuma consulta registrada ainda.</p>
+                      ) : analytics.recentQueries.map((q, i) => (
+                        <div key={i} className="border border-slate-100 rounded-xl p-3 hover:border-slate-200 transition-all">
+                          <p className="text-xs text-slate-700 font-medium leading-relaxed line-clamp-2">{q.query_text}</p>
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full border uppercase ${q.user_type === 'admin' ? 'bg-army-green/10 text-army-green border-army-green/20' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
+                              {q.user_type}
+                            </span>
+                            <span className="text-[9px] text-slate-400 flex items-center gap-1"><Clock size={9} />{new Date(q.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                            {q.tokens_estimated > 0 && <span className="text-[9px] text-slate-400">~{q.tokens_estimated.toLocaleString('pt-BR')} tokens</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {adminTab === 'manage' && (
         <div className="max-w-7xl mx-auto space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Gestão de Estrutura */}
@@ -455,6 +664,7 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                 </div>
             </div>
         </div>
+        )}
       </main>
     </div>
   );

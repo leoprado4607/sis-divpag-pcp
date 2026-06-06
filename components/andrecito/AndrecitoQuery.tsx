@@ -88,7 +88,7 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
       }
 
       setProcessingStep(`Analisando ${allDocs.length} arquivos com Inteligência Artificial...`);
-      const aiResponse = await andrecitoService.queryGemini(query, allDocs);
+      const aiResponse = await andrecitoService.queryGemini(query, allDocs, userRole || 'guest');
       setResponse(aiResponse);
     } catch (error: any) {
       console.error(error);

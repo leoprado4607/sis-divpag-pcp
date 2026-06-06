@@ -1,9 +1,16 @@
 // Cliente do proxy Gemini. O navegador NÃO conhece a chave de API — ele apenas
 // chama o endpoint serverless /api/gemini, que injeta a chave no lado servidor.
+export interface GeminiMeta {
+  query: string;
+  documents: string[];
+  userType: string;
+}
+
 export interface GeminiPayload {
   model?: string;
   contents: any;
   config?: any;
+  _meta?: GeminiMeta;
 }
 
 export async function callGemini(payload: GeminiPayload): Promise<string> {

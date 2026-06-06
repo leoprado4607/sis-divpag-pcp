@@ -47,3 +47,22 @@ CREATE POLICY "documents_public_read" ON storage.objects
 
 -- IMPORTANTE: rode também o script supabase_security.sql para habilitar RLS nas
 -- tabelas (leitura pública + escrita protegida).
+
+-- 5. Tabela de logs de consultas ao Andrecito (analytics de uso)
+-- Execute no SQL Editor do Supabase para habilitar o painel de estatísticas.
+CREATE TABLE IF NOT EXISTS public.andrecito_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    query_text TEXT NOT NULL,
+    documents_used JSONB NOT NULL DEFAULT '[]'::jsonb,
+    user_type TEXT NOT NULL DEFAULT 'guest',
+    ip_hash TEXT,
+    response_time_ms INTEGER,
+    tokens_estimated INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Índice para ordenação e filtros de analytics (últimos N dias)
+CREATE INDEX IF NOT EXISTS idx_andrecito_logs_created ON public.andrecito_logs(created_at DESC);
+
+-- RLS habilitado: nenhuma policy pública — acesso apenas via service_role (API admin)
+ALTER TABLE public.andrecito_logs ENABLE ROW LEVEL SECURITY;
