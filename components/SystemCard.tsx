@@ -52,9 +52,9 @@ const SystemCard: React.FC<SystemCardProps> = React.memo(({ system, onNavigate }
         </div>
       )}
 
-      <div className="p-6 flex flex-col flex-grow">
+      <div className="p-5 flex flex-col flex-grow justify-center">
         {/* Icon */}
-        <div className={`mb-4 inline-flex p-3 rounded-xl ${accent.icon} w-fit`}>
+        <div className={`mb-3 inline-flex p-3 rounded-xl ${accent.icon} w-fit`}>
           {iconImage ? (
             <img src={iconImage} alt="" className="w-8 h-8 object-contain" />
           ) : (
@@ -68,12 +68,12 @@ const SystemCard: React.FC<SystemCardProps> = React.memo(({ system, onNavigate }
         </h3>
 
         {/* Description */}
-        <p className="text-sm text-slate-500 leading-relaxed line-clamp-2 flex-grow">
+        <p className="text-sm text-slate-500 leading-relaxed line-clamp-2">
           {description}
         </p>
 
         {/* Footer */}
-        <div className={`mt-5 flex items-center gap-1.5 text-xs font-semibold ${accent.badge} group-hover:gap-2.5 transition-all`}>
+        <div className={`mt-4 flex items-center gap-1.5 text-xs font-semibold ${accent.badge} group-hover:gap-2.5 transition-all`}>
           <span>Acessar</span>
           {internalRoute
             ? <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
