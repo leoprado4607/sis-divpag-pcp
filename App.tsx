@@ -41,13 +41,27 @@ const App: React.FC = () => {
           <Header showExtraLogos={true} />
 
           {/* ── Main content ─────────────────────────────────── */}
-          <main className="flex-grow relative bg-gradient-to-br from-divpag-100 via-divpag-50 to-divpag-200">
-            {/* Brilho dourado sutil no topo (halo army-gold), visual moderno e clean */}
+          <main className="flex-grow relative bg-divpag-100 overflow-hidden">
+            {/* Camada da pintura (fundo, B Adm Gu Natal) com leve desfoque. O zoom
+                (scale 1.2) enquadra o prédio e ainda esconde as bordas translúcidas
+                que o blur cria nas extremidades; backgroundPosition ajusta a altura
+                do recorte para destacar o prédio. */}
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
-                backgroundImage:
-                  'radial-gradient(110% 60% at 50% -10%, rgba(189,156,77,0.18) 0%, rgba(189,156,77,0.05) 35%, transparent 70%)',
+                backgroundImage: "url('/fundo-quartel.jpg')",
+                backgroundSize: 'cover',
+                backgroundPosition: 'center 55%',
+                filter: 'blur(2px)',
+                transform: 'scale(1.2)',
+              }}
+            />
+            {/* Véu translúcido ~45%: pintura em destaque, mas cards e textos legíveis. */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background:
+                  'linear-gradient(180deg, rgba(244,247,244,0.45) 0%, rgba(244,247,244,0.52) 50%, rgba(227,235,227,0.62) 100%)',
               }}
             />
             <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-10">
