@@ -42,8 +42,11 @@ const ensurePdfJs = (): Promise<any> => {
 
 // --- KEYS & CACHE CONFIG ---
 const PDF_CACHE_KEY = 'andrecito_pdf_cache';
-const MAX_CACHE_SIZE = 100; 
-const CACHE_TTL_MS = 3 * 24 * 60 * 60 * 1000; // 3 dias
+const MAX_CACHE_SIZE = 100;
+// TTL reduzido de 3 dias → 1 dia: a legislação/normas mudam, e um cache longo
+// arriscava servir texto desatualizado de um documento substituído. Há também
+// limpeza manual disponível no painel Admin (andrecitoService.clearTextCache()).
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 dia
 
 const LOCAL_CAT_KEY = 'andrecito_local_categories';
 const LOCAL_SUB_KEY = 'andrecito_local_subcategories';
@@ -56,6 +59,14 @@ const LOCAL_DOC_KEY = 'andrecito_local_documents';
 // abaixo) para que respostas longas não voltem truncadas.
 const MAX_DOC_CHARS = 12000;
 const MAX_OUTPUT_TOKENS = 4096;
+
+// Temperatura da IA: 0.15 era fria demais para análise jurídica (respostas
+// repetitivas e rasas). 0.35 dá mais contexto interpretativo sem perder fidelidade
+// aos documentos. Configurável via VITE_GEMINI_TEMPERATURE (0..1).
+const GEMINI_TEMPERATURE = (() => {
+  const raw = Number((import.meta as any).env?.VITE_GEMINI_TEMPERATURE);
+  return Number.isFinite(raw) && raw >= 0 && raw <= 1 ? raw : 0.35;
+})();
 
 // --- FILTRAGEM DE RELEVÂNCIA (pré-envio ao Gemini) ---
 // Antes de mandar os documentos selecionados para a IA, pontuamos cada um pela
@@ -403,6 +414,21 @@ const localUploadFallback = async (file: File, categoryId: string, subcategoryId
 
 // --- SERVICE IMPLEMENTATION ---
 export const andrecitoService = {
+  // Limpa o cache de texto extraído dos PDFs (memória + localStorage). Útil quando
+  // um documento é substituído e o texto antigo ainda está cacheado. Retorna a
+  // quantidade de entradas removidas.
+  clearTextCache(): number {
+    try {
+      const count = Object.keys(loadTextCache()).length;
+      textCacheMem = {};
+      if (persistTimer) { clearTimeout(persistTimer); persistTimer = null; }
+      try { localStorage.removeItem(PDF_CACHE_KEY); } catch {}
+      return count;
+    } catch {
+      return 0;
+    }
+  },
+
   async getCategories(): Promise<AndrecitoCategory[]> {
     if (!supabase) return getLocalCategories();
     try {
@@ -681,39 +707,92 @@ export const andrecitoService = {
 
     try {
       // Chamada via proxy serverless /api/gemini (a chave fica no servidor).
+      // Saída ESTRUTURADA (JSON): em vez de pedir a citação só em prosa e depois
+      // adivinhar as fontes por correspondência de texto (~85% confiável), o
+      // modelo declara explicitamente quais arquivos usou no campo "fontesUtilizadas".
       const responseText = await callGemini({
         // Configurável via VITE_GEMINI_MODEL; default estável e rápido para este ambiente.
         model: (import.meta as any).env?.VITE_GEMINI_MODEL || 'gemini-2.5-flash',
         contents: { parts: parts },
         config: {
-          systemInstruction: "Você é o ANDRECITO, assistente virtual inteligente da Divisão de Pagamento do Exército (DivPag). Use os documentos/conteúdos enviados no prompt para responder técnica e fielmente. É OBRIGATÓRIO citar o nome do arquivo fonte no corpo da resposta (ex: 'De acordo com o arquivo Portaria_123...'). Seja militar, direto, técnico e cortês. Se a informação não constar nos arquivos, diga polidamente que não encontrou nos documentos selecionados.",
-          temperature: 0.15,
+          systemInstruction: "Você é o ANDRECITO, assistente virtual da Divisão de Pagamento do Exército (DivPag). Responda técnica e fielmente APENAS com base nos documentos fornecidos (cada um identificado por uma linha 'ARQUIVO: <nome>'). Em cada afirmação relevante, cite no corpo da resposta o nome do arquivo fonte (ex.: 'Conforme o arquivo Portaria_123...'). No campo 'fontesUtilizadas', liste os NOMES EXATOS dos arquivos que realmente embasaram a resposta — copie-os exatamente como aparecem após 'ARQUIVO:', sem inventar nem abreviar. Seja militar, direto, técnico e cortês. Se a informação não constar nos arquivos, diga polidamente que não encontrou nos documentos selecionados e deixe 'fontesUtilizadas' vazia.",
+          temperature: GEMINI_TEMPERATURE,
           maxOutputTokens: MAX_OUTPUT_TOKENS,
           // Desliga o "thinking" do 2.5-flash: todo o orçamento vira resposta,
           // evitando que respostas longas (vários documentos) voltem truncadas.
-          thinkingConfig: { thinkingBudget: 0 }
+          thinkingConfig: { thinkingBudget: 0 },
+          // Força resposta em JSON com forma fixa { resposta, fontesUtilizadas }.
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'OBJECT',
+            properties: {
+              resposta: {
+                type: 'STRING',
+                description: 'A resposta técnica completa, em texto (markdown permitido). Cite no corpo o nome do arquivo fonte de cada afirmação.'
+              },
+              fontesUtilizadas: {
+                type: 'ARRAY',
+                items: { type: 'STRING' },
+                description: 'Nomes EXATOS dos arquivos efetivamente usados para fundamentar a resposta, copiados como aparecem após "ARQUIVO:".'
+              }
+            },
+            required: ['resposta', 'fontesUtilizadas']
+          }
         }
       });
 
-      let finalResponse = responseText || "Desculpe, não consegui obter uma resposta estratégica agora.";
-      
-      // Lógica de filtragem de fontes: exibe apenas os arquivos que a IA mencionou ou usou
+      // Parse robusto da saída estruturada. Se o modelo (por qualquer motivo) não
+      // devolver JSON válido, tratamos o texto cru como a resposta e caímos no
+      // matching por substring antigo — sem quebrar a experiência do usuário.
+      let answer = '';
+      let declaredSources: string[] = [];
+      let parsedOk = false;
+      try {
+        const parsed = JSON.parse(responseText);
+        if (parsed && typeof parsed === 'object') {
+          answer = typeof parsed.resposta === 'string' ? parsed.resposta : '';
+          declaredSources = Array.isArray(parsed.fontesUtilizadas)
+            ? parsed.fontesUtilizadas.filter((s: any) => typeof s === 'string')
+            : [];
+          parsedOk = answer.length > 0;
+        }
+      } catch { /* não-JSON → fallback abaixo */ }
+
+      let finalResponse = (parsedOk ? answer : responseText)
+        || "Desculpe, não consegui obter uma resposta estratégica agora.";
+
       if (usedDocsMap.size > 0) {
         const citedDocs: AndrecitoDocument[] = [];
-        const lowerResponse = finalResponse.toLowerCase();
-        
-        usedDocsMap.forEach(doc => {
-          const fileNameNoExt = doc.name.split('.')[0].toLowerCase().replace(/_/g, ' ');
-          const fileNameWithUnderscore = doc.name.split('.')[0].toLowerCase();
-          
-          if (
-            lowerResponse.includes(fileNameNoExt) || 
-            lowerResponse.includes(fileNameWithUnderscore) ||
-            lowerResponse.includes(doc.name.toLowerCase())
-          ) {
-            citedDocs.push(doc);
-          }
-        });
+        // Normaliza nome para comparação: minúsculas, sem extensão e com espaços
+        // internos colapsados — o modelo às vezes normaliza espaços duplos do nome
+        // original ao copiá-lo, o que quebraria uma comparação espaço-sensível.
+        const stripExt = (s: string) => s.toLowerCase().replace(/\.[a-z0-9]+$/, '').replace(/\s+/g, ' ').trim();
+
+        if (parsedOk && declaredSources.length > 0) {
+          // Caminho confiável: usa exatamente os arquivos declarados pelo modelo.
+          // Tolerante a diferenças de extensão/wrapping na comparação dos nomes.
+          const declared = declaredSources.map(stripExt);
+          usedDocsMap.forEach(doc => {
+            const docN = stripExt(doc.name);
+            if (declared.some(d => d === docN || d.includes(docN) || docN.includes(d))) {
+              citedDocs.push(doc);
+            }
+          });
+        } else {
+          // Fallback: correspondência por substring no texto (lógica anterior).
+          const lowerResponse = finalResponse.toLowerCase();
+          usedDocsMap.forEach(doc => {
+            const fileNameNoExt = doc.name.split('.')[0].toLowerCase().replace(/_/g, ' ');
+            const fileNameWithUnderscore = doc.name.split('.')[0].toLowerCase();
+            if (
+              lowerResponse.includes(fileNameNoExt) ||
+              lowerResponse.includes(fileNameWithUnderscore) ||
+              lowerResponse.includes(doc.name.toLowerCase())
+            ) {
+              citedDocs.push(doc);
+            }
+          });
+        }
 
         if (citedDocs.length > 0) {
           finalResponse += "\n\n---\n**Fontes Consultadas:**\n";

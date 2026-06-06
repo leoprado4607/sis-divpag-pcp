@@ -39,6 +39,13 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [cacheMsg, setCacheMsg] = useState('');
+
+  const handleClearCache = () => {
+    const removed = andrecitoService.clearTextCache();
+    setCacheMsg(removed > 0 ? `Cache limpo: ${removed} documento(s) removido(s).` : 'O cache já estava vazio.');
+    setTimeout(() => setCacheMsg(''), 4000);
+  };
 
   useEffect(() => {
     fetchAllData();
@@ -337,6 +344,18 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                             <span className="text-2xl font-black text-army-gold">{formatSize(documents.reduce((a, b) => a + b.size, 0))}</span>
                             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Armazenamento Total</p>
                         </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-slate-100">
+                        <button
+                            onClick={handleClearCache}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-slate-500 bg-slate-50 hover:bg-red-50 hover:text-red-600 border border-slate-200 transition-all"
+                            title="Remove o texto cacheado dos PDFs (use após substituir documentos)"
+                        >
+                            <Trash2 size={14} /> Limpar cache de PDFs
+                        </button>
+                        {cacheMsg && (
+                            <p className="text-[10px] text-army-green font-bold text-center mt-2">{cacheMsg}</p>
+                        )}
                     </div>
                     </div>
                 </div>
