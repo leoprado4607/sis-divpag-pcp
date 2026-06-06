@@ -71,9 +71,9 @@ const App: React.FC = () => {
 
               {/* Section title */}
               <div className="flex items-center gap-4 mb-6">
-                <div className="h-px flex-grow bg-slate-200" />
-                <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 whitespace-nowrap">Sistemas disponíveis</span>
-                <div className="h-px flex-grow bg-slate-200" />
+                <div className="h-px flex-grow bg-army-green/40" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-army-green whitespace-nowrap">Sistemas disponíveis</span>
+                <div className="h-px flex-grow bg-army-green/40" />
               </div>
 
               {/* Systems grid */}
