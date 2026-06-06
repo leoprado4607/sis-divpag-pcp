@@ -41,8 +41,16 @@ const App: React.FC = () => {
           <Header showExtraLogos={true} />
 
           {/* ── Main content ─────────────────────────────────── */}
-          <main className="flex-grow bg-slate-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-10">
+          <main className="flex-grow relative bg-gradient-to-br from-divpag-100 via-divpag-50 to-divpag-200">
+            {/* Brilho dourado sutil no topo (halo army-gold), visual moderno e clean */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                backgroundImage:
+                  'radial-gradient(110% 60% at 50% -10%, rgba(189,156,77,0.18) 0%, rgba(189,156,77,0.05) 35%, transparent 70%)',
+              }}
+            />
+            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-10">
 
               {/* Quick metrics */}
               <QuickLinks />
