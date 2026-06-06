@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Folder, FileText, Download, ChevronRight, ChevronDown, Clock, Trash2, ArrowLeft, Bot, Search, Library, Settings, LogOut, Menu, X, Edit, Save, Eraser, Database } from 'lucide-react';
 import { andrecitoService } from '../../services/andrecitoService';
 import { AndrecitoCategory, AndrecitoSubcategory, AndrecitoDocument } from '../../types';
@@ -13,6 +13,20 @@ interface AndrecitoLibraryProps {
   userRole: UserRole;
 }
 
+// Helpers puros em escopo de módulo: não dependem de props/estado, então não
+// precisam ser recriados a cada render nem entrar nas deps dos useCallback.
+const normalizeText = (text: string) => {
+  return text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+};
+
+const formatSize = (bytes: number) => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
 const AndrecitoLibrary: React.FC<AndrecitoLibraryProps> = ({ onBack, onLogout, onNavigate, currentView, userRole }) => {
   const [categories, setCategories] = useState<AndrecitoCategory[]>([]);
   const [activeCat, setActiveCat] = useState<string | null>(null);
@@ -25,16 +39,11 @@ const AndrecitoLibrary: React.FC<AndrecitoLibraryProps> = ({ onBack, onLogout, o
   const [isSearching, setIsSearching] = useState(false);
   const [uniqueFileCount, setUniqueFileCount] = useState(0);
 
-  useEffect(() => {
-    loadCategories();
-    calculateUniqueFiles();
+  const loadCategories = useCallback(() => {
+    andrecitoService.getCategories().then(setCategories);
   }, []);
 
-  const loadCategories = () => {
-    andrecitoService.getCategories().then(setCategories);
-  };
-
-  const calculateUniqueFiles = async () => {
+  const calculateUniqueFiles = useCallback(async () => {
     try {
       const allDocs = await andrecitoService.searchAllDocuments();
       const uniqueNames = new Set(allDocs.map(doc => doc.name));
@@ -42,13 +51,21 @@ const AndrecitoLibrary: React.FC<AndrecitoLibraryProps> = ({ onBack, onLogout, o
     } catch (error) {
       console.error(error);
     }
-  };
+  }, []);
 
-  const normalizeText = (text: string) => {
-    return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  };
+  useEffect(() => {
+    loadCategories();
+    calculateUniqueFiles();
+  }, [loadCategories, calculateUniqueFiles]);
 
-  const handleSearch = async () => {
+  const handleClearSearch = useCallback(() => {
+    setSearchTerm('');
+    setIsSearching(false);
+    setDocuments([]);
+    setActiveCat(null);
+  }, []);
+
+  const handleSearch = useCallback(async () => {
     if (!searchTerm.trim()) {
       handleClearSearch();
       return;
@@ -69,16 +86,9 @@ const AndrecitoLibrary: React.FC<AndrecitoLibraryProps> = ({ onBack, onLogout, o
     } finally {
       setLoadingDocs(false);
     }
-  };
+  }, [searchTerm, handleClearSearch]);
 
-  const handleClearSearch = () => {
-    setSearchTerm('');
-    setIsSearching(false);
-    setDocuments([]);
-    setActiveCat(null);
-  };
-
-  const handleExpandCategory = async (catId: string) => {
+  const handleExpandCategory = useCallback(async (catId: string) => {
     if (activeCat === catId) {
       setActiveCat(null);
       setDocuments([]);
@@ -93,22 +103,39 @@ const AndrecitoLibrary: React.FC<AndrecitoLibraryProps> = ({ onBack, onLogout, o
       setDocuments(rootDocs);
       setLoadingDocs(false);
     }
-  };
+  }, [activeCat]);
 
-  const handleSubSelect = async (subId: string) => {
+  const handleSubSelect = useCallback(async (subId: string) => {
     setLoadingDocs(true);
     const docs = await andrecitoService.getDocuments(subId);
     setDocuments(docs);
     setLoadingDocs(false);
-  };
+  }, []);
 
-  const formatSize = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+  // Memoiza os cards de documento: digitar no campo de busca atualiza searchTerm
+  // a cada tecla; sem isso, toda a grade de resultados seria re-renderizada.
+  const documentCards = useMemo(() => documents.map(doc => (
+    <a
+      key={doc.id}
+      href={doc.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-army-green transition-all flex items-center gap-4 relative overflow-hidden"
+    >
+      <div className="absolute top-0 left-0 w-1 h-full bg-army-green/20 group-hover:bg-army-green transition-colors"></div>
+      <div className="p-3 bg-slate-50 text-slate-400 group-hover:bg-army-green group-hover:text-white rounded-lg transition-all">
+        <FileText size={24} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <h4 className="text-sm font-bold text-slate-800 truncate mb-1" title={doc.name}>{doc.name}</h4>
+        <div className="flex items-center gap-3 text-[10px] text-slate-400 font-medium">
+          <span className="flex items-center gap-1"><Database size={10} /> {formatSize(doc.size)}</span>
+          <span className="flex items-center gap-1"><Clock size={10} /> {new Date(doc.created_at).toLocaleDateString()}</span>
+        </div>
+      </div>
+      <Download size={18} className="text-slate-300 group-hover:text-army-green transition-colors" />
+    </a>
+  )), [documents]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 font-sans overflow-hidden">
@@ -225,28 +252,7 @@ const AndrecitoLibrary: React.FC<AndrecitoLibraryProps> = ({ onBack, onLogout, o
                 </div>
               ) : documents.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {documents.map(doc => (
-                    <a 
-                      key={doc.id}
-                      href={doc.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-army-green transition-all flex items-center gap-4 relative overflow-hidden"
-                    >
-                      <div className="absolute top-0 left-0 w-1 h-full bg-army-green/20 group-hover:bg-army-green transition-colors"></div>
-                      <div className="p-3 bg-slate-50 text-slate-400 group-hover:bg-army-green group-hover:text-white rounded-lg transition-all">
-                        <FileText size={24} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-bold text-slate-800 truncate mb-1" title={doc.name}>{doc.name}</h4>
-                        <div className="flex items-center gap-3 text-[10px] text-slate-400 font-medium">
-                          <span className="flex items-center gap-1"><Database size={10} /> {formatSize(doc.size)}</span>
-                          <span className="flex items-center gap-1"><Clock size={10} /> {new Date(doc.created_at).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                      <Download size={18} className="text-slate-300 group-hover:text-army-green transition-colors" />
-                    </a>
-                  ))}
+                  {documentCards}
                 </div>
               ) : (
                 <div className="h-64 flex flex-col items-center justify-center text-slate-300 gap-4">

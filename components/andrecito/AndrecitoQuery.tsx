@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, Send, FileText, CheckCircle2, AlertCircle, Printer, Download, BookOpen, ChevronDown, ChevronRight, CheckSquare, Square, Filter, X, ArrowLeft, Library, Settings, LogOut, Bot, Folder, RefreshCw, Trash2, Cpu, Info } from 'lucide-react';
 import { andrecitoService } from '../../services/andrecitoService';
 import { AndrecitoCategory, AndrecitoSubcategory, AndrecitoDocument } from '../../types';
@@ -35,27 +35,16 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
 
   const hasSelection = selectedSubcats.length > 0 || selectedCats.length > 0;
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    // Debounce: ao marcar/desmarcar várias pastas em sequência, evita disparar
-    // uma rajada de requests Supabase a cada clique — só conta após estabilizar.
-    const t = setTimeout(() => { updateDocCount(); }, 300);
-    return () => clearTimeout(t);
-  }, [selectedSubcats, selectedCats]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const cats = await andrecitoService.getCategories();
       setCategories(cats);
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
 
-  const updateDocCount = async () => {
+  const updateDocCount = useCallback(async () => {
     try {
       const subPromises = selectedSubcats.map(id => andrecitoService.getDocuments(id));
       const catPromises = selectedCats.map(id => andrecitoService.getDocumentsByCategory(id));
@@ -64,9 +53,20 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [selectedSubcats, selectedCats]);
 
-  const handleSearch = async () => {
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    // Debounce: ao marcar/desmarcar várias pastas em sequência, evita disparar
+    // uma rajada de requests Supabase a cada clique — só conta após estabilizar.
+    const t = setTimeout(() => { updateDocCount(); }, 300);
+    return () => clearTimeout(t);
+  }, [updateDocCount]);
+
+  const handleSearch = useCallback(async () => {
     if (!query.trim() || !hasSelection) return;
     
     setLoading(true);
@@ -95,9 +95,9 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
       setLoading(false);
       setProcessingStep('');
     }
-  };
+  }, [query, hasSelection, selectedSubcats, selectedCats]);
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = useCallback(() => {
     if (!response) return;
 
     const doc = new jsPDF();
@@ -161,7 +161,43 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
     }
 
     doc.save(`andrecito_consulta_${Date.now()}.pdf`);
-  };
+  }, [response]);
+
+  // Memoiza a árvore de categorias da sidebar: sem isso, cada tecla digitada na
+  // caixa de consulta reconstrói toda a lista de pastas. Só recalcula quando o
+  // próprio acervo/seleção/expansão muda.
+  const categoryTree = useMemo(() => categories.map(cat => (
+    <div key={cat.id} className="mb-2">
+      <button
+        onClick={() => {
+          setExpandedCat(expandedCat === cat.id ? '' : cat.id);
+          if (!subcategoriesMap[cat.id]) andrecitoService.getSubcategories(cat.id).then(subs => setSubcategoriesMap(p => ({...p, [cat.id]: subs})));
+        }}
+        className={`w-full flex items-center justify-between py-2 text-sm font-bold transition-colors ${expandedCat === cat.id ? 'text-army-green' : 'text-slate-600 hover:text-army-green'}`}
+      >
+        <span className="flex items-center gap-2"><Folder size={14} className={expandedCat === cat.id ? 'text-army-gold' : 'text-slate-400'} /> {cat.name}</span>
+        {expandedCat === cat.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+      </button>
+      {expandedCat === cat.id && (
+        <div className="pl-4 space-y-1 mt-1 border-l-2 border-slate-100 ml-1.5">
+          {subcategoriesMap[cat.id]?.map(sub => (
+            <button
+              key={sub.id}
+              onClick={() => setSelectedSubcats(p => p.includes(sub.id) ? p.filter(x => x !== sub.id) : [...p, sub.id])}
+              className={`w-full flex items-center gap-2 py-1.5 text-xs transition-all ${selectedSubcats.includes(sub.id) ? 'text-army-green font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+            >
+              {selectedSubcats.includes(sub.id) ? <CheckSquare size={14} className="text-army-gold" /> : <Square size={14} className="text-slate-300" />}
+              {sub.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )), [categories, expandedCat, subcategoriesMap, selectedSubcats]);
+
+  // Memoiza o render do markdown: re-parsear a resposta inteira a cada tecla
+  // digitada na caixa de consulta é caro para respostas longas.
+  const renderedResponse = useMemo(() => <ReactMarkdown>{response}</ReactMarkdown>, [response]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
@@ -204,34 +240,7 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
         <aside className="w-80 bg-white border-r border-gray-200 flex flex-col h-full shadow-sm z-10 no-print">
           <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
             <h2 className="text-[10px] font-black text-army-green uppercase tracking-[0.2em] mb-4 border-b pb-2">Acervo de Documentos</h2>
-            {categories.map(cat => (
-              <div key={cat.id} className="mb-2">
-                <button 
-                  onClick={() => {
-                    setExpandedCat(expandedCat === cat.id ? '' : cat.id);
-                    if (!subcategoriesMap[cat.id]) andrecitoService.getSubcategories(cat.id).then(subs => setSubcategoriesMap(p => ({...p, [cat.id]: subs})));
-                  }}
-                  className={`w-full flex items-center justify-between py-2 text-sm font-bold transition-colors ${expandedCat === cat.id ? 'text-army-green' : 'text-slate-600 hover:text-army-green'}`}
-                >
-                  <span className="flex items-center gap-2"><Folder size={14} className={expandedCat === cat.id ? 'text-army-gold' : 'text-slate-400'} /> {cat.name}</span>
-                  {expandedCat === cat.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                </button>
-                {expandedCat === cat.id && (
-                  <div className="pl-4 space-y-1 mt-1 border-l-2 border-slate-100 ml-1.5">
-                    {subcategoriesMap[cat.id]?.map(sub => (
-                      <button 
-                        key={sub.id} 
-                        onClick={() => setSelectedSubcats(p => p.includes(sub.id) ? p.filter(x => x !== sub.id) : [...p, sub.id])}
-                        className={`w-full flex items-center gap-2 py-1.5 text-xs transition-all ${selectedSubcats.includes(sub.id) ? 'text-army-green font-bold' : 'text-slate-500 hover:text-slate-800'}`}
-                      >
-                        {selectedSubcats.includes(sub.id) ? <CheckSquare size={14} className="text-army-gold" /> : <Square size={14} className="text-slate-300" />}
-                        {sub.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+            {categoryTree}
           </div>
           
           <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-3">
@@ -286,7 +295,7 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
                     </button>
                   </div>
                 </div>
-                <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed text-sm md:text-base print:text-black overflow-visible"><ReactMarkdown>{response}</ReactMarkdown></div>
+                <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed text-sm md:text-base print:text-black overflow-visible">{renderedResponse}</div>
               </div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-40 text-center px-6 no-print">
