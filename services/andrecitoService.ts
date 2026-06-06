@@ -715,7 +715,7 @@ export const andrecitoService = {
         model: (import.meta as any).env?.VITE_GEMINI_MODEL || 'gemini-2.5-flash',
         contents: { parts: parts },
         config: {
-          systemInstruction: "Você é o ANDRECITO, assistente virtual da Divisão de Pagamento do Exército (DivPag). Responda técnica e fielmente APENAS com base nos documentos fornecidos (cada um identificado por uma linha 'ARQUIVO: <nome>'). Em cada afirmação relevante, cite no corpo da resposta o nome do arquivo fonte (ex.: 'Conforme o arquivo Portaria_123...'). No campo 'fontesUtilizadas', liste os NOMES EXATOS dos arquivos que realmente embasaram a resposta — copie-os exatamente como aparecem após 'ARQUIVO:', sem inventar nem abreviar. Seja militar, direto, técnico e cortês. Se a informação não constar nos arquivos, diga polidamente que não encontrou nos documentos selecionados e deixe 'fontesUtilizadas' vazia.",
+          systemInstruction: "Você é o ANDRECITO, assistente virtual da Divisão de Pagamento do Exército (DivPag). Responda técnica e fielmente APENAS com base nos documentos fornecidos (cada um identificado por uma linha 'ARQUIVO: <nome>'). Em cada afirmação relevante, cite no corpo da resposta o nome do arquivo fonte (ex.: 'Conforme o arquivo Portaria_123...'). REGRA OBRIGATÓRIA: o campo 'fontesUtilizadas' deve conter TODOS os arquivos que você citar ou usar no corpo da resposta, sem exceção e sem omitir nenhum — copie cada nome EXATAMENTE como aparece após 'ARQUIVO:', sem inventar, abreviar ou alterar pontuação/espaços. Se citou no texto, tem de estar na lista. Seja militar, direto, técnico e cortês. Se a informação não constar nos arquivos, diga polidamente que não encontrou nos documentos selecionados e deixe 'fontesUtilizadas' vazia.",
           temperature: GEMINI_TEMPERATURE,
           maxOutputTokens: MAX_OUTPUT_TOKENS,
           // Desliga o "thinking" do 2.5-flash: todo o orçamento vira resposta,
@@ -763,36 +763,31 @@ export const andrecitoService = {
 
       if (usedDocsMap.size > 0) {
         const citedDocs: AndrecitoDocument[] = [];
-        // Normaliza nome para comparação: minúsculas, sem extensão e com espaços
-        // internos colapsados — o modelo às vezes normaliza espaços duplos do nome
-        // original ao copiá-lo, o que quebraria uma comparação espaço-sensível.
-        const stripExt = (s: string) => s.toLowerCase().replace(/\.[a-z0-9]+$/, '').replace(/\s+/g, ' ').trim();
 
-        if (parsedOk && declaredSources.length > 0) {
-          // Caminho confiável: usa exatamente os arquivos declarados pelo modelo.
-          // Tolerante a diferenças de extensão/wrapping na comparação dos nomes.
-          const declared = declaredSources.map(stripExt);
-          usedDocsMap.forEach(doc => {
-            const docN = stripExt(doc.name);
-            if (declared.some(d => d === docN || d.includes(docN) || docN.includes(d))) {
-              citedDocs.push(doc);
-            }
-          });
-        } else {
-          // Fallback: correspondência por substring no texto (lógica anterior).
-          const lowerResponse = finalResponse.toLowerCase();
-          usedDocsMap.forEach(doc => {
-            const fileNameNoExt = doc.name.split('.')[0].toLowerCase().replace(/_/g, ' ');
-            const fileNameWithUnderscore = doc.name.split('.')[0].toLowerCase();
-            if (
-              lowerResponse.includes(fileNameNoExt) ||
-              lowerResponse.includes(fileNameWithUnderscore) ||
-              lowerResponse.includes(doc.name.toLowerCase())
-            ) {
-              citedDocs.push(doc);
-            }
-          });
-        }
+        // Normaliza para comparação: minúsculas, sem acentos, sem extensão e com
+        // espaços colapsados — o modelo às vezes normaliza espaços duplos do nome
+        // original ao copiá-lo, o que quebraria uma comparação literal.
+        const normalize = (s: string) =>
+          s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/\.[a-z0-9]+$/, '').replace(/\s+/g, ' ').trim();
+
+        // UNIÃO de dois sinais para não perder nenhuma fonte citada:
+        //  1) o que o modelo DECLAROU em fontesUtilizadas (saída estruturada); e
+        //  2) o que ele MENCIONOU no corpo da resposta (nome do arquivo no texto).
+        // Antes era um OU exclusivo (só um dos dois), então um documento citado na
+        // prosa mas ausente da lista — ou vice-versa — não aparecia para download.
+        const declared = declaredSources.map(normalize).filter(d => d.length > 0);
+        const normResponse = normalize(finalResponse);
+
+        usedDocsMap.forEach(doc => {
+          const docN = normalize(doc.name);
+          if (docN.length < 5) return; // nome curto demais → evita falso-positivo
+
+          const inDeclared = declared.some(d => d === docN || d.includes(docN) || docN.includes(d));
+          const inProse = normResponse.includes(docN);
+
+          if (inDeclared || inProse) citedDocs.push(doc);
+        });
 
         if (citedDocs.length > 0) {
           finalResponse += "\n\n---\n**Fontes Consultadas:**\n";
