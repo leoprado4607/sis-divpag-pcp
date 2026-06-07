@@ -54,11 +54,12 @@ const LOCAL_DOC_KEY = 'andrecito_local_documents';
 
 // Controle de custo de tokens: teto de texto enviado por documento ao Gemini e
 // teto de tokens de saída. Evita prompts gigantes quando vários docs são selecionados.
-// OBS: o gemini-2.5-flash é "thinking" — os tokens de raciocínio contam dentro de
-// maxOutputTokens. Mantemos um teto folgado e desligamos o thinking (ver chamada
-// abaixo) para que respostas longas não voltem truncadas.
-const MAX_DOC_CHARS = 12000;
-const MAX_OUTPUT_TOKENS = 4096;
+// MAX_DOC_CHARS reduzido de 12k → 6k: análises jurídicas focadas não precisam de
+// mais que os primeiros 6k chars de cada documento para responder com precisão.
+const MAX_DOC_CHARS = 6000;
+// MAX_OUTPUT_TOKENS reduzido de 4096 → 2048: respostas jurídicas raramente
+// ultrapassam 1000-1500 tokens — o teto anterior deixava janela desnecessária aberta.
+const MAX_OUTPUT_TOKENS = 2048;
 
 // Temperatura da IA: 0.15 era fria demais para análise jurídica (respostas
 // repetitivas e rasas). 0.35 dá mais contexto interpretativo sem perder fidelidade
@@ -67,6 +68,20 @@ const GEMINI_TEMPERATURE = (() => {
   const raw = Number((import.meta as any).env?.VITE_GEMINI_TEMPERATURE);
   return Number.isFinite(raw) && raw >= 0 && raw <= 1 ? raw : 0.35;
 })();
+
+// Seleção adaptativa de modelo: consultas simples (poucas palavras, poucos docs)
+// usam gemini-1.5-flash — mais barato, sem tokens de raciocínio. Consultas
+// complexas usam gemini-2.5-flash. VITE_GEMINI_MODEL sobrescreve ambos.
+const SIMPLE_MODEL = 'gemini-1.5-flash';
+const COMPLEX_MODEL = 'gemini-2.5-flash';
+
+const selectModel = (query: string, docCount: number): string => {
+  const envModel = (import.meta as any).env?.VITE_GEMINI_MODEL;
+  if (envModel) return envModel;
+  const wordCount = query.trim().split(/\s+/).length;
+  // Consulta curta + poucos documentos → modelo leve sem custo de raciocínio.
+  return wordCount <= 8 && docCount <= 2 ? SIMPLE_MODEL : COMPLEX_MODEL;
+};
 
 // --- FILTRAGEM DE RELEVÂNCIA (pré-envio ao Gemini) ---
 // Antes de mandar os documentos selecionados para a IA, pontuamos cada um pela
@@ -710,9 +725,12 @@ export const andrecitoService = {
       // Saída ESTRUTURADA (JSON): em vez de pedir a citação só em prosa e depois
       // adivinhar as fontes por correspondência de texto (~85% confiável), o
       // modelo declara explicitamente quais arquivos usou no campo "fontesUtilizadas".
+      const model = selectModel(query, documents.length);
+      // thinkingConfig só é aplicado em modelos de raciocínio (gemini-2.5+).
+      // Para o gemini-1.5-flash (modelo leve), o parâmetro é ignorado ou causa erro.
+      const isThinkingModel = model.includes('2.5') || model.includes('thinking');
       const responseText = await callGemini({
-        // Configurável via VITE_GEMINI_MODEL; default estável e rápido para este ambiente.
-        model: (import.meta as any).env?.VITE_GEMINI_MODEL || 'gemini-2.5-flash',
+        model,
         contents: { parts: parts },
         _meta: {
           query,
@@ -723,11 +741,10 @@ export const andrecitoService = {
           systemInstruction: "Você é o ANDRECITO, assistente virtual da Divisão de Pagamento do Exército (DivPag). Responda técnica e fielmente APENAS com base nos documentos fornecidos (cada um identificado por uma linha 'ARQUIVO: <nome>'). Em cada afirmação relevante, cite no corpo da resposta o nome do arquivo fonte (ex.: 'Conforme o arquivo Portaria_123...'). REGRA OBRIGATÓRIA: o campo 'fontesUtilizadas' deve conter TODOS os arquivos que você citar ou usar no corpo da resposta, sem exceção e sem omitir nenhum — copie cada nome EXATAMENTE como aparece após 'ARQUIVO:', sem inventar, abreviar ou alterar pontuação/espaços. Se citou no texto, tem de estar na lista. Seja militar, direto, técnico e cortês. Se a informação não constar nos arquivos, diga polidamente que não encontrou nos documentos selecionados e deixe 'fontesUtilizadas' vazia.",
           temperature: GEMINI_TEMPERATURE,
           maxOutputTokens: MAX_OUTPUT_TOKENS,
-          // Desliga o "thinking" do 2.5-flash: todo o orçamento vira resposta,
-          // evitando que respostas longas (vários documentos) voltem truncadas.
-          // thinkingBudget: 0 removido — combinação com responseMimeType:'application/json'
-          // pode impedir o modelo de gerar JSON válido sem tokens de raciocínio.
-          thinkingConfig: { thinkingBudget: -1 },
+          // thinkingBudget limitado a 1024: cobre análises jurídicas complexas sem
+          // deixar o modelo pensar indefinidamente (era -1 = ilimitado). Aplica-se
+          // apenas a modelos de raciocínio (gemini-2.5+); gemini-1.5-flash não usa.
+          ...(isThinkingModel ? { thinkingConfig: { thinkingBudget: 1024 } } : {}),
           // Força resposta em JSON com forma fixa { resposta, fontesUtilizadas }.
           responseMimeType: 'application/json',
           responseSchema: {

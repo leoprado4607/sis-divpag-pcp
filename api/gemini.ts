@@ -11,6 +11,40 @@ import { checkRateLimitAsync } from './_ratelimit.js';
 import { readJsonBody } from './_http.js';
 import { getAdminSupabase } from './_supabaseAdmin.js';
 
+// --- CACHE DE RESPOSTAS EM MEMÓRIA ---
+// Evita cobrar a mesma consulta + conjunto de documentos mais de uma vez por hora.
+// O cache vive na instância serverless (warm): frio após cold-start, mas eficaz
+// durante rajadas ou consultas repetidas dentro da mesma sessão da função.
+// Chave: SHA-256 do body sem _meta (inclui model + contents + config).
+const RESPONSE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hora
+const RESPONSE_CACHE_MAX = 200;
+interface ResponseCacheEntry { text: string; at: number; }
+const responseCache = new Map<string, ResponseCacheEntry>();
+
+function buildCacheKey(body: object): string {
+  return createHash('sha256').update(JSON.stringify(body)).digest('hex');
+}
+
+function getCachedResponse(key: string): string | null {
+  const entry = responseCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.at > RESPONSE_CACHE_TTL_MS) { responseCache.delete(key); return null; }
+  return entry.text;
+}
+
+function setCachedResponse(key: string, text: string): void {
+  if (responseCache.size >= RESPONSE_CACHE_MAX) {
+    // Evicção do mais antigo quando o limite é atingido.
+    let oldestKey = '';
+    let oldestAt = Infinity;
+    for (const [k, v] of responseCache) {
+      if (v.at < oldestAt) { oldestAt = v.at; oldestKey = k; }
+    }
+    if (oldestKey) responseCache.delete(oldestKey);
+  }
+  responseCache.set(key, { text, at: Date.now() });
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -35,12 +69,24 @@ export default async function handler(req: any, res: any) {
     const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || '';
     const body = await readJsonBody(req);
     const { _meta, ...geminiBody } = body;
+
+    // Verifica cache antes de chamar a API (economiza tokens em consultas repetidas).
+    const cacheKey = buildCacheKey(geminiBody);
+    const cached = getCachedResponse(cacheKey);
+    if (cached) {
+      // Hit de cache: devolve instantaneamente sem debitar tokens.
+      logQuery(_meta, geminiBody, cached, getClientIp(req), 0, true).catch(() => {});
+      return res.status(200).json({ text: cached });
+    }
+
     const start = Date.now();
     const text = await runGemini(apiKey, geminiBody);
     const elapsed = Date.now() - start;
 
+    setCachedResponse(cacheKey, text);
+
     // Grava log de uso de forma assíncrona — nunca bloqueia a resposta ao cliente.
-    logQuery(_meta, geminiBody, text, getClientIp(req), elapsed).catch(() => {});
+    logQuery(_meta, geminiBody, text, getClientIp(req), elapsed, false).catch(() => {});
 
     return res.status(200).json({ text });
   } catch (err: any) {
@@ -55,12 +101,16 @@ async function logQuery(
   responseText: string,
   ip: string,
   elapsedMs: number,
+  fromCache = false,
 ): Promise<void> {
   if (!meta?.query) return;
   const db = getAdminSupabase();
   if (!db) return;
   const ipHash = createHash('sha256').update(ip).digest('hex').slice(0, 12);
-  const tokensEstimated = Math.round((JSON.stringify(body).length + responseText.length) / 4);
+  // Cache hits registram 0 tokens: a resposta veio do cache, não da API.
+  const tokensEstimated = fromCache
+    ? 0
+    : Math.round((JSON.stringify(body).length + responseText.length) / 4);
   await db.from('andrecito_logs').insert({
     query_text: String(meta.query).slice(0, 1000),
     documents_used: Array.isArray(meta.documents) ? meta.documents : [],
