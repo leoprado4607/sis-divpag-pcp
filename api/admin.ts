@@ -172,7 +172,7 @@ export default async function handler(req: any, res: any) {
           .map(([date, count]) => ({ date, count }))
           .sort((a, b) => a.date.localeCompare(b.date));
 
-        const tokensArr = rows.map((r) => r.tokens_estimated as number).filter(Boolean);
+        const tokensArr = rows.map((r) => r.tokens_estimated as number).filter((v) => v != null);
         const avgTokens = tokensArr.length
           ? Math.round(tokensArr.reduce((a, b) => a + b, 0) / tokensArr.length)
           : 0;

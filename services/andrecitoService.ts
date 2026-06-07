@@ -74,6 +74,8 @@ const GEMINI_TEMPERATURE = (() => {
 // complexas usam gemini-2.5-flash. VITE_GEMINI_MODEL sobrescreve ambos.
 const SIMPLE_MODEL = 'gemini-1.5-flash';
 const COMPLEX_MODEL = 'gemini-2.5-flash';
+// Modelos que suportam thinkingConfig. Adicione aqui ao adotar novos modelos.
+const THINKING_MODELS = new Set(['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.5-flash-lite']);
 
 const selectModel = (query: string, docCount: number): string => {
   const envModel = (import.meta as any).env?.VITE_GEMINI_MODEL;
@@ -728,7 +730,7 @@ export const andrecitoService = {
       const model = selectModel(query, documents.length);
       // thinkingConfig só é aplicado em modelos de raciocínio (gemini-2.5+).
       // Para o gemini-1.5-flash (modelo leve), o parâmetro é ignorado ou causa erro.
-      const isThinkingModel = model.includes('2.5') || model.includes('thinking');
+      const isThinkingModel = THINKING_MODELS.has(model);
       const responseText = await callGemini({
         model,
         contents: { parts: parts },

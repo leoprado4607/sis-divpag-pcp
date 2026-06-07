@@ -32,8 +32,9 @@ const PT_STOPWORDS = new Set([
   'de','da','do','das','dos','a','o','as','os','e','em','que','por','para','com',
   'se','na','no','nas','nos','um','uma','ao','aos','como','ou','mais','mas','não',
   'é','foi','ser','tem','ter','seu','sua','seus','suas','este','esta','esse','essa',
-  'qual','quando','onde','quem','há','até','já','sobre','entre','após','desde',
-  'qual','quais','me','meu','minha','nos','nós','ele','ela','eles','elas','isso',
+  'qual','quais','quando','onde','quem','há','até','já','sobre','entre','após','desde',
+  'me','meu','minha','nós','ele','ela','eles','elas','isso',
+  'quanto','quantos','porque','sem','uns','umas','nao',
 ]);
 
 function topKeywords(queries: { query_text: string }[], n = 10): { word: string; count: number }[] {
@@ -373,9 +374,10 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                       <p className="text-center text-slate-400 text-sm py-4">Sem dados.</p>
                     ) : (
                       <div className="space-y-2">
-                        {topKeywords(analytics.recentQueries).map(({ word, count }, i) => {
-                          const maxCount = topKeywords(analytics.recentQueries)[0]?.count || 1;
-                          return (
+                        {(() => {
+                          const kws = topKeywords(analytics.recentQueries);
+                          const maxCount = kws[0]?.count || 1;
+                          return kws.map(({ word, count }, i) => (
                             <div key={word} className="flex items-center gap-3">
                               <span className="text-[10px] font-black text-slate-300 w-4 text-right">{i + 1}</span>
                               <div className="flex-1">
@@ -388,8 +390,8 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                                 </div>
                               </div>
                             </div>
-                          );
-                        })}
+                          ));
+                        })()}
                       </div>
                     )}
                   </div>

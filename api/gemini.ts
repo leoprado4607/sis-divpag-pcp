@@ -34,12 +34,8 @@ function getCachedResponse(key: string): string | null {
 
 function setCachedResponse(key: string, text: string): void {
   if (responseCache.size >= RESPONSE_CACHE_MAX) {
-    // Evicção do mais antigo quando o limite é atingido.
-    let oldestKey = '';
-    let oldestAt = Infinity;
-    for (const [k, v] of responseCache) {
-      if (v.at < oldestAt) { oldestAt = v.at; oldestKey = k; }
-    }
+    // Map preserva ordem de inserção: primeira chave é sempre a mais antiga.
+    const oldestKey = responseCache.keys().next().value;
     if (oldestKey) responseCache.delete(oldestKey);
   }
   responseCache.set(key, { text, at: Date.now() });
