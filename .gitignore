@@ -51,3 +51,4 @@ credentials.json
 
 # AI Studio prompt history (filenames with colons are invalid on Windows)
 migrated_prompt_history/
+.vercel
