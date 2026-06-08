@@ -81,8 +81,9 @@ const selectModel = (query: string, docCount: number): string => {
   const envModel = (import.meta as any).env?.VITE_GEMINI_MODEL;
   if (envModel) return envModel;
   const wordCount = query.trim().split(/\s+/).length;
-  // Consulta curta + poucos documentos → modelo leve sem custo de raciocínio.
-  return wordCount <= 8 && docCount <= 2 ? SIMPLE_MODEL : COMPLEX_MODEL;
+  // Threshold conservador: apenas consultas muito curtas com 1 documento usam o
+  // modelo leve. Consultas jurídicas com ≥6 palavras exigem raciocínio mais profundo.
+  return wordCount <= 5 && docCount <= 1 ? SIMPLE_MODEL : COMPLEX_MODEL;
 };
 
 // --- FILTRAGEM DE RELEVÂNCIA (pré-envio ao Gemini) ---
@@ -637,9 +638,14 @@ export const andrecitoService = {
   },
 
   async queryGemini(query: string, documents: AndrecitoDocument[], userType?: string): Promise<string> {
-    const parts: any[] = [];
     const usedDocsMap = new Map<string, AndrecitoDocument>();
-    
+
+    // Âncora inicial (query-sandwich): colocar a consulta ANTES dos documentos
+    // direciona a atenção do modelo para o que é relevante durante a leitura.
+    const parts: any[] = [
+      { text: `CONSULTA: ${query}\n\nAnalise os documentos a seguir com foco específico nessa consulta:\n` }
+    ];
+
     // Cada documento vira uma "entrada" com: as parts que iriam ao Gemini, o texto
     // usado para pontuar relevância (nome + conteúdo) e se é um anexo base64 (PDF
     // que não pôde ser extraído — sem texto para pontuar de forma confiável).
@@ -715,12 +721,13 @@ export const andrecitoService = {
     });
 
     if (parts.length === 0) {
-      // Se não conseguiu nada, tenta criar um placeholder baseado nos nomes de arquivos selecionados
       const names = documents.map(d => d.name).join(', ');
       parts.push({ text: `Os seguintes documentos foram selecionados como escopo: ${names}.\nConsiderando os assuntos de legislação militar e pagamento de pessoal do Exército e o nome dos arquivos, analise a seguinte consulta.` });
     }
 
-    parts.push({ text: `\nCom base nos documentos fornecidos, responda: ${query}` });
+    // Query-sandwich: repetir a consulta no fim ancora o modelo após processar os
+    // documentos — reduz o efeito "lost in the middle" em contextos longos.
+    parts.push({ text: `\nCONSULTA: ${query}\n\nResponda diretamente à consulta acima. Cite artigos, incisos ou parágrafos específicos quando disponíveis nos documentos. Se houver valores, percentuais ou prazos relevantes, mencione-os explicitamente.` });
 
     try {
       // Chamada via proxy serverless /api/gemini (a chave fica no servidor).
@@ -731,6 +738,18 @@ export const andrecitoService = {
       // thinkingConfig só é aplicado em modelos de raciocínio (gemini-2.5+).
       // Para o gemini-1.5-flash (modelo leve), o parâmetro é ignorado ou causa erro.
       const isThinkingModel = THINKING_MODELS.has(model);
+
+      // thinkingBudget adaptativo: escala com complexidade da consulta para não
+      // desperdiçar tokens em perguntas simples nem limitar análises complexas.
+      const wordCount = query.trim().split(/\s+/).length;
+      const thinkingBudget = wordCount > 15 || documents.length > 3 ? 3072
+        : wordCount > 8 || documents.length > 1 ? 1536
+        : 768;
+
+      const profileNote = userType === 'admin'
+        ? 'Você está respondendo a um gestor/administrador da DivPag: priorize precisão técnica, artigos específicos e implicações administrativas.'
+        : 'Você está respondendo a um usuário da DivPag: seja claro e direto, explicando termos técnicos quando necessário.';
+
       const responseText = await callGemini({
         model,
         contents: { parts: parts },
@@ -740,13 +759,21 @@ export const andrecitoService = {
           userType: userType || 'guest',
         },
         config: {
-          systemInstruction: "Você é o ANDRECITO, assistente virtual da Divisão de Pagamento do Exército (DivPag). Responda técnica e fielmente APENAS com base nos documentos fornecidos (cada um identificado por uma linha 'ARQUIVO: <nome>'). Em cada afirmação relevante, cite no corpo da resposta o nome do arquivo fonte (ex.: 'Conforme o arquivo Portaria_123...'). REGRA OBRIGATÓRIA: o campo 'fontesUtilizadas' deve conter TODOS os arquivos que você citar ou usar no corpo da resposta, sem exceção e sem omitir nenhum — copie cada nome EXATAMENTE como aparece após 'ARQUIVO:', sem inventar, abreviar ou alterar pontuação/espaços. Se citou no texto, tem de estar na lista. Seja militar, direto, técnico e cortês. Se a informação não constar nos arquivos, diga polidamente que não encontrou nos documentos selecionados e deixe 'fontesUtilizadas' vazia.",
+          systemInstruction: `Você é o ANDRECITO, assistente virtual da Divisão de Pagamento do Exército (DivPag). ${profileNote}
+
+REGRAS DE RESPOSTA:
+1. Responda APENAS com base nos documentos fornecidos (identificados por 'ARQUIVO: <nome>').
+2. Seja específico: cite artigos, incisos, parágrafos e valores numéricos quando presentes nos documentos.
+3. Estruture a resposta: comece com a resposta direta à consulta (1-2 frases), depois a fundamentação legal detalhada.
+4. Em cada afirmação relevante, cite o arquivo fonte (ex.: 'Conforme o arquivo Portaria_123...').
+5. Se houver percentuais, prazos ou valores no documento, mencione-os explicitamente — não os omita.
+6. Seja militar, direto, técnico e cortês.
+7. Se a informação não constar nos documentos, diga que não encontrou e deixe 'fontesUtilizadas' vazia.
+
+REGRA OBRIGATÓRIA PARA fontesUtilizadas: liste TODOS os arquivos citados ou usados no corpo da resposta — copie cada nome EXATAMENTE como aparece após 'ARQUIVO:', sem abreviar ou alterar.`,
           temperature: GEMINI_TEMPERATURE,
           maxOutputTokens: MAX_OUTPUT_TOKENS,
-          // thinkingBudget limitado a 1024: cobre análises jurídicas complexas sem
-          // deixar o modelo pensar indefinidamente (era -1 = ilimitado). Aplica-se
-          // apenas a modelos de raciocínio (gemini-2.5+); gemini-1.5-flash não usa.
-          ...(isThinkingModel ? { thinkingConfig: { thinkingBudget: 1024 } } : {}),
+          ...(isThinkingModel ? { thinkingConfig: { thinkingBudget } } : {}),
           // Força resposta em JSON com forma fixa { resposta, fontesUtilizadas }.
           responseMimeType: 'application/json',
           responseSchema: {
