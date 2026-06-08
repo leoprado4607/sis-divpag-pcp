@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal Div Pg Pes — Proposta de Redesign</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --olive:       #2E3D1A;
+      --olive-mid:   #445526;
+      --olive-light: #6B7A42;
+      --gold:        #A8832A;
+      --gold-light:  #C9A84C;
+      --cream:       #F5F2EA;
+      --cream-dark:  #EAE5D5;
+      --charcoal:    #1A1D12;
+      --text:        #262B18;
+      --text-muted:  #636B4A;
+      --white:       #FFFFFF;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+    .serif { font-family: 'Cormorant Garamond', serif; }
+
+    /* ── PREVIEW BANNER ── */
+    .preview-banner {
+      background: var(--gold);
+      text-align: center;
+      padding: .65rem 2rem;
+      font-size: .8rem; font-weight: 500; letter-spacing: .06em;
+      color: var(--charcoal);
+      position: sticky; top: 0; z-index: 9999;
+    }
+    .preview-banner strong { font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 32px; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 5vw;
+      height: 72px;
+      background: var(--olive);
+      border-bottom: 2px solid var(--gold);
+    }
+
+    .nav-brand {
+      display: flex; align-items: center; gap: 14px;
+      text-decoration: none;
+    }
+    .nav-crest {
+      width: 46px; height: 46px;
+      background: var(--gold);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .nav-crest svg { width: 26px; height: 26px; fill: var(--olive); }
+    .nav-brand-text { line-height: 1.2; }
+    .nav-brand-top {
+      font-size: .65rem; letter-spacing: .14em; text-transform: uppercase;
+      color: rgba(255,255,255,.5); font-weight: 400;
+    }
+    .nav-brand-main {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.1rem; font-weight: 600; color: var(--white);
+      letter-spacing: .03em;
+    }
+
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a {
+      text-decoration: none; font-size: .82rem; font-weight: 500;
+      color: rgba(255,255,255,.55); letter-spacing: .04em;
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--gold-light); }
+
+    .nav-badge {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(201,168,76,.3);
+      padding: .4rem 1.1rem;
+      font-size: .75rem; color: var(--gold-light); letter-spacing: .06em;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .nav-badge::before {
+      content: ''; width: 7px; height: 7px;
+      background: #4ADE80; border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; } 50% { opacity: .4; }
+    }
+
+    /* ── STATS BAR ── */
+    .stats-bar {
+      background: var(--charcoal);
+      border-bottom: 1px solid rgba(201,168,76,.2);
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+    }
+    .stat-cell {
+      padding: 1.1rem 1.2rem;
+      border-right: 1px solid rgba(255,255,255,.06);
+      text-align: center;
+    }
+    .stat-cell:last-child { border-right: none; }
+    .stat-cell-label {
+      font-size: .6rem; letter-spacing: .12em; text-transform: uppercase;
+      color: rgba(255,255,255,.35); margin-bottom: .3rem;
+    }
+    .stat-cell-value {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.25rem; font-weight: 700; color: var(--white);
+      line-height: 1;
+    }
+    .stat-cell-value.gold { color: var(--gold-light); }
+    .stat-cell-value.large { font-size: 1rem; letter-spacing: -.01em; }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 70vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: hidden;
+    }
+
+    .hero-content {
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 6vh 5vw 6vh 8vw;
+      background: var(--cream);
+      position: relative; z-index: 2;
+    }
+
+    .hero-label {
+      display: inline-flex; align-items: center; gap: .5rem;
+      font-size: .7rem; font-weight: 500; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--gold);
+      margin-bottom: 1.5rem;
+      animation: fadeUp .5s ease both;
+    }
+    .hero-label::before {
+      content: ''; width: 20px; height: 1px; background: var(--gold);
+    }
+
+    .hero-headline {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.2rem, 4vw, 3.6rem);
+      font-weight: 600; line-height: 1.1;
+      color: var(--charcoal);
+      margin-bottom: 1.2rem;
+      animation: fadeUp .5s .08s ease both;
+    }
+
+    .hero-sub {
+      font-size: .95rem; line-height: 1.7;
+      color: var(--text-muted); max-width: 400px;
+      margin-bottom: 2.5rem;
+      animation: fadeUp .5s .16s ease both;
+    }
+
+    .hero-actions {
+      display: flex; gap: 1rem; align-items: center;
+      animation: fadeUp .5s .24s ease both;
+    }
+    .btn-primary {
+      background: var(--olive); color: var(--white);
+      padding: .8rem 1.8rem; border: none; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; font-size: .85rem; font-weight: 500;
+      letter-spacing: .04em; text-decoration: none; display: inline-block;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+      transition: background .25s, transform .15s;
+    }
+    .btn-primary:hover { background: var(--olive-mid); transform: translateY(-2px); }
+    .btn-ghost {
+      background: transparent; color: var(--olive);
+      padding: .8rem 1.8rem; border: 1.5px solid var(--olive); cursor: pointer;
+      font-family: 'DM Sans', sans-serif; font-size: .85rem; font-weight: 500;
+      letter-spacing: .04em; text-decoration: none; display: inline-block;
+      transition: all .25s;
+    }
+    .btn-ghost:hover { background: var(--olive); color: var(--white); }
+
+    .hero-visual {
+      position: relative; overflow: hidden;
+      background: var(--olive);
+    }
+    .hero-bg-pattern {
+      position: absolute; inset: 0;
+      background:
+        linear-gradient(135deg, var(--olive) 0%, var(--olive-mid) 50%, var(--olive-light) 100%);
+    }
+    .hero-grid-overlay {
+      position: absolute; inset: 0; opacity: .08;
+      background-image:
+        linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .hero-hexagons {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hex-ring {
+      position: absolute;
+      border: 1px solid rgba(201,168,76,.15);
+      border-radius: 50%;
+    }
+    .hero-info-card {
+      position: absolute; bottom: 2.5rem; left: 2.5rem; right: 2.5rem;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(201,168,76,.2);
+      backdrop-filter: blur(8px);
+      padding: 1.5rem 2rem;
+    }
+    .hero-info-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.1rem; color: var(--white); margin-bottom: .5rem;
+    }
+    .hero-info-desc {
+      font-size: .78rem; color: rgba(255,255,255,.5); line-height: 1.5;
+    }
+    .hero-units {
+      position: absolute; top: 2rem; right: 2rem;
+      display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end;
+      max-width: 160px;
+    }
+    .unit-dot {
+      width: 10px; height: 10px;
+      background: rgba(201,168,76,.4); border-radius: 50%;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── SECTION COMMON ── */
+    section { padding: 5.5rem 8vw; }
+
+    .section-label {
+      font-size: .7rem; font-weight: 500; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--gold);
+      margin-bottom: .7rem;
+      display: flex; align-items: center; gap: .6rem;
+    }
+    .section-label::before { content: ''; width: 20px; height: 1px; background: var(--gold); }
+
+    .section-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(1.8rem, 3vw, 2.8rem);
+      font-weight: 600; line-height: 1.2;
+      color: var(--charcoal); margin-bottom: .8rem;
+    }
+    .section-desc {
+      font-size: .9rem; line-height: 1.7; color: var(--text-muted); max-width: 500px;
+    }
+
+    /* ── SISTEMAS ── */
+    .sistemas { background: var(--white); }
+
+    .sistemas-header {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 3rem;
+      align-items: end; margin-bottom: 3.5rem;
+    }
+
+    .sistemas-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5px;
+      background: rgba(46,61,26,.07);
+    }
+
+    .sistema-card {
+      background: var(--white);
+      padding: 2.2rem 1.8rem;
+      transition: all .3s;
+      position: relative; overflow: hidden;
+      cursor: pointer; text-decoration: none; display: block;
+    }
+    .sistema-card::after {
+      content: '';
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 3px; background: var(--olive);
+      transform: scaleX(0); transform-origin: left;
+      transition: transform .3s;
+    }
+    .sistema-card:hover { background: var(--cream); }
+    .sistema-card:hover::after { transform: scaleX(1); }
+
+    .sistema-icon {
+      width: 44px; height: 44px;
+      background: var(--cream-dark);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1.2rem;
+      clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px));
+    }
+    .sistema-icon svg { width: 20px; height: 20px; stroke: var(--olive); fill: none; stroke-width: 1.5; }
+
+    .sistema-num {
+      position: absolute; top: 1.2rem; right: 1.5rem;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.2rem; font-weight: 300; color: rgba(46,61,26,.07);
+    }
+
+    .sistema-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.2rem; font-weight: 600; color: var(--charcoal);
+      margin-bottom: .5rem;
+    }
+    .sistema-name em { font-style: italic; }
+    .sistema-desc { font-size: .82rem; line-height: 1.6; color: var(--text-muted); margin-bottom: 1rem; }
+    .sistema-link {
+      font-size: .78rem; font-weight: 600; color: var(--gold);
+      letter-spacing: .06em; text-transform: uppercase;
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .sistema-link::after { content: '→'; transition: transform .2s; }
+    .sistema-card:hover .sistema-link::after { transform: translateX(4px); }
+
+    /* ── VALOR / DADOS ── */
+    .valor {
+      background: var(--olive);
+      display: grid; grid-template-columns: 1fr 1fr; gap: 5rem;
+      align-items: center;
+    }
+
+    .valor-content .section-label { color: var(--gold-light); }
+    .valor-content .section-title { color: var(--white); }
+    .valor-content .section-desc { color: rgba(255,255,255,.55); }
+
+    .valor-metrics {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+      background: rgba(255,255,255,.08);
+      margin-top: 2.5rem;
+    }
+    .valor-metric {
+      background: var(--olive); padding: 1.6rem;
+    }
+    .valor-metric .num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem; font-weight: 700; color: var(--gold-light);
+    }
+    .valor-metric .lbl { font-size: .72rem; color: rgba(255,255,255,.45); margin-top: .3rem; line-height: 1.3; }
+
+    .valor-folha-card {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(201,168,76,.2);
+      padding: 2.5rem;
+      position: relative;
+    }
+    .valor-folha-label {
+      font-size: .68rem; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--gold-light); opacity: .7; margin-bottom: 1rem;
+    }
+    .valor-folha-period {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.3rem; font-weight: 600; color: var(--white);
+      margin-bottom: .5rem;
+    }
+    .valor-folha-total {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.6rem; font-weight: 700; color: var(--gold-light);
+      line-height: 1; margin-bottom: 1.2rem;
+    }
+    .valor-folha-desc {
+      font-size: .82rem; color: rgba(255,255,255,.45); line-height: 1.6;
+    }
+    .valor-folha-divider {
+      height: 1px; background: rgba(255,255,255,.08); margin: 1.5rem 0;
+    }
+    .valor-breakdown {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem;
+    }
+    .valor-breakdown-item .n {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.4rem; font-weight: 700; color: var(--white);
+    }
+    .valor-breakdown-item .l { font-size: .68rem; color: rgba(255,255,255,.35); margin-top: .1rem; }
+
+    /* ── FAQ ── */
+    .faq { background: var(--cream-dark); }
+    .faq-inner {
+      display: grid; grid-template-columns: 1fr 2fr; gap: 5rem; align-items: start;
+    }
+
+    .faq-list { display: flex; flex-direction: column; }
+    .faq-item { border-bottom: 1px solid rgba(46,61,26,.1); }
+    .faq-question {
+      width: 100%; display: flex; justify-content: space-between; align-items: center;
+      padding: 1.3rem 0;
+      background: none; border: none; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; font-size: .9rem; font-weight: 500;
+      color: var(--charcoal); text-align: left; gap: 1rem;
+      transition: color .2s;
+    }
+    .faq-question:hover { color: var(--olive); }
+    .faq-icon {
+      width: 26px; height: 26px; flex-shrink: 0;
+      border: 1px solid rgba(46,61,26,.18);
+      display: flex; align-items: center; justify-content: center;
+      transition: all .25s; font-size: 1rem; color: var(--olive);
+    }
+    .faq-item.open .faq-icon { background: var(--olive); color: var(--white); transform: rotate(45deg); }
+    .faq-answer { max-height: 0; overflow: hidden; transition: max-height .35s ease; }
+    .faq-item.open .faq-answer { max-height: 260px; }
+    .faq-answer-inner {
+      padding: 0 0 1.3rem;
+      font-size: .85rem; line-height: 1.7; color: var(--text-muted);
+    }
+
+    /* ── EXERCÍCIOS ── */
+    .exercicios { background: var(--white); }
+    .exercicios-header {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      margin-bottom: 3rem;
+    }
+    .exercicios-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5px;
+      background: rgba(46,61,26,.07);
+    }
+    .exercicio-card {
+      background: var(--white);
+      position: relative; overflow: hidden; cursor: pointer;
+      min-height: 200px;
+      display: flex; flex-direction: column; justify-content: flex-end;
+      padding: 1.8rem;
+      transition: all .3s;
+    }
+    .exercicio-bg {
+      position: absolute; inset: 0;
+      transition: transform .5s;
+    }
+    .exercicio-card:hover .exercicio-bg { transform: scale(1.03); }
+    .exercicio-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(26,29,18,.88) 0%, rgba(26,29,18,.3) 55%, transparent 100%);
+    }
+    .exercicio-content { position: relative; z-index: 2; }
+    .exercicio-tag {
+      display: inline-block; margin-bottom: .5rem;
+      font-size: .65rem; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--gold-light);
+    }
+    .exercicio-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem; font-weight: 700; color: var(--white); line-height: 1;
+    }
+    .exercicio-sub { font-size: .78rem; color: rgba(255,255,255,.55); margin-top: .3rem; }
+
+    .ex-1 .exercicio-bg { background: linear-gradient(140deg, #2E3D1A, #445526); }
+    .ex-2 .exercicio-bg { background: linear-gradient(140deg, #1A1D12, #2E3D1A); }
+    .ex-3 .exercicio-bg { background: linear-gradient(140deg, #445526, #6B7A42); }
+    .ex-4 .exercicio-bg { background: linear-gradient(140deg, #2E3D1A, #1A1D12); }
+    .ex-5 .exercicio-bg { background: linear-gradient(140deg, #1A1D12, #445526); }
+    .ex-6 .exercicio-bg { background: linear-gradient(140deg, #6B7A42, #2E3D1A); }
+
+    /* ── CTA ── */
+    .cta {
+      background: var(--charcoal);
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 4rem; align-items: center;
+      position: relative; overflow: hidden;
+    }
+    .cta::before {
+      content: '';
+      position: absolute; top: -80px; right: 180px;
+      width: 280px; height: 280px;
+      border: 1px solid rgba(201,168,76,.1);
+      transform: rotate(45deg); pointer-events: none;
+    }
+
+    .cta-text .section-label { color: var(--gold-light); }
+    .cta-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(1.8rem, 3vw, 2.8rem);
+      font-weight: 600; color: var(--white); line-height: 1.2; margin-bottom: .8rem;
+    }
+    .cta-desc { font-size: .9rem; line-height: 1.7; color: rgba(255,255,255,.45); max-width: 460px; }
+
+    .cta-actions { display: flex; flex-direction: column; gap: 1rem; flex-shrink: 0; }
+    .btn-gold {
+      background: var(--gold); color: var(--charcoal);
+      padding: .9rem 2rem; border: none; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; font-size: .85rem; font-weight: 600;
+      letter-spacing: .04em; text-decoration: none; display: inline-block; text-align: center;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+      transition: background .2s, transform .15s; white-space: nowrap;
+    }
+    .btn-gold:hover { background: var(--gold-light); transform: translateY(-2px); }
+    .btn-outline-w {
+      background: transparent; color: rgba(255,255,255,.6);
+      padding: .9rem 2rem; border: 1px solid rgba(255,255,255,.15); cursor: pointer;
+      font-family: 'DM Sans', sans-serif; font-size: .85rem; font-weight: 400;
+      letter-spacing: .04em; text-decoration: none; display: inline-block; text-align: center;
+      transition: all .2s; white-space: nowrap;
+    }
+    .btn-outline-w:hover { border-color: rgba(255,255,255,.4); color: var(--white); }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--charcoal);
+      border-top: 1px solid rgba(255,255,255,.05);
+      padding: 3.5rem 8vw 2rem;
+    }
+    .footer-top {
+      display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 4rem;
+      padding-bottom: 2.5rem;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      margin-bottom: 2rem;
+    }
+    .footer-brand-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.2rem; font-weight: 600; color: var(--white);
+      margin-bottom: .3rem;
+    }
+    .footer-brand-sub {
+      font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
+      color: rgba(255,255,255,.3); margin-bottom: 1rem;
+    }
+    .footer-tagline {
+      font-size: .82rem; line-height: 1.6; color: rgba(255,255,255,.35);
+      max-width: 280px;
+    }
+
+    .footer-col h4 {
+      font-size: .68rem; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--gold-light); margin-bottom: 1.2rem;
+    }
+    .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: .65rem; }
+    .footer-col ul a {
+      text-decoration: none; font-size: .82rem; color: rgba(255,255,255,.38);
+      transition: color .2s;
+    }
+    .footer-col ul a:hover { color: var(--white); }
+
+    .footer-bottom {
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .footer-copy { font-size: .75rem; color: rgba(255,255,255,.2); }
+    .footer-socials { display: flex; gap: .8rem; }
+    .social-btn {
+      width: 32px; height: 32px;
+      border: 1px solid rgba(255,255,255,.1);
+      display: flex; align-items: center; justify-content: center;
+      transition: all .2s; cursor: pointer; text-decoration: none;
+    }
+    .social-btn:hover { border-color: var(--gold); background: rgba(168,131,42,.1); }
+    .social-btn svg { width: 13px; height: 13px; stroke: rgba(255,255,255,.4); fill: none; stroke-width: 1.5; }
+
+    /* ── REVEAL ── */
+    .reveal { opacity: 0; transform: translateY(28px); transition: opacity .55s, transform .55s; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero-visual { height: 35vh; }
+      .stats-bar { grid-template-columns: repeat(3, 1fr); }
+      .sistemas-header { grid-template-columns: 1fr; }
+      .sistemas-grid { grid-template-columns: repeat(2, 1fr); }
+      .valor { grid-template-columns: 1fr; }
+      .faq-inner { grid-template-columns: 1fr; }
+      .exercicios-grid { grid-template-columns: repeat(2, 1fr); }
+      .cta { grid-template-columns: 1fr; }
+      .footer-top { grid-template-columns: 1fr; gap: 2rem; }
+      section { padding: 4rem 6vw; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- PREVIEW BANNER -->
+<div class="preview-banner">
+  <strong>Prévia</strong> — Proposta de redesign · Portal Div Pg Pes · Aguardando aprovação
+</div>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-brand" href="#">
+    <div class="nav-crest">
+      <svg viewBox="0 0 24 24"><path d="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.25C17.25 23.15 21 18.25 21 13V7L12 2z"/></svg>
+    </div>
+    <div class="nav-brand-text">
+      <div class="nav-brand-top">Divisão de Pagamento de Pessoal</div>
+      <div class="nav-brand-main">Portal Div Pg Pes</div>
+    </div>
+  </a>
+
+  <ul class="nav-links">
+    <li><a href="#sistemas">Sistemas</a></li>
+    <li><a href="#dados">Dados</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="#exercicios">Exercícios</a></li>
+  </ul>
+
+  <div class="nav-badge">Sistema online · B Adm Gu Natal</div>
+</nav>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-cell">
+    <div class="stat-cell-label">Folha de Pagamento</div>
+    <div class="stat-cell-value gold">Maio/2026</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-cell-label">Total Pago</div>
+    <div class="stat-cell-value gold large">R$ 51.432.836,43</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-cell-label">Militares da Ativa</div>
+    <div class="stat-cell-value">2.455</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-cell-label">Veteranos</div>
+    <div class="stat-cell-value">1.196</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-cell-label">Pensionistas</div>
+    <div class="stat-cell-value">2.257</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-cell-label">Efetivo Total</div>
+    <div class="stat-cell-value">5.908</div>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero" style="padding:0">
+  <div class="hero-content">
+    <div class="hero-label">B Adm Gu Natal</div>
+    <h1 class="hero-headline serif">
+      Portal de Informações de<br>Pagamento de Pessoal
+    </h1>
+    <p class="hero-sub">
+      Acesse os sistemas, ferramentas e dados da Divisão de Pagamento de Pessoal
+      do Batalhão de Administração da Guarnição de Natal.
+    </p>
+    <div class="hero-actions">
+      <a href="#sistemas" class="btn-primary">Acessar Sistemas</a>
+      <a href="#dados" class="btn-ghost">Ver dados da folha</a>
+    </div>
+  </div>
+
+  <div class="hero-visual">
+    <div class="hero-bg-pattern"></div>
+    <div class="hero-grid-overlay"></div>
+    <div class="hero-hexagons">
+      <div class="hex-ring" style="width:340px;height:340px;border-radius:50%"></div>
+      <div class="hex-ring" style="width:240px;height:240px;border-radius:50%"></div>
+      <div class="hex-ring" style="width:140px;height:140px;border-radius:50%"></div>
+    </div>
+    <div class="hero-info-card">
+      <div class="hero-info-title serif">Divisão de Pagamento de Pessoal</div>
+      <div class="hero-info-desc">
+        Responsável pelo processamento e controle da folha de pagamento dos
+        militares da ativa, veteranos e pensionistas da Guarnição de Natal.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SISTEMAS -->
+<section class="sistemas" id="sistemas">
+  <div class="sistemas-header reveal">
+    <div>
+      <div class="section-label">Sistemas disponíveis</div>
+      <h2 class="section-title serif">Ferramentas e sistemas<br>da Divisão</h2>
+    </div>
+    <p class="section-desc">
+      Acesse os sistemas desenvolvidos para apoiar a gestão de pagamento
+      de pessoal, consulta de relações e análise de dados.
+    </p>
+  </div>
+
+  <div class="sistemas-grid reveal">
+
+    <!-- ANDRECITO -->
+    <a class="sistema-card" href="#">
+      <div class="sistema-icon">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </div>
+      <div class="sistema-num">01</div>
+      <div class="sistema-name serif">Sistema <em>ANDRECITO</em></div>
+      <p class="sistema-desc">Portarias, Decretos, DIEx e Pareceres</p>
+      <span class="sistema-link">Acessar</span>
+    </a>
+
+    <!-- COMPARAR RELAÇÕES -->
+    <a class="sistema-card" href="#">
+      <div class="sistema-icon">
+        <svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      </div>
+      <div class="sistema-num">02</div>
+      <div class="sistema-name serif">Comparar relações</div>
+      <p class="sistema-desc">Relação CPEx X SiCaPEx</p>
+      <span class="sistema-link">Acessar</span>
+    </a>
+
+    <!-- EXERCÍCIOS ANTERIORES -->
+    <a class="sistema-card" href="#">
+      <div class="sistema-icon">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      </div>
+      <div class="sistema-num">03</div>
+      <div class="sistema-name serif">Exercícios Anteriores</div>
+      <p class="sistema-desc">Dados estatísticos e análise</p>
+      <span class="sistema-link">Acessar</span>
+    </a>
+
+    <!-- PLANILHA DE CÁLCULOS -->
+    <a class="sistema-card" href="#">
+      <div class="sistema-icon">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+      </div>
+      <div class="sistema-num">04</div>
+      <div class="sistema-name serif">Planilha de cálculos</div>
+      <p class="sistema-desc">Holerite, diárias e Grat Rep</p>
+      <span class="sistema-link">Acessar</span>
+    </a>
+
+    <!-- EB#CALC -->
+    <a class="sistema-card" href="#">
+      <div class="sistema-icon">
+        <svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>
+      </div>
+      <div class="sistema-num">05</div>
+      <div class="sistema-name serif">EB#Calc</div>
+      <p class="sistema-desc">Pecuniária, diárias e Grat Rep</p>
+      <span class="sistema-link">Acessar</span>
+    </a>
+
+    <!-- CARD CTA (6º slot) -->
+    <div class="sistema-card" style="background: var(--olive); cursor:default;">
+      <div style="position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:center;">
+        <div class="section-label" style="color:var(--gold-light);margin-bottom:1rem;">Divisão de Pg Pes</div>
+        <p style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--white);line-height:1.4;margin-bottom:1.2rem;">
+          B Adm Gu Natal<br>© 2026
+        </p>
+        <a href="#" class="btn-gold" style="font-size:.75rem;padding:.6rem 1.2rem;width:fit-content;">Portal principal →</a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- VALOR / DADOS DA FOLHA -->
+<section class="valor" id="dados">
+  <div class="valor-content reveal">
+    <div class="section-label">Folha de Pagamento</div>
+    <h2 class="section-title serif">Dados do efetivo e pagamentos da Guarnição</h2>
+    <p class="section-desc">
+      Informações consolidadas da folha de pagamento vigente, com detalhamento
+      por categoria de beneficiário.
+    </p>
+
+    <div class="valor-metrics">
+      <div class="valor-metric">
+        <div class="num serif">2.455</div>
+        <div class="lbl">Militares da Ativa</div>
+      </div>
+      <div class="valor-metric">
+        <div class="num serif">1.196</div>
+        <div class="lbl">Veteranos</div>
+      </div>
+      <div class="valor-metric">
+        <div class="num serif">2.257</div>
+        <div class="lbl">Pensionistas</div>
+      </div>
+      <div class="valor-metric">
+        <div class="num serif">5.908</div>
+        <div class="lbl">Efetivo Total</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="valor-folha-card reveal">
+    <div class="valor-folha-label">Folha de Pagamento Vigente</div>
+    <div class="valor-folha-period serif">Maio / 2026</div>
+    <div class="valor-folha-total serif">R$ 51.432.836,43</div>
+    <div class="valor-folha-desc">
+      Total processado pela Divisão de Pagamento de Pessoal referente
+      à competência Maio de 2026.
+    </div>
+    <div class="valor-folha-divider"></div>
+    <div class="valor-breakdown">
+      <div class="valor-breakdown-item">
+        <div class="n serif">2.455</div>
+        <div class="l">Ativos</div>
+      </div>
+      <div class="valor-breakdown-item">
+        <div class="n serif">1.196</div>
+        <div class="l">Veteranos</div>
+      </div>
+      <div class="valor-breakdown-item">
+        <div class="n serif">2.257</div>
+        <div class="l">Pensionistas</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq" id="faq">
+  <div class="faq-inner">
+    <div class="reveal">
+      <div class="section-label">Dúvidas comuns</div>
+      <h2 class="section-title serif">Perguntas frequentes</h2>
+      <p class="section-desc" style="margin-top:.8rem">
+        Respostas rápidas sobre os sistemas e ferramentas disponíveis no portal.
+      </p>
+    </div>
+
+    <div class="faq-list reveal">
+      <div class="faq-item open">
+        <button class="faq-question">
+          O que é o Sistema ANDRECITO?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            O Sistema ANDRECITO é a ferramenta de consulta de documentos normativos da Divisão de Pagamento de Pessoal, incluindo Portarias, Decretos, DIEx e Pareceres que embasam as ações de pagamento.
+          </div>
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">
+          Para que serve o módulo "Comparar relações"?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            O módulo Comparar relações permite cotejar a Relação CPEx com a SiCaPEx, identificando divergências entre os dados dos sistemas do Exército Brasileiro, facilitando o controle e a correção de inconsistências.
+          </div>
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">
+          O que posso consultar em "Exercícios Anteriores"?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            A seção Exercícios Anteriores disponibiliza dados estatísticos e análises de competências passadas, permitindo comparar efetivos, valores pagos e a evolução da folha ao longo dos anos.
+          </div>
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">
+          Qual a diferença entre a Planilha de cálculos e o EB#Calc?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            A Planilha de cálculos abrange holerite, diárias e Gratificação de Representação (Grat Rep). O EB#Calc é focado em pecuniária, diárias e Grat Rep, sendo uma ferramenta complementar para simulações e conferências de valores.
+          </div>
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question">
+          Com que frequência os dados da folha são atualizados?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            Os dados exibidos no portal (Total Pago, Efetivo, Militares da Ativa, Veteranos e Pensionistas) são atualizados mensalmente após o fechamento e processamento da folha de pagamento de cada competência.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EXERCÍCIOS ANTERIORES -->
+<section class="exercicios" id="exercicios">
+  <div class="exercicios-header reveal">
+    <div>
+      <div class="section-label">Dados estatísticos e análise</div>
+      <h2 class="section-title serif">Exercícios anteriores</h2>
+    </div>
+    <a href="#" class="btn-ghost" style="font-size:.82rem;padding:.6rem 1.3rem;">Acessar módulo</a>
+  </div>
+
+  <div class="exercicios-grid reveal">
+    <div class="exercicio-card ex-1">
+      <div class="exercicio-bg"></div>
+      <div class="exercicio-overlay"></div>
+      <div class="exercicio-content">
+        <div class="exercicio-tag">Folha de Pagamento</div>
+        <div class="exercicio-title serif">2025</div>
+        <div class="exercicio-sub">Dados estatísticos e análise</div>
+      </div>
+    </div>
+    <div class="exercicio-card ex-2">
+      <div class="exercicio-bg"></div>
+      <div class="exercicio-overlay"></div>
+      <div class="exercicio-content">
+        <div class="exercicio-tag">Folha de Pagamento</div>
+        <div class="exercicio-title serif">2024</div>
+        <div class="exercicio-sub">Dados estatísticos e análise</div>
+      </div>
+    </div>
+    <div class="exercicio-card ex-3">
+      <div class="exercicio-bg"></div>
+      <div class="exercicio-overlay"></div>
+      <div class="exercicio-content">
+        <div class="exercicio-tag">Folha de Pagamento</div>
+        <div class="exercicio-title serif">2023</div>
+        <div class="exercicio-sub">Dados estatísticos e análise</div>
+      </div>
+    </div>
+    <div class="exercicio-card ex-4">
+      <div class="exercicio-bg"></div>
+      <div class="exercicio-overlay"></div>
+      <div class="exercicio-content">
+        <div class="exercicio-tag">Folha de Pagamento</div>
+        <div class="exercicio-title serif">2022</div>
+        <div class="exercicio-sub">Dados estatísticos e análise</div>
+      </div>
+    </div>
+    <div class="exercicio-card ex-5">
+      <div class="exercicio-bg"></div>
+      <div class="exercicio-overlay"></div>
+      <div class="exercicio-content">
+        <div class="exercicio-tag">Folha de Pagamento</div>
+        <div class="exercicio-title serif">2021</div>
+        <div class="exercicio-sub">Dados estatísticos e análise</div>
+      </div>
+    </div>
+    <div class="exercicio-card ex-6">
+      <div class="exercicio-bg"></div>
+      <div class="exercicio-overlay"></div>
+      <div class="exercicio-content">
+        <div class="exercicio-tag">Exercícios Anteriores</div>
+        <div class="exercicio-title serif">Histórico</div>
+        <div class="exercicio-sub">Consulte todos os exercícios disponíveis</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <div class="cta-text reveal">
+    <div class="section-label">Acesso ao portal</div>
+    <h2 class="cta-title serif">Divisão de Pagamento de Pessoal<br>B Adm Gu Natal</h2>
+    <p class="cta-desc">
+      Acesse os sistemas e ferramentas disponíveis no portal da Divisão
+      de Pagamento de Pessoal.
+    </p>
+  </div>
+  <div class="cta-actions reveal">
+    <a href="#sistemas" class="btn-gold">Acessar sistemas</a>
+    <a href="#dados" class="btn-outline-w">Ver dados da folha</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-top">
+    <div>
+      <div class="footer-brand-name serif">Portal Div Pg Pes</div>
+      <div class="footer-brand-sub">Divisão de Pagamento de Pessoal · B Adm Gu Natal</div>
+      <p class="footer-tagline">
+        Portal de Informações de Pagamento de Pessoal da Divisão de Pagamento do
+        Batalhão de Administração da Guarnição de Natal.
+      </p>
+    </div>
+
+    <div class="footer-col">
+      <h4>Sistemas</h4>
+      <ul>
+        <li><a href="#">Sistema ANDRECITO</a></li>
+        <li><a href="#">Comparar relações</a></li>
+        <li><a href="#">Exercícios Anteriores</a></li>
+        <li><a href="#">Planilha de cálculos</a></li>
+        <li><a href="#">EB#Calc</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-col">
+      <h4>Folha Atual</h4>
+      <ul>
+        <li><a href="#">Competência: Maio/2026</a></li>
+        <li><a href="#">Total: R$ 51.432.836,43</a></li>
+        <li><a href="#">Mil. Ativa: 2.455</a></li>
+        <li><a href="#">Veteranos: 1.196</a></li>
+        <li><a href="#">Pensionistas: 2.257</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p class="footer-copy">© 2026 Divisão de Pagamento de Pessoal / B Adm Gu Natal</p>
+    <div class="footer-socials">
+      <a href="#" class="social-btn" aria-label="Facebook">
+        <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+      </a>
+      <a href="#" class="social-btn" aria-label="Instagram">
+        <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+      </a>
+      <a href="#" class="social-btn" aria-label="LinkedIn">
+        <svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+      </a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Scroll reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 70);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // FAQ accordion
+  document.querySelectorAll('.faq-question').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.parentElement;
+      const isOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+      if (!isOpen) item.classList.add('open');
+    });
+  });
+</script>
+</body>
+</html>

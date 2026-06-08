@@ -12,9 +12,8 @@ const DeaDashboard   = lazy(() => import('./components/dashboard/DeaDashboard'))
 const AndrecitoApp   = lazy(() => import('./components/andrecito/AndrecitoApp'));
 const ComparisonApp  = lazy(() => import('./components/comparison/ComparisonApp'));
 
-
 const ViewLoader: React.FC = () => (
-  <div className="min-h-screen flex items-center justify-center bg-slate-50">
+  <div className="min-h-[60vh] flex items-center justify-center bg-army-cream">
     <div className="w-10 h-10 border-4 border-army-gold border-t-army-green rounded-full animate-spin" />
   </div>
 );
@@ -29,72 +28,131 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  const handleBackToHome = useCallback(() => setCurrentView('home'), []);
+  const handleBackToHome = useCallback(() => {
+    setCurrentView('home');
+    window.scrollTo(0, 0);
+  }, []);
 
-  const renderContent = () => {
-    switch (currentView) {
-      case 'dea-dashboard':  return <Suspense fallback={<ViewLoader />}><DeaDashboard onBack={handleBackToHome} /></Suspense>;
-      case 'andrecito-app':  return <Suspense fallback={<ViewLoader />}><AndrecitoApp onBack={handleBackToHome} /></Suspense>;
-      case 'comparison-app': return <Suspense fallback={<ViewLoader />}><ComparisonApp onBack={handleBackToHome} /></Suspense>;
-      default: return (
-        <>
-          <Header showExtraLogos={true} />
+  /* ─── Sub-app views: header + content + footer ─── */
+  if (currentView !== 'home') {
+    return (
+      <div className="min-h-screen flex flex-col bg-army-cream overflow-x-hidden">
+        <SpeedInsights />
+        <Header onBack={handleBackToHome} />
+        <main className="flex-grow">
+          <Suspense fallback={<ViewLoader />}>
+            {currentView === 'dea-dashboard'  && <DeaDashboard  onBack={handleBackToHome} />}
+            {currentView === 'andrecito-app'  && <AndrecitoApp  onBack={handleBackToHome} />}
+            {currentView === 'comparison-app' && <ComparisonApp onBack={handleBackToHome} />}
+          </Suspense>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
-          {/* ── Main content ─────────────────────────────────── */}
-          <main className="flex-grow relative bg-divpag-100 overflow-hidden">
-            {/* Camada da pintura (fundo, B Adm Gu Natal) com leve desfoque. O zoom
-                (scale 1.2) enquadra o prédio e ainda esconde as bordas translúcidas
-                que o blur cria nas extremidades; backgroundPosition ajusta a altura
-                do recorte para destacar o prédio. */}
+  /* ─── Home view ─── */
+  return (
+    <div className="min-h-screen flex flex-col bg-army-cream overflow-x-hidden">
+      <SpeedInsights />
+
+      {/* Sticky nav */}
+      <Header showExtraLogos={true} />
+
+      {/* Stats bar */}
+      <QuickLinks />
+
+      {/* ── Hero ── */}
+      <section className="relative overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[52vh]">
+
+          {/* Left: text content */}
+          <div className="flex flex-col justify-center px-6 sm:px-10 lg:px-16 py-14 bg-army-cream relative z-10">
+            <p className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.16em] uppercase
+                          text-army-gold mb-4 animate-fade-in-up">
+              <span className="w-5 h-px bg-army-gold" />
+              B Adm Gu Natal
+            </p>
+            <h2 className="font-cormorant font-semibold text-3xl sm:text-4xl lg:text-5xl leading-[1.1]
+                           text-army-charcoal mb-4 animate-fade-in-up"
+                style={{ animationDelay: '0.08s' }}>
+              Portal de Informações de<br />
+              <span className="italic text-army-green">Pagamento de Pessoal</span>
+            </h2>
+            <p className="text-sm text-army-green/55 leading-relaxed max-w-md mb-8 animate-fade-in-up"
+               style={{ animationDelay: '0.16s' }}>
+              Acesse os sistemas, ferramentas e dados da Divisão de Pagamento de Pessoal
+              do Batalhão de Administração da Guarnição de Natal.
+            </p>
+            <a
+              href="#sistemas"
+              className="inline-flex items-center gap-2 self-start bg-army-green text-white
+                         px-6 py-3 text-sm font-medium tracking-wide uppercase
+                         hover:bg-army-mid transition-colors duration-200 animate-fade-in-up"
+              style={{ animationDelay: '0.24s' }}
+            >
+              Ver sistemas disponíveis
+              <span className="text-army-gold">→</span>
+            </a>
+          </div>
+
+          {/* Right: background image with overlay */}
+          <div className="relative hidden lg:block">
             <div
-              className="absolute inset-0 pointer-events-none"
+              className="absolute inset-0"
               style={{
                 backgroundImage: "url('/fundo-quartel.jpg')",
                 backgroundSize: 'cover',
                 backgroundPosition: 'center 55%',
-                filter: 'blur(2px)',
-                transform: 'scale(1.2)',
               }}
             />
-            {/* Véu translúcido ~45%: pintura em destaque, mas cards e textos legíveis. */}
+            <div className="absolute inset-0 bg-army-green/65" />
+            {/* Decorative grid overlay */}
             <div
-              className="absolute inset-0 pointer-events-none"
+              className="absolute inset-0 opacity-10 pointer-events-none"
               style={{
-                background:
-                  'linear-gradient(180deg, rgba(244,247,244,0.45) 0%, rgba(244,247,244,0.52) 50%, rgba(227,235,227,0.62) 100%)',
+                backgroundImage:
+                  'linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)',
+                backgroundSize: '40px 40px',
               }}
             />
-            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-10">
-
-              {/* Quick metrics */}
-              <QuickLinks />
-
-              {/* Section title */}
-              <div className="flex items-center gap-4 mb-6">
-                <div className="h-px flex-grow bg-army-green/40" />
-                <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-army-green whitespace-nowrap">Sistemas disponíveis</span>
-                <div className="h-px flex-grow bg-army-green/40" />
-              </div>
-
-              {/* Systems grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {SYSTEM_LINKS.map(system => (
-                  <SystemCard key={system.id} system={system} onNavigate={handleNavigate} />
-                ))}
-              </div>
+            {/* Info card */}
+            <div className="absolute bottom-8 left-8 right-8 border border-army-gold/25 bg-white/6 backdrop-blur-sm p-5">
+              <p className="font-cormorant font-semibold text-lg text-white mb-1">
+                Divisão de Pagamento de Pessoal
+              </p>
+              <p className="text-xs text-white/50 leading-relaxed">
+                Responsável pelo processamento e controle da folha de pagamento dos
+                militares da ativa, veteranos e pensionistas da Guarnição de Natal.
+              </p>
             </div>
-          </main>
+          </div>
+        </div>
+      </section>
 
-          <Footer />
-        </>
-      );
-    }
-  };
+      {/* ── Systems grid ── */}
+      <section id="sistemas" className="flex-grow bg-white px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-[1600px] mx-auto">
 
-  return (
-    <div className="min-h-screen flex flex-col bg-slate-50 overflow-x-hidden">
-      <SpeedInsights />
-      {renderContent()}
+          {/* Section label */}
+          <div className="flex items-center gap-4 mb-8">
+            <div className="h-px flex-grow bg-army-green/15" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-army-gold whitespace-nowrap">
+              Sistemas disponíveis
+            </span>
+            <div className="h-px flex-grow bg-army-green/15" />
+          </div>
+
+          {/* Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-army-green/8">
+            {SYSTEM_LINKS.map(system => (
+              <SystemCard key={system.id} system={system} onNavigate={handleNavigate} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <Footer />
     </div>
   );
 };

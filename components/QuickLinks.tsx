@@ -17,7 +17,6 @@ const QuickLinks: React.FC = () => {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    // 1) Mostra o cache imediatamente (sem spinner) se ainda estiver fresco.
     let hadCache = false;
     try {
       const raw = sessionStorage.getItem(CACHE_KEY);
@@ -31,7 +30,6 @@ const QuickLinks: React.FC = () => {
       }
     } catch { /* cache inválido: ignora */ }
 
-    // 2) Revalida em segundo plano (stale-while-revalidate).
     const fetchSheet = async () => {
       try {
         const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdDFMSydOAXDTnthTO6iwQMbaAEPD6ZLwCwpnj0Y3g2UlJkOmJ-Sue2HpI6JnqNLwkaIQbBt4PPdZ5/pub?gid=670175073&single=true&output=csv";
@@ -48,7 +46,7 @@ const QuickLinks: React.FC = () => {
 
           const titles = parseCSVLine(rows[0]);
           const values = rows.length > 1 ? parseCSVLine(rows[1]) : [];
-          const urls = rows.length > 2 ? parseCSVLine(rows[2]) : [];
+          const urls   = rows.length > 2 ? parseCSVLine(rows[2]) : [];
 
           const parsedItems = titles.map((t, index) => {
             let title = t;
@@ -65,10 +63,9 @@ const QuickLinks: React.FC = () => {
           setItems(parsedItems);
           try {
             sessionStorage.setItem(CACHE_KEY, JSON.stringify({ items: parsedItems, ts: Date.now() }));
-          } catch { /* storage cheio/indisponível: ignora */ }
+          } catch { /* storage indisponível */ }
         }
       } catch {
-        // Se já mostramos dados do cache, não troca a tela por um erro.
         if (!hadCache) setError(true);
       } finally {
         setLoading(false);
@@ -78,58 +75,72 @@ const QuickLinks: React.FC = () => {
     fetchSheet();
   }, []);
 
+  /* ── Loading state ── */
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-6 text-army-green/60">
-        <Loader2 size={16} className="animate-spin" />
-        <span className="text-xs font-medium uppercase tracking-widest">Carregando dados...</span>
+      <div className="w-full bg-army-charcoal border-b border-white/5">
+        <div className="max-w-[1600px] mx-auto grid grid-cols-3 sm:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="px-4 py-3.5 border-r border-white/[0.06] last:border-r-0">
+              <div className="h-2 bg-white/8 rounded mb-2 w-16 skeleton-shimmer" />
+              <div className="h-4 bg-white/10 rounded w-20 skeleton-shimmer" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
+  /* ── Error state ── */
   if (error) {
     return (
-      <div className="flex items-center gap-2 justify-center py-4 text-amber-600">
-        <AlertCircle size={16} />
-        <span className="text-xs font-bold uppercase tracking-wider">Erro ao carregar dados em tempo real</span>
+      <div className="w-full bg-army-charcoal border-b border-white/5">
+        <div className="flex items-center justify-center gap-2 py-3 px-4">
+          <AlertCircle size={13} className="text-amber-400 flex-shrink-0" />
+          <span className="text-[11px] font-medium text-amber-400/80 uppercase tracking-widest">
+            Erro ao carregar dados em tempo real
+          </span>
+        </div>
       </div>
     );
   }
 
   if (items.length === 0) return null;
 
+  /* ── Data state ── */
   return (
-    <div className="w-full mb-10">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div className="w-full bg-army-charcoal border-b border-army-gold/15">
+      <div className="max-w-[1600px] mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         {items.map((item, index) => {
-          const Wrapper = item.url ? 'a' : 'div';
+          const isLast = index === items.length - 1;
+          const CellWrapper = item.url ? 'a' : 'div';
           return (
-            <Wrapper
+            <CellWrapper
               key={index}
               href={item.url}
               target={item.url ? "_blank" : undefined}
               rel={item.url ? "noopener noreferrer" : undefined}
               className={`
-                relative flex flex-col items-center justify-center p-3 rounded-xl
-                bg-white border border-slate-100 shadow-sm
-                ${item.url ? 'cursor-pointer hover:border-army-gold/60 hover:shadow-md hover:-translate-y-0.5 group' : ''}
-                transition-all duration-200
+                group px-4 py-3.5 text-center
+                border-r border-white/[0.06] ${isLast ? 'border-r-0' : ''}
+                ${item.url ? 'cursor-pointer hover:bg-white/5 transition-colors' : ''}
               `}
             >
-              <span className={`text-[9px] font-bold uppercase tracking-widest mb-1.5 line-clamp-1 text-center transition-colors ${item.url ? 'text-slate-400 group-hover:text-army-green' : 'text-slate-400'}`}>
+              <p className="text-[9px] font-medium tracking-[0.12em] uppercase text-white/30 mb-1 line-clamp-1">
                 {item.title}
-              </span>
+              </p>
               {item.value && (
-                <span className="text-base font-black text-army-green leading-none line-clamp-1">
+                <p className="text-sm font-bold text-white leading-none line-clamp-1
+                              group-hover:text-army-gold transition-colors">
                   {item.value}
-                </span>
+                </p>
               )}
               {item.url && !item.value && (
-                <span className={`text-[10px] font-bold transition-colors ${item.url ? 'text-army-blue group-hover:text-army-green' : 'text-army-blue'}`}>
+                <p className="text-[11px] font-semibold text-army-gold/70 group-hover:text-army-gold transition-colors">
                   Acessar →
-                </span>
+                </p>
               )}
-            </Wrapper>
+            </CellWrapper>
           );
         })}
       </div>

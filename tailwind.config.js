@@ -23,7 +23,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['"DM Sans"', 'Inter', 'sans-serif'],
+        cormorant: ['"Cormorant Garamond"', 'serif'],
         montserrat: ['Montserrat', 'sans-serif'],
         'roboto-slab': ['"Roboto Slab"', 'serif'],
         oswald: ['Oswald', 'sans-serif'],
@@ -32,10 +33,15 @@ export default {
       },
       colors: {
         army: {
-          green: '#1a3c1a',
-          light: '#4b6f44',
-          gold: '#BD9C4D',
-          blue: '#002776',
+          green:    '#2E3D1A',
+          mid:      '#445526',
+          light:    '#6B7A42',
+          gold:     '#A8832A',
+          'gold-light': '#C9A84C',
+          blue:     '#002776',
+          cream:    '#F5F2EA',
+          'cream-dark': '#EAE5D5',
+          charcoal: '#1A1D12',
         },
         divpag: {
           50: '#f4f7f4',
