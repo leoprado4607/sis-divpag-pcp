@@ -36,7 +36,7 @@ const AndrecitoApp: React.FC<AndrecitoAppProps> = ({ onBack }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="min-h-screen bg-army-cream font-sans">
       {view === 'query' && (
         <AndrecitoQuery 
           onBack={onBack} 

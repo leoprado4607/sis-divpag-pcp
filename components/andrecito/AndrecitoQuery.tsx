@@ -56,20 +56,16 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
     }
   }, [selectedSubcats, selectedCats]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   useEffect(() => {
-    // Debounce: ao marcar/desmarcar várias pastas em sequência, evita disparar
-    // uma rajada de requests Supabase a cada clique — só conta após estabilizar.
     const t = setTimeout(() => { updateDocCount(); }, 300);
     return () => clearTimeout(t);
   }, [updateDocCount]);
 
   const handleSearch = useCallback(async () => {
     if (!query.trim() || !hasSelection) return;
-    
+
     setLoading(true);
     setResponse('');
     setLastQuery(query.trim());
@@ -102,7 +98,6 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
   const handleDownloadPDF = useCallback(() => {
     if (!response) return;
 
-    // Paleta institucional (RGB).
     const C = {
       green: [26, 60, 26] as const,
       gold: [189, 156, 77] as const,
@@ -126,7 +121,6 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
     const setText = (c: readonly number[]) => doc.setTextColor(c[0], c[1], c[2]);
     const setDraw = (c: readonly number[]) => doc.setDrawColor(c[0], c[1], c[2]);
 
-    // Cabeçalho de continuação (páginas 2+): faixa fina verde com identificação.
     const runningHeader = () => {
       setFill(C.green); doc.rect(0, 0, pageW, 30, 'F');
       setFill(C.gold); doc.rect(0, 30, pageW, 2, 'F');
@@ -140,12 +134,9 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
     const newPage = () => { doc.addPage(); runningHeader(); };
     const ensure = (h: number) => { if (y + h > bottomLimit) newPage(); };
 
-    // Remove marcadores inline que não renderizamos diretamente (mantém _ de nomes
-    // de arquivo). O **negrito** é tratado à parte em writeRich.
     const cleanInline = (s: string) =>
       s.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[`*]/g, '').trim();
 
-    // Escreve texto com quebra automática, suportando **negrito** inline.
     const writeRich = (
       text: string,
       opts: { size: number; color?: readonly number[]; indent?: number; gap?: number; bold?: boolean }
@@ -156,7 +147,6 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
       const maxW = contentW - indent;
       const color = opts.color || C.text;
 
-      // Tokeniza em segmentos preservando o estado de negrito.
       const segs: { t: string; b: boolean }[] = [];
       const re = /\*\*([^*]+)\*\*/g;
       let last = 0, m: RegExpExecArray | null;
@@ -167,7 +157,6 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
       }
       if (last < text.length) segs.push({ t: text.slice(last), b: !!opts.bold });
 
-      // Quebra cada segmento em palavras (preservando espaços) já limpas.
       const words: { t: string; b: boolean }[] = [];
       segs.forEach(s => {
         cleanInline(s.t).split(/(\s+)/).forEach(p => { if (p.length) words.push({ t: p, b: s.b }); });
@@ -181,14 +170,13 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
         const ww = doc.getTextWidth(w.t);
         const isSpace = !w.t.trim().length;
         if (x + ww > startX + maxW && !isSpace) { y += lineH; ensure(lineH); x = startX; }
-        if (x === startX && isSpace) return; // descarta espaço no início da linha
+        if (x === startX && isSpace) return;
         doc.text(w.t, x, y);
         x += ww;
       });
       y += lineH + (opts.gap || 0);
     };
 
-    // --- Separa o corpo da resposta da seção "Fontes Consultadas" ---
     const sources: { name: string; url: string }[] = [];
     let body = response;
     const fIdx = response.indexOf('**Fontes Consultadas:**');
@@ -200,7 +188,6 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
       while ((lm = linkRe.exec(block)) !== null) sources.push({ name: lm[1], url: lm[2] });
     }
 
-    // --- Cabeçalho institucional (1ª página) ---
     setFill(C.green); doc.rect(0, 0, pageW, 82, 'F');
     setFill(C.gold); doc.rect(0, 82, pageW, 4, 'F');
     setText(C.white);
@@ -212,7 +199,6 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
     doc.text(new Date().toLocaleDateString('pt-BR'), pageW - margin, 40, { align: 'right' });
     y = 112;
 
-    // --- Box com a consulta realizada ---
     if (lastQuery) {
       doc.setFont('helvetica', 'bold'); doc.setFontSize(8); setText(C.gold);
       ensure(60); doc.text('CONSULTA', margin, y); y += 8;
@@ -229,17 +215,13 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
       y += boxH + 20;
     }
 
-    // --- Corpo (renderização leve de Markdown) ---
     body.split(/\r?\n/).forEach(raw => {
       const line = raw.replace(/\s+$/, '');
       if (!line.trim()) { y += 5; return; }
-
-      // Divisor
       if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
         ensure(16); setDraw(C.rule); doc.setLineWidth(0.5);
         doc.line(margin, y, pageW - margin, y); y += 16; return;
       }
-      // Títulos markdown (#, ##, ###)
       const h = line.match(/^(#{1,4})\s+(.*)/);
       if (h) {
         const lvl = h[1].length;
@@ -247,13 +229,11 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
         writeRich(h[2], { size: lvl === 1 ? 15 : lvl === 2 ? 13 : 11.5, color: C.green, bold: true, gap: 5 });
         return;
       }
-      // Subtítulo "em negrito puro" (ex.: **1. Natureza...:**) → destaque verde
       const sub = line.match(/^\*\*(.+?)\*\*:?\s*$/);
       if (sub) {
         y += 6; writeRich(sub[1].replace(/:$/, ''), { size: 11.5, color: C.green, bold: true, gap: 4 });
         return;
       }
-      // Lista numerada
       const n = line.match(/^\s*(\d+)\.\s+(.*)/);
       if (n) {
         ensure(15);
@@ -262,18 +242,15 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
         writeRich(n[2], { size: 10, indent: 18, gap: 3 });
         return;
       }
-      // Lista com marcador
       const b = line.match(/^\s*[-*]\s+(.*)/);
       if (b) {
         ensure(15); setFill(C.gold); doc.circle(margin + 4, y - 3, 1.7, 'F');
         writeRich(b[1], { size: 10, indent: 16, gap: 3 });
         return;
       }
-      // Parágrafo
       writeRich(line, { size: 10.5, gap: 6 });
     });
 
-    // --- Seção "Fontes Consultadas" com links clicáveis ---
     if (sources.length) {
       y += 8; ensure(60);
       setDraw(C.rule); doc.setLineWidth(0.5); doc.line(margin, y, pageW - margin, y); y += 20;
@@ -282,7 +259,6 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
       doc.setFont('helvetica', 'normal'); doc.setFontSize(8); setText(C.muted);
       doc.text('Clique no nome do documento para abrir ou baixar.', pageW - margin, y, { align: 'right' });
       y += 18;
-
       sources.forEach(s => {
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
         const lines = doc.splitTextToSize(s.name, contentW - 18) as string[];
@@ -295,7 +271,6 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
       });
     }
 
-    // --- Rodapé com numeração (todas as páginas) ---
     const total = doc.getNumberOfPages();
     const stamp = new Date().toLocaleString('pt-BR');
     for (let i = 1; i <= total; i++) {
@@ -309,30 +284,32 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
     doc.save(`Andrecito_Consulta_${new Date().toISOString().slice(0, 10)}.pdf`);
   }, [response, lastQuery]);
 
-  // Memoiza a árvore de categorias da sidebar: sem isso, cada tecla digitada na
-  // caixa de consulta reconstrói toda a lista de pastas. Só recalcula quando o
-  // próprio acervo/seleção/expansão muda.
   const categoryTree = useMemo(() => categories.map(cat => (
-    <div key={cat.id} className="mb-2">
+    <div key={cat.id} className="mb-1.5">
       <button
         onClick={() => {
           setExpandedCat(expandedCat === cat.id ? '' : cat.id);
-          if (!subcategoriesMap[cat.id]) andrecitoService.getSubcategories(cat.id).then(subs => setSubcategoriesMap(p => ({...p, [cat.id]: subs})));
+          if (!subcategoriesMap[cat.id]) andrecitoService.getSubcategories(cat.id).then(subs => setSubcategoriesMap(p => ({ ...p, [cat.id]: subs })));
         }}
-        className={`w-full flex items-center justify-between py-2 text-sm font-bold transition-colors ${expandedCat === cat.id ? 'text-army-green' : 'text-slate-600 hover:text-army-green'}`}
+        className={`w-full flex items-center justify-between py-2 text-sm transition-colors ${expandedCat === cat.id ? 'text-army-green font-semibold' : 'text-army-green/60 hover:text-army-green font-medium'}`}
       >
-        <span className="flex items-center gap-2"><Folder size={14} className={expandedCat === cat.id ? 'text-army-gold' : 'text-slate-400'} /> {cat.name}</span>
-        {expandedCat === cat.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <span className="flex items-center gap-2">
+          <Folder size={13} className={expandedCat === cat.id ? 'text-army-gold' : 'text-army-green/30'} />
+          {cat.name}
+        </span>
+        {expandedCat === cat.id ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
       </button>
       {expandedCat === cat.id && (
-        <div className="pl-4 space-y-1 mt-1 border-l-2 border-slate-100 ml-1.5">
+        <div className="pl-4 space-y-0.5 mt-0.5 border-l border-army-gold/25 ml-1.5">
           {subcategoriesMap[cat.id]?.map(sub => (
             <button
               key={sub.id}
               onClick={() => setSelectedSubcats(p => p.includes(sub.id) ? p.filter(x => x !== sub.id) : [...p, sub.id])}
-              className={`w-full flex items-center gap-2 py-1.5 text-xs transition-all ${selectedSubcats.includes(sub.id) ? 'text-army-green font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+              className={`w-full flex items-center gap-2 py-1.5 text-xs transition-all ${selectedSubcats.includes(sub.id) ? 'text-army-green font-semibold' : 'text-army-green/50 hover:text-army-green'}`}
             >
-              {selectedSubcats.includes(sub.id) ? <CheckSquare size={14} className="text-army-gold" /> : <Square size={14} className="text-slate-300" />}
+              {selectedSubcats.includes(sub.id)
+                ? <CheckSquare size={13} className="text-army-gold flex-shrink-0" />
+                : <Square size={13} className="text-army-green/20 flex-shrink-0" />}
               {sub.name}
             </button>
           ))}
@@ -341,146 +318,178 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
     </div>
   )), [categories, expandedCat, subcategoriesMap, selectedSubcats]);
 
-  // Memoiza o render do markdown: re-parsear a resposta inteira a cada tecla
-  // digitada na caixa de consulta é caro para respostas longas.
   const renderedResponse = useMemo(() => <ReactMarkdown>{response}</ReactMarkdown>, [response]);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
-      <header className="bg-army-green text-white shadow-xl border-b-[6px] border-army-gold sticky top-0 z-50 no-print">
-        <div className="absolute inset-0 opacity-20 pointer-events-none select-none" 
-             style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}>
-        </div>
+    <div className="flex flex-col h-screen bg-army-cream overflow-hidden">
 
-        <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between relative z-10">
-          <div className="flex items-center gap-4">
-            <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full transition-colors"><ArrowLeft className="w-6 h-6 text-army-gold" /></button>
-            <div className="flex items-center gap-3">
-               <Bot size={32} className="text-white opacity-90" />
-               <div className="text-left">
-                  <h1 className="text-lg md:text-xl font-montserrat font-bold leading-none">Sistema de Consultas</h1>
-                  <p className="text-army-gold text-[10px] uppercase font-bold tracking-widest mt-1">Análise de Legislação Militar</p>
-               </div>
+      {/* ── Header ── */}
+      <header className="bg-army-green text-white sticky top-0 z-50 border-b-2 border-army-gold no-print">
+        <div className="max-w-[1600px] mx-auto px-5 sm:px-8 h-[64px] flex items-center gap-4">
+
+          {/* Back + system name */}
+          <div className="flex items-center gap-3.5 flex-shrink-0">
+            <button
+              onClick={onBack}
+              className="flex items-center gap-1.5 text-white/40 hover:text-army-gold transition-colors text-[11px] font-medium tracking-[0.14em] uppercase"
+            >
+              <ArrowLeft size={13} />
+              <span className="hidden sm:inline">Portal</span>
+            </button>
+            <div className="h-4 w-px bg-white/15" />
+            <Bot size={20} className="text-army-gold/60 flex-shrink-0" />
+            <div className="leading-tight min-w-0">
+              <p className="text-[8.5px] tracking-[0.16em] uppercase text-white/35 font-medium">Sistema de Pesquisas</p>
+              <p className="font-cormorant font-semibold text-[1rem] text-white leading-none tracking-tight">ANDRECITO</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-             <div className="flex items-center gap-1 bg-black/20 p-1 rounded-lg">
-                <button onClick={() => onNavigate('query')} className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-2 transition-all ${currentView === 'query' ? 'bg-white text-army-green shadow-sm' : 'text-gray-300 hover:text-white'}`}>
-                  <Search size={14} /> Pesquisa
+
+          {/* Nav pills */}
+          <div className="flex-1 flex items-center justify-center">
+            <div className="hidden sm:flex items-center gap-0.5 bg-white/[0.06] p-1">
+              {([
+                { id: 'query' as ViewState, icon: Search, label: 'Pesquisa' },
+                { id: 'library' as ViewState, icon: Library, label: 'Biblioteca' },
+                ...(userRole === 'admin' ? [{ id: 'admin' as ViewState, icon: Settings, label: 'Admin' }] : []),
+              ]).map(({ id, icon: Icon, label }) => (
+                <button
+                  key={id}
+                  onClick={() => onNavigate(id)}
+                  className={`px-3.5 py-1.5 text-[11px] font-medium tracking-wide flex items-center gap-1.5 transition-all ${currentView === id ? 'bg-white text-army-green' : 'text-white/45 hover:text-white'}`}
+                >
+                  <Icon size={12} /> {label}
                 </button>
-                <button onClick={() => onNavigate('library')} className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-2 transition-all ${currentView === 'library' ? 'bg-white text-army-green shadow-sm' : 'text-gray-300 hover:text-white'}`}>
-                  <Library size={14} /> Biblioteca
-                </button>
-                {userRole === 'admin' && (
-                  <button onClick={() => onNavigate('admin')} className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-2 transition-all ${currentView === 'admin' ? 'bg-white text-army-green shadow-sm' : 'text-gray-300 hover:text-white'}`}>
-                    <Settings size={14} /> Admin
-                  </button>
-                )}
-             </div>
-             <button onClick={onLogout} className="p-2 text-red-300 hover:text-white hover:bg-red-900/20 rounded-lg ml-2 transition-colors"><LogOut size={20}/></button>
+              ))}
+            </div>
           </div>
+
+          {/* Logout */}
+          <button
+            onClick={onLogout}
+            className="flex-shrink-0 flex items-center gap-1.5 text-white/35 hover:text-red-300 transition-colors text-[11px] font-medium tracking-wide uppercase"
+          >
+            <LogOut size={13} />
+            <span className="hidden sm:inline">Sair</span>
+          </button>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-80 bg-white border-r border-gray-200 flex flex-col h-full shadow-sm z-10 no-print">
-          <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
-            <h2 className="text-[10px] font-black text-army-green uppercase tracking-[0.2em] mb-4 border-b pb-2">Acervo de Documentos</h2>
+
+        {/* ── Sidebar ── */}
+        <aside className="w-72 bg-white border-r border-army-green/10 flex flex-col h-full z-10 no-print">
+          <div className="px-5 pt-6 pb-2 border-b border-army-green/8">
+            <p className="text-[9px] font-semibold tracking-[0.2em] uppercase text-army-gold mb-0.5">Acervo</p>
+            <h3 className="font-cormorant font-semibold text-[1.1rem] text-army-green leading-tight">Documentos</h3>
+          </div>
+
+          <div className="p-5 overflow-y-auto flex-1 custom-scrollbar">
             {categoryTree}
           </div>
-          
-          <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-3">
-             <div className="bg-army-green/5 p-3 rounded-lg border border-army-green/10 flex justify-between items-center">
-               <div>
-                  <span className="text-[9px] font-black text-army-green uppercase block mb-1 tracking-wider opacity-60">Escopo de Análise</span>
-                  <span className="text-base font-black text-army-green">{estimatedDocCount} Arquivos</span>
-               </div>
-               <Bot size={24} className="text-army-gold opacity-50" />
-             </div>
+
+          {/* Doc count */}
+          <div className="p-4 border-t border-army-green/10 bg-army-cream/50">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[9px] tracking-[0.14em] uppercase text-army-green/40 font-medium mb-0.5">Escopo de Análise</p>
+                <p className="font-cormorant font-semibold text-xl text-army-green leading-none">{estimatedDocCount} <span className="text-sm font-sans font-normal text-army-green/50">arquivos</span></p>
+              </div>
+              <Bot size={20} className="text-army-gold/40" />
+            </div>
           </div>
         </aside>
 
-        <main className="flex-1 flex flex-col bg-slate-100 overflow-hidden relative">
-          <div className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar">
+        {/* ── Main ── */}
+        <main className="flex-1 flex flex-col bg-army-cream/40 overflow-hidden relative">
+
+          {/* Results area */}
+          <div className="flex-1 overflow-y-auto p-5 md:p-10 custom-scrollbar">
             {loading ? (
-              <div className="h-full flex flex-col items-center justify-center gap-6 animate-pulse">
+              <div className="h-full flex flex-col items-center justify-center gap-5">
                 <div className="relative">
-                    <RefreshCw className="w-16 h-16 text-army-gold animate-spin" />
-                    <Bot className="absolute inset-0 m-auto text-army-green" size={24} />
+                  <RefreshCw className="w-14 h-14 text-army-gold/70 animate-spin" />
+                  <Bot className="absolute inset-0 m-auto text-army-green" size={22} />
                 </div>
                 <div className="text-center">
-                    <h3 className="text-xl font-bold text-slate-700 font-montserrat">{processingStep}</h3>
-                    <p className="text-sm text-slate-400 mt-2">Aguarde, a IA está processando seu pedido.</p>
+                  <h3 className="font-cormorant font-semibold text-xl text-army-green">{processingStep}</h3>
+                  <p className="text-xs text-army-green/40 mt-1.5 font-medium">Aguarde, a IA está processando seu pedido.</p>
                 </div>
               </div>
             ) : response ? (
-              <div className="max-w-4xl mx-auto bg-white p-6 md:p-10 rounded-2xl shadow-xl animate-fade-in-up border-l-[10px] border-army-green relative overflow-visible print:border-none print:shadow-none print:max-w-full print:p-0">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-army-gold/5 rounded-full -mr-16 -mt-16 pointer-events-none no-print"></div>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 border-b border-slate-100 pb-5 print:mb-4 gap-4">
+              <div className="max-w-4xl mx-auto bg-white border-l-4 border-army-gold shadow-[0_4px_24px_rgba(46,61,26,0.08)] print:border-none print:shadow-none print:max-w-full">
+                {/* Response header */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-8 pt-7 pb-5 border-b border-army-green/8 gap-4 no-print">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-army-green text-white rounded-lg shadow-md no-print"><Bot size={24}/></div>
+                    <div className="w-8 h-8 bg-army-green flex items-center justify-center flex-shrink-0">
+                      <Bot size={16} className="text-white" />
+                    </div>
                     <div>
-                        <h3 className="font-bold text-army-green text-lg">Resultado da consulta</h3>
-                        <p className="text-[10px] text-slate-400 uppercase font-bold">Baseado em Legislação Federal e Normas do EB</p>
+                      <p className="font-cormorant font-semibold text-army-green text-lg leading-none">Resultado da consulta</p>
+                      <p className="text-[9px] text-army-green/40 uppercase tracking-widest font-medium mt-0.5">Baseado em Legislação Federal e Normas do EB</p>
                     </div>
                   </div>
-                  <div className="flex gap-2 no-print self-end">
-                    <button 
-                      onClick={handleDownloadPDF} 
-                      className="p-2.5 bg-slate-50 hover:bg-army-gold/10 rounded-xl text-slate-400 hover:text-army-gold transition-all border border-slate-100 flex items-center gap-2 text-xs font-bold" 
+                  <div className="flex gap-2 self-end">
+                    <button
+                      onClick={handleDownloadPDF}
+                      className="flex items-center gap-1.5 px-3.5 py-2 border border-army-green/15 hover:border-army-gold hover:bg-army-gold/5 text-army-green/50 hover:text-army-gold transition-all text-xs font-medium"
                       title="Baixar PDF"
                     >
-                      <Download size={18}/> <span className="hidden lg:inline">PDF</span>
+                      <Download size={14} /> <span className="hidden lg:inline">PDF</span>
                     </button>
-                    <button 
-                      onClick={() => window.print()} 
-                      className="p-2.5 bg-army-green hover:bg-green-900 rounded-xl text-white transition-all shadow-md flex items-center gap-2 text-xs font-bold" 
+                    <button
+                      onClick={() => window.print()}
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-army-green hover:bg-army-mid text-white transition-all text-xs font-medium"
                       title="Imprimir"
                     >
-                      <Printer size={18}/> <span className="hidden lg:inline">Imprimir</span>
+                      <Printer size={14} /> <span className="hidden lg:inline">Imprimir</span>
                     </button>
                   </div>
                 </div>
-                <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed text-sm md:text-base print:text-black overflow-visible">{renderedResponse}</div>
+                <div className="prose prose-slate max-w-none px-8 py-7 text-army-charcoal/80 leading-relaxed text-sm print:text-black overflow-visible">
+                  {renderedResponse}
+                </div>
               </div>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-40 text-center px-6 no-print">
-                <div className="w-24 h-24 bg-slate-200 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                    <Search size={48} className="text-slate-400" />
+              <div className="h-full flex flex-col items-center justify-center text-center px-6 no-print">
+                <div className="w-16 h-16 border border-army-gold/25 bg-white flex items-center justify-center mb-6">
+                  <Search size={28} className="text-army-green/25" />
                 </div>
-                <h3 className="text-2xl font-bold font-montserrat text-slate-600 mb-2">Central de Inteligência</h3>
-                <p className="text-sm max-w-xs leading-relaxed">Selecione as pastas de documentos ao lado e digite sua dúvida jurídica ou administrativa abaixo.</p>
+                <h3 className="font-cormorant font-semibold text-2xl text-army-green/40 mb-2">Central de Inteligência</h3>
+                <p className="text-xs text-army-green/30 max-w-xs leading-relaxed font-medium">
+                  Selecione as pastas de documentos ao lado e digite sua dúvida jurídica ou administrativa abaixo.
+                </p>
               </div>
             )}
           </div>
 
-          <div className="p-4 md:p-8 bg-white border-t border-slate-200 shadow-2xl relative z-10 no-print">
-            <div className="max-w-4xl mx-auto flex items-center gap-4">
-               <button 
-                 onClick={() => { setQuery(''); setResponse(''); }}
-                 className="p-4 bg-slate-50 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-2xl transition-all border border-slate-100"
-                 title="Limpar Conversa"
-               >
-                 <Trash2 size={24}/>
-               </button>
-               <div className="flex-1 relative group">
-                 <input 
-                   type="text" 
-                   className="w-full bg-slate-50 border border-slate-200 rounded-full py-6 pl-8 pr-24 focus:ring-4 focus:ring-army-green/5 focus:border-army-green outline-none text-base md:text-lg transition-all shadow-inner"
-                   placeholder="Sobre o que deseja pesquisar hoje?"
-                   value={query}
-                   onChange={e => setQuery(e.target.value)}
-                   onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                   disabled={loading || !hasSelection}
-                 />
-                 <button 
-                   onClick={handleSearch}
-                   disabled={loading || !hasSelection || !query.trim()}
-                   className="absolute right-2 top-2 bottom-2 bg-army-green hover:bg-green-900 text-white px-8 rounded-full font-bold shadow-lg transition-all disabled:opacity-30 disabled:shadow-none flex items-center justify-center"
-                 >
-                   <Send size={24}/>
-                 </button>
-               </div>
+          {/* ── Input bar ── */}
+          <div className="px-5 md:px-10 py-5 bg-white border-t border-army-green/10 shadow-[0_-4px_24px_rgba(46,61,26,0.06)] relative z-10 no-print">
+            <div className="max-w-4xl mx-auto flex items-center gap-3">
+              <button
+                onClick={() => { setQuery(''); setResponse(''); }}
+                className="flex-shrink-0 w-11 h-11 border border-army-green/15 hover:border-red-200 hover:bg-red-50 text-army-green/30 hover:text-red-400 transition-all flex items-center justify-center"
+                title="Limpar"
+              >
+                <Trash2 size={16} />
+              </button>
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  className="w-full bg-army-cream border border-army-green/15 focus:border-army-green focus:bg-white py-3.5 pl-5 pr-20 outline-none text-sm text-army-charcoal placeholder-army-green/30 transition-all"
+                  placeholder="Sobre o que deseja pesquisar hoje?"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                  disabled={loading || !hasSelection}
+                />
+                <button
+                  onClick={handleSearch}
+                  disabled={loading || !hasSelection || !query.trim()}
+                  className="absolute right-0 top-0 bottom-0 bg-army-green hover:bg-army-mid text-white px-5 font-medium transition-colors disabled:opacity-30 flex items-center justify-center"
+                >
+                  <Send size={17} />
+                </button>
+              </div>
             </div>
           </div>
         </main>
