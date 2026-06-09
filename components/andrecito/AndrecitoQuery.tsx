@@ -496,7 +496,7 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
                 </div>
               </div>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center px-6 no-print">
+              <div className="flex flex-col items-center justify-start text-center px-6 no-print pt-12">
                 <div className="w-16 h-16 border border-army-gold/25 bg-white flex items-center justify-center mb-6">
                   <Search size={28} className="text-army-green/25" />
                 </div>
