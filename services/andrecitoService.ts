@@ -57,9 +57,9 @@ const LOCAL_DOC_KEY = 'andrecito_local_documents';
 // MAX_DOC_CHARS reduzido de 12k → 6k: análises jurídicas focadas não precisam de
 // mais que os primeiros 6k chars de cada documento para responder com precisão.
 const MAX_DOC_CHARS = 6000;
-// MAX_OUTPUT_TOKENS reduzido de 4096 → 2048: respostas jurídicas raramente
-// ultrapassam 1000-1500 tokens — o teto anterior deixava janela desnecessária aberta.
-const MAX_OUTPUT_TOKENS = 2048;
+// MAX_OUTPUT_TOKENS: respostas jurídicas detalhadas com múltiplos artigos e fontes
+// facilmente ultrapassam 2048 tokens — teto aumentado para evitar JSON truncado.
+const MAX_OUTPUT_TOKENS = 4096;
 
 // Temperatura da IA: 0.15 era fria demais para análise jurídica (respostas
 // repetitivas e rasas). 0.35 dá mais contexto interpretativo sem perder fidelidade
@@ -794,14 +794,22 @@ REGRA OBRIGATÓRIA PARA fontesUtilizadas: liste TODOS os arquivos citados ou usa
         }
       });
 
-      // Parse robusto da saída estruturada. Se o modelo (por qualquer motivo) não
-      // devolver JSON válido, tratamos o texto cru como a resposta e caímos no
-      // matching por substring antigo — sem quebrar a experiência do usuário.
+      // Parse robusto da saída estruturada. Lida com três cenários comuns:
+      //   1) JSON válido — caminho feliz;
+      //   2) JSON envolto em ```json…``` — o modelo às vezes ignora responseMimeType;
+      //   3) JSON truncado pelo limite de tokens — extrai o campo "resposta" via cursor
+      //      manual, evitando exibir o JSON bruto ao usuário.
       let answer = '';
       let declaredSources: string[] = [];
       let parsedOk = false;
+
+      let rawText = responseText.trim();
+      // Caso 2: strip de code block markdown
+      const codeBlock = rawText.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/);
+      if (codeBlock) rawText = codeBlock[1].trim();
+
       try {
-        const parsed = JSON.parse(responseText);
+        const parsed = JSON.parse(rawText);
         if (parsed && typeof parsed === 'object') {
           answer = typeof parsed.resposta === 'string' ? parsed.resposta : '';
           declaredSources = Array.isArray(parsed.fontesUtilizadas)
@@ -809,7 +817,39 @@ REGRA OBRIGATÓRIA PARA fontesUtilizadas: liste TODOS os arquivos citados ou usa
             : [];
           parsedOk = answer.length > 0;
         }
-      } catch { /* não-JSON → fallback abaixo */ }
+      } catch {
+        // Caso 3: JSON inválido/truncado — extrai "resposta" percorrendo o cursor
+        const keyIdx = rawText.indexOf('"resposta"');
+        if (keyIdx !== -1) {
+          const colonIdx = rawText.indexOf(':', keyIdx);
+          const quoteStart = colonIdx !== -1 ? rawText.indexOf('"', colonIdx + 1) : -1;
+          if (quoteStart !== -1) {
+            let extracted = '';
+            let i = quoteStart + 1;
+            while (i < rawText.length) {
+              const ch = rawText[i];
+              if (ch === '\\' && i + 1 < rawText.length) {
+                const esc = rawText[i + 1];
+                if (esc === 'n') extracted += '\n';
+                else if (esc === 't') extracted += '\t';
+                else if (esc === '"') extracted += '"';
+                else if (esc === '\\') extracted += '\\';
+                else extracted += ch;
+                i += 2;
+              } else if (ch === '"') {
+                break;
+              } else {
+                extracted += ch;
+                i++;
+              }
+            }
+            if (extracted.length > 20) {
+              answer = extracted;
+              parsedOk = true;
+            }
+          }
+        }
+      }
 
       let finalResponse = (parsedOk ? answer : responseText)
         || "Desculpe, não consegui obter uma resposta estratégica agora.";

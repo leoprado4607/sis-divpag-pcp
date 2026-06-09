@@ -318,7 +318,53 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
     </div>
   )), [categories, expandedCat, subcategoriesMap, selectedSubcats]);
 
-  const renderedResponse = useMemo(() => <ReactMarkdown>{response}</ReactMarkdown>, [response]);
+  const renderedResponse = useMemo(() => (
+    <ReactMarkdown
+      components={{
+        h1: ({ children }) => <h1 className="font-cormorant font-bold text-2xl text-army-green mt-6 mb-3 first:mt-0 border-b border-army-gold/20 pb-2">{children}</h1>,
+        h2: ({ children }) => <h2 className="font-cormorant font-semibold text-xl text-army-green mt-5 mb-2 first:mt-0">{children}</h2>,
+        h3: ({ children }) => <h3 className="font-semibold text-base text-army-green mt-4 mb-1.5">{children}</h3>,
+        h4: ({ children }) => <h4 className="font-semibold text-sm text-army-green/80 mt-3 mb-1">{children}</h4>,
+        p: ({ children }) => <p className="mb-4 last:mb-0 leading-relaxed text-army-charcoal/80">{children}</p>,
+        ul: ({ children }) => <ul className="my-3 space-y-2 pl-0">{children}</ul>,
+        ol: ({ children }) => <ol className="my-3 space-y-2 pl-5 list-decimal">{children}</ol>,
+        li: ({ children, ...props }) => {
+          const ordered = (props as any).ordered;
+          return ordered ? (
+            <li className="leading-relaxed text-army-charcoal/80 pl-1">{children}</li>
+          ) : (
+            <li className="flex items-start gap-2.5 leading-relaxed text-army-charcoal/80">
+              <span className="mt-[7px] w-1.5 h-1.5 rounded-full bg-army-gold flex-shrink-0" />
+              <span>{children}</span>
+            </li>
+          );
+        },
+        strong: ({ children }) => <strong className="font-semibold text-army-green">{children}</strong>,
+        em: ({ children }) => <em className="italic text-army-charcoal/70">{children}</em>,
+        code: ({ children }) => <code className="bg-army-cream text-army-green/90 text-xs px-1.5 py-0.5 rounded font-mono border border-army-green/10">{children}</code>,
+        blockquote: ({ children }) => (
+          <blockquote className="border-l-4 border-army-gold/60 pl-4 py-1 my-4 bg-army-cream/60 text-army-charcoal/70 italic rounded-r">
+            {children}
+          </blockquote>
+        ),
+        hr: () => <hr className="my-5 border-army-green/10" />,
+        a: ({ href, children }) => (
+          <a href={href} target="_blank" rel="noopener noreferrer" className="text-army-green font-medium underline underline-offset-2 hover:text-army-gold transition-colors">
+            {children}
+          </a>
+        ),
+        table: ({ children }) => (
+          <div className="overflow-x-auto my-4">
+            <table className="w-full text-sm border-collapse">{children}</table>
+          </div>
+        ),
+        th: ({ children }) => <th className="bg-army-green text-white px-3 py-2 text-left font-semibold text-xs tracking-wide">{children}</th>,
+        td: ({ children }) => <td className="border border-army-green/10 px-3 py-2 text-army-charcoal/80">{children}</td>,
+      }}
+    >
+      {response}
+    </ReactMarkdown>
+  ), [response]);
 
   return (
     <div className="flex flex-col h-screen bg-army-cream overflow-hidden">
@@ -445,7 +491,7 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
                     </button>
                   </div>
                 </div>
-                <div className="prose prose-slate max-w-none px-8 py-7 text-army-charcoal/80 leading-relaxed text-sm print:text-black overflow-visible">
+                <div className="max-w-none px-8 py-7 text-sm print:text-black overflow-visible">
                   {renderedResponse}
                 </div>
               </div>
