@@ -56,17 +56,6 @@ const AndrecitoLogin: React.FC<AndrecitoLoginProps> = ({ onLogin, onBack }) => {
           style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,.9) 1px, transparent 0)', backgroundSize: '28px 28px' }}
         />
 
-        {/* Back button */}
-        <div className="relative z-10 px-12 pt-10">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-white/40 hover:text-army-gold transition-colors text-[11px] font-medium tracking-[0.14em] uppercase"
-            title="Voltar ao portal"
-          >
-            <ArrowLeft size={13} />
-          </button>
-        </div>
-
         {/* Center content */}
         <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-14 -mt-8">
 
