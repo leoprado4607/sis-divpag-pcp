@@ -71,6 +71,14 @@ export default {
         'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
         'fade-in': 'fadeIn 0.4s ease-out forwards',
       },
+      spacing: {
+        '74': '298px',
+      },
+      height: {
+        '16': '64px',
+        '9/10': '90%',
+        '1/10': '10%',
+      },
     },
   },
   plugins: [require('@tailwindcss/typography')],

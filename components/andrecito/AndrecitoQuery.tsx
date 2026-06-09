@@ -371,7 +371,7 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
 
       {/* ── Header ── */}
       <header className="bg-army-green text-white sticky top-0 z-50 border-b-2 border-army-gold no-print">
-        <div className="max-w-[1600px] mx-auto px-5 sm:px-8 h-[64px] flex items-center gap-4">
+        <div className="max-w-[1600px] mx-auto px-5 sm:px-8 h-16 flex items-center gap-4">
 
           {/* Back + system name */}
           <div className="flex items-center gap-3.5 flex-shrink-0">
@@ -423,7 +423,7 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
       <div className="flex flex-1 overflow-hidden">
 
         {/* ── Sidebar ── */}
-        <aside className="w-72 bg-white border-r border-army-green/10 flex flex-col h-full z-10 no-print">
+        <aside className="w-74 bg-white border-r border-army-green/10 flex flex-col h-9/10 z-10 no-print">
           <div className="px-5 pt-6 pb-2 border-b border-army-green/8">
             <p className="text-[9px] font-semibold tracking-[0.2em] uppercase text-army-gold mb-0.5">Acervo</p>
             <h3 className="font-cormorant font-semibold text-[1.1rem] text-army-green leading-tight">Documentos</h3>
@@ -433,20 +433,49 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
             {categoryTree}
           </div>
 
-          {/* Doc count */}
-          <div className="p-4 border-t border-army-green/10 bg-army-cream/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[9px] tracking-[0.14em] uppercase text-army-green/40 font-medium mb-0.5">Escopo de Análise</p>
-                <p className="font-cormorant font-semibold text-xl text-army-green leading-none">{estimatedDocCount} <span className="text-sm font-sans font-normal text-army-green/50">arquivos</span></p>
-              </div>
-              <Bot size={20} className="text-army-gold/40" />
+          {/* Doc count - Footer */}
+          <div className="h-20 flex flex-col items-center justify-center px-5 py-3 border-t-2 border-army-gold/30 bg-army-cream/50">
+            <div className="w-full flex flex-col items-center justify-center text-center gap-1">
+              <p className="text-[8px] tracking-[0.14em] uppercase text-army-green/40 font-medium">Escopo de Análise</p>
+              <p className="font-cormorant font-semibold text-2xl text-army-green leading-none">{estimatedDocCount}</p>
+              <p className="text-xs font-sans font-normal text-army-green/50">arquivos</p>
             </div>
           </div>
         </aside>
 
         {/* ── Main ── */}
         <main className="flex-1 flex flex-col bg-army-cream/40 overflow-hidden relative">
+
+          {/* ── Input bar ── */}
+          <div className="px-5 md:px-10 py-5 bg-white border-b border-army-green/10 shadow-[0_4px_24px_rgba(46,61,26,0.06)] relative z-10 no-print">
+            <div className="max-w-4xl mx-auto flex items-center gap-3">
+              <button
+                onClick={() => { setQuery(''); setResponse(''); }}
+                className="flex-shrink-0 w-11 h-11 border border-army-green/15 hover:border-red-200 hover:bg-red-50 text-army-green/30 hover:text-red-400 transition-all flex items-center justify-center"
+                title="Limpar"
+              >
+                <Trash2 size={16} />
+              </button>
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  className="w-full bg-army-cream border border-army-green/15 focus:border-army-green focus:bg-white py-3.5 pl-5 pr-20 outline-none text-sm text-army-charcoal placeholder-army-green/30 transition-all"
+                  placeholder="Sobre o que deseja pesquisar hoje?"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                  disabled={loading || !hasSelection}
+                />
+                <button
+                  onClick={handleSearch}
+                  disabled={loading || !hasSelection || !query.trim()}
+                  className="absolute right-0 top-0 bottom-0 bg-army-green hover:bg-army-mid text-white px-5 font-medium transition-colors disabled:opacity-30 flex items-center justify-center"
+                >
+                  <Send size={17} />
+                </button>
+              </div>
+            </div>
+          </div>
 
           {/* Results area */}
           <div className="flex-1 overflow-y-auto p-5 md:p-10 custom-scrollbar">
@@ -506,37 +535,6 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
                 </p>
               </div>
             )}
-          </div>
-
-          {/* ── Input bar ── */}
-          <div className="px-5 md:px-10 py-5 bg-white border-t border-army-green/10 shadow-[0_-4px_24px_rgba(46,61,26,0.06)] relative z-10 no-print">
-            <div className="max-w-4xl mx-auto flex items-center gap-3">
-              <button
-                onClick={() => { setQuery(''); setResponse(''); }}
-                className="flex-shrink-0 w-11 h-11 border border-army-green/15 hover:border-red-200 hover:bg-red-50 text-army-green/30 hover:text-red-400 transition-all flex items-center justify-center"
-                title="Limpar"
-              >
-                <Trash2 size={16} />
-              </button>
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  className="w-full bg-army-cream border border-army-green/15 focus:border-army-green focus:bg-white py-3.5 pl-5 pr-20 outline-none text-sm text-army-charcoal placeholder-army-green/30 transition-all"
-                  placeholder="Sobre o que deseja pesquisar hoje?"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                  disabled={loading || !hasSelection}
-                />
-                <button
-                  onClick={handleSearch}
-                  disabled={loading || !hasSelection || !query.trim()}
-                  className="absolute right-0 top-0 bottom-0 bg-army-green hover:bg-army-mid text-white px-5 font-medium transition-colors disabled:opacity-30 flex items-center justify-center"
-                >
-                  <Send size={17} />
-                </button>
-              </div>
-            </div>
           </div>
         </main>
       </div>
