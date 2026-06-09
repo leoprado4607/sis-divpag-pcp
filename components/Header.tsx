@@ -46,27 +46,8 @@ const Header: React.FC<HeaderProps> = ({ onBack }) => {
           </div>
         </div>
 
-        {/* Nav links — home only, spacer pushes right */}
-        <div className="flex-1 flex items-center justify-center">
-          {!onBack && (
-            <nav className="hidden md:flex items-center gap-7">
-              {[
-                { label: 'Sistemas',   href: '#sistemas'   },
-                { label: 'Dados',      href: '#dados'      },
-                { label: 'FAQ',        href: '#faq'        },
-                { label: 'Exercícios', href: '#exercicios' },
-              ].map(({ label, href }) => (
-                <a
-                  key={label}
-                  href={href}
-                  className="text-[.82rem] font-medium text-white/50 hover:text-army-gold-light transition-colors tracking-wide whitespace-nowrap"
-                >
-                  {label}
-                </a>
-              ))}
-            </nav>
-          )}
-        </div>
+        {/* Spacer */}
+        <div className="flex-1" />
 
         {/* Right: status badge */}
         <div className="hidden sm:flex items-center gap-2 bg-white/[0.07] border border-army-gold/25 px-3.5 py-[7px] flex-shrink-0">
