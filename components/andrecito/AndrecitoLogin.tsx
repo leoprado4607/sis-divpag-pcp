@@ -61,9 +61,9 @@ const AndrecitoLogin: React.FC<AndrecitoLoginProps> = ({ onLogin, onBack }) => {
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-white/40 hover:text-army-gold transition-colors text-[11px] font-medium tracking-[0.14em] uppercase"
+            title="Voltar ao portal"
           >
             <ArrowLeft size={13} />
-            Voltar ao Portal
           </button>
         </div>
 
