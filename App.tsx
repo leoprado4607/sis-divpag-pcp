@@ -38,7 +38,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col bg-army-cream overflow-x-hidden">
         <SpeedInsights />
-        <Header onBack={handleBackToHome} />
+        {!['andrecito-app', 'comparison-app', 'dea-dashboard'].includes(currentView) && <Header onBack={handleBackToHome} />}
         <main className="flex-grow">
           <Suspense fallback={<ViewLoader />}>
             {currentView === 'dea-dashboard'  && <DeaDashboard  onBack={handleBackToHome} />}
