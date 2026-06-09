@@ -78,12 +78,12 @@ const QuickLinks: React.FC = () => {
   /* ── Loading state ── */
   if (loading) {
     return (
-      <div className="w-full bg-army-charcoal border-b border-white/5">
+      <div className="w-full bg-army-cream-dark border-y border-army-gold/40">
         <div className="max-w-[1600px] mx-auto grid grid-cols-3 sm:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="px-4 py-3.5 border-r border-white/[0.06] last:border-r-0">
-              <div className="h-2 bg-white/8 rounded mb-2 w-16 skeleton-shimmer" />
-              <div className="h-4 bg-white/10 rounded w-20 skeleton-shimmer" />
+            <div key={i} className="px-4 py-3.5 border-r border-army-green/[0.08] last:border-r-0">
+              <div className="h-2 bg-army-green/10 rounded mb-2 w-16 skeleton-shimmer" />
+              <div className="h-4 bg-army-green/15 rounded w-20 skeleton-shimmer" />
             </div>
           ))}
         </div>
@@ -94,10 +94,10 @@ const QuickLinks: React.FC = () => {
   /* ── Error state ── */
   if (error) {
     return (
-      <div className="w-full bg-army-charcoal border-b border-white/5">
+      <div className="w-full bg-army-cream-dark border-y border-army-gold/40">
         <div className="flex items-center justify-center gap-2 py-3 px-4">
-          <AlertCircle size={13} className="text-amber-400 flex-shrink-0" />
-          <span className="text-[11px] font-medium text-amber-400/80 uppercase tracking-widest">
+          <AlertCircle size={13} className="text-amber-600 flex-shrink-0" />
+          <span className="text-[11px] font-medium text-amber-600/80 uppercase tracking-widest">
             Erro ao carregar dados em tempo real
           </span>
         </div>
@@ -109,7 +109,7 @@ const QuickLinks: React.FC = () => {
 
   /* ── Data state ── */
   return (
-    <div className="w-full bg-army-charcoal border-b border-army-gold/15">
+    <div className="w-full bg-army-cream-dark border-y border-army-gold/40">
       <div className="max-w-[1600px] mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         {items.map((item, index) => {
           const isLast = index === items.length - 1;
@@ -122,21 +122,21 @@ const QuickLinks: React.FC = () => {
               rel={item.url ? "noopener noreferrer" : undefined}
               className={`
                 group px-4 py-3.5 text-center
-                border-r border-white/[0.06] ${isLast ? 'border-r-0' : ''}
-                ${item.url ? 'cursor-pointer hover:bg-white/5 transition-colors' : ''}
+                border-r border-army-green/[0.10] ${isLast ? 'border-r-0' : ''}
+                ${item.url ? 'cursor-pointer hover:bg-army-green/5 transition-colors' : ''}
               `}
             >
-              <p className="text-[9px] font-medium tracking-[0.12em] uppercase text-white/30 mb-1 line-clamp-1">
+              <p className="text-[9px] font-medium tracking-[0.12em] uppercase text-army-green/40 mb-1 line-clamp-1">
                 {item.title}
               </p>
               {item.value && (
-                <p className="text-sm font-bold text-white leading-none line-clamp-1
+                <p className="text-sm font-bold text-army-green leading-none line-clamp-1
                               group-hover:text-army-gold transition-colors">
                   {item.value}
                 </p>
               )}
               {item.url && !item.value && (
-                <p className="text-[11px] font-semibold text-army-gold/70 group-hover:text-army-gold transition-colors">
+                <p className="text-[11px] font-semibold text-army-gold group-hover:text-army-gold-light transition-colors">
                   Acessar →
                 </p>
               )}
