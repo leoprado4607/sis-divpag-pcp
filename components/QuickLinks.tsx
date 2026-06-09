@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, TrendingUp } from 'lucide-react';
 
 interface QuickLinkItem {
   title: string;
@@ -75,76 +75,96 @@ const QuickLinks: React.FC = () => {
     fetchSheet();
   }, []);
 
-  /* ── Loading state ── */
-  if (loading) {
-    return (
-      <div className="w-full bg-army-cream-dark border-y border-army-gold/40">
-        <div className="max-w-[1600px] mx-auto grid grid-cols-3 sm:grid-cols-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="px-4 py-3.5 border-r border-army-green/[0.08] last:border-r-0">
-              <div className="h-2 bg-army-green/10 rounded mb-2 w-16 skeleton-shimmer" />
-              <div className="h-4 bg-army-green/15 rounded w-20 skeleton-shimmer" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  /* ── Error state ── */
-  if (error) {
-    return (
-      <div className="w-full bg-army-cream-dark border-y border-army-gold/40">
-        <div className="flex items-center justify-center gap-2 py-3 px-4">
-          <AlertCircle size={13} className="text-amber-600 flex-shrink-0" />
-          <span className="text-[11px] font-medium text-amber-600/80 uppercase tracking-widest">
-            Erro ao carregar dados em tempo real
-          </span>
-        </div>
-      </div>
-    );
-  }
-
-  if (items.length === 0) return null;
-
-  /* ── Data state ── */
   return (
-    <div className="w-full bg-army-cream-dark border-y border-army-gold/40">
-      <div className="max-w-[1600px] mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-        {items.map((item, index) => {
-          const isLast = index === items.length - 1;
-          const CellWrapper = item.url ? 'a' : 'div';
-          return (
-            <CellWrapper
-              key={index}
-              href={item.url}
-              target={item.url ? "_blank" : undefined}
-              rel={item.url ? "noopener noreferrer" : undefined}
-              className={`
-                group px-4 py-3.5 text-center
-                border-r border-army-green/[0.10] ${isLast ? 'border-r-0' : ''}
-                ${item.url ? 'cursor-pointer hover:bg-army-green/5 transition-colors' : ''}
-              `}
-            >
-              <p className="text-[9px] font-medium tracking-[0.12em] uppercase text-army-green/40 mb-1 line-clamp-1">
-                {item.title}
-              </p>
-              {item.value && (
-                <p className="text-sm font-bold text-army-green leading-none line-clamp-1
-                              group-hover:text-army-gold transition-colors">
-                  {item.value}
-                </p>
-              )}
-              {item.url && !item.value && (
-                <p className="text-[11px] font-semibold text-army-gold group-hover:text-army-gold-light transition-colors">
-                  Acessar →
-                </p>
-              )}
-            </CellWrapper>
-          );
-        })}
+    <section className="bg-white px-4 sm:px-6 lg:px-8 py-10 border-b border-army-green/8">
+      <div className="max-w-[1600px] mx-auto">
+
+        {/* Section label */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-px flex-grow bg-army-green/15" />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-army-gold whitespace-nowrap">
+            Dados de Pagamento
+          </span>
+          <div className="h-px flex-grow bg-army-green/15" />
+        </div>
+
+        {/* ── Loading state ── */}
+        {loading && (
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-px bg-army-green/8">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-white p-5 flex flex-col gap-3">
+                <div className="h-2 bg-army-green/10 rounded w-16 animate-pulse" />
+                <div className="h-5 bg-army-green/10 rounded w-20 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Error state ── */}
+        {!loading && error && (
+          <div className="flex items-center justify-center gap-2 py-6">
+            <AlertCircle size={14} className="text-amber-600 flex-shrink-0" />
+            <span className="text-[11px] font-medium text-amber-600/80 uppercase tracking-widest">
+              Erro ao carregar dados em tempo real
+            </span>
+          </div>
+        )}
+
+        {/* ── Cards ── */}
+        {!loading && !error && items.length > 0 && (
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-px bg-army-green/8">
+            {items.map((item, index) => {
+              const Wrapper = item.url ? 'a' : 'div';
+              return (
+                <Wrapper
+                  key={index}
+                  href={item.url}
+                  target={item.url ? "_blank" : undefined}
+                  rel={item.url ? "noopener noreferrer" : undefined}
+                  className={`
+                    group relative flex flex-col bg-white overflow-hidden
+                    ${item.url ? 'cursor-pointer hover:border-army-gold/40 hover:shadow-md hover:-translate-y-0.5' : ''}
+                    transition-all duration-300
+                  `}
+                >
+                  {/* Bottom accent line */}
+                  <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-army-green scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300" />
+
+                  <div className="p-5 flex flex-col flex-grow">
+                    {/* Icon */}
+                    <div className="inline-flex p-2 bg-army-cream border border-army-green/10 mb-3 self-start
+                                    group-hover:bg-army-green/5 transition-colors">
+                      <TrendingUp size={16} className="text-army-green/50" />
+                    </div>
+
+                    {/* Label */}
+                    <p className="text-[9px] font-semibold tracking-[0.14em] uppercase text-army-green/40 mb-1.5 line-clamp-2 leading-relaxed">
+                      {item.title}
+                    </p>
+
+                    {/* Value */}
+                    {item.value && (
+                      <p className="font-cormorant font-semibold text-[1.2rem] leading-tight text-army-charcoal
+                                    group-hover:text-army-green transition-colors whitespace-nowrap overflow-hidden text-ellipsis mt-auto">
+                        {item.value}
+                      </p>
+                    )}
+
+                    {/* Link CTA */}
+                    {item.url && !item.value && (
+                      <p className="text-[11px] font-semibold text-army-gold group-hover:text-army-gold-light transition-colors mt-auto uppercase tracking-[0.08em]">
+                        Acessar →
+                      </p>
+                    )}
+                  </div>
+                </Wrapper>
+              );
+            })}
+          </div>
+        )}
+
       </div>
-    </div>
+    </section>
   );
 };
 

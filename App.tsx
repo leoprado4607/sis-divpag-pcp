@@ -59,9 +59,6 @@ const App: React.FC = () => {
       {/* Sticky nav */}
       <Header showExtraLogos={true} />
 
-      {/* Stats bar */}
-      <QuickLinks />
-
       {/* ── Hero ── */}
       <section className="relative overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[52vh]">
@@ -129,6 +126,9 @@ const App: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* ── Dados de Pagamento ── */}
+      <QuickLinks />
 
       {/* ── Systems grid ── */}
       <section id="sistemas" className="flex-grow bg-white px-4 sm:px-6 lg:px-8 py-12">
