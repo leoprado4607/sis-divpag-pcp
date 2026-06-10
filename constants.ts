@@ -57,7 +57,7 @@ export const SYSTEM_LINKS: SystemLink[] = [
   {
     id: 'repositorio-dap',
     title: 'Repositório DAP',
-    description: 'Consulte a biblioteca da DAP',
+    description: 'Consulte a biblioteca da DAP (Intranet)',
     url: 'http://a3e7.infra.7cta.eb.mil.br/rcdap/menu/',
     icon: Library,
     iconImage: DAP_LOGO,
