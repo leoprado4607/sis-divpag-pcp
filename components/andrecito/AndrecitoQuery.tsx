@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Search, Send, FileText, CheckCircle2, AlertCircle, Printer, Download, BookOpen, ChevronDown, ChevronRight, CheckSquare, Square, Filter, X, ArrowLeft, Library, Settings, LogOut, Bot, Folder, RefreshCw, Trash2, Cpu, Info } from 'lucide-react';
+import { Search, Send, FileText, CheckCircle2, AlertCircle, Printer, Download, BookOpen, ChevronDown, ChevronRight, CheckSquare, Square, Filter, X, ArrowLeft, Library, Settings, LogOut, Bot, Folder, RefreshCw, Trash2, Cpu, Info, Lock, Users, ShieldCheck } from 'lucide-react';
 import { andrecitoService } from '../../services/andrecitoService';
 import { AndrecitoCategory, AndrecitoSubcategory, AndrecitoDocument } from '../../types';
 import { ViewState, UserRole } from './AndrecitoApp';
@@ -13,6 +13,62 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PÚBLICO-ALVO → SUBCATEGORIAS
+// Cada opção de público-alvo seleciona automaticamente (e trava) um conjunto fixo
+// de subcategorias. Os IDs abaixo são os reais do banco de produção (tabela
+// subcategories), casados pelo par categoria+subcategoria — cravar por ID evita a
+// ambiguidade das várias subcategorias chamadas "Geral" (SIPPES, SIAPPES, SIAPE…).
+// ─────────────────────────────────────────────────────────────────────────────
+interface AudienceOption {
+  key: string;
+  label: string;
+  /** IDs das subcategorias marcadas/travadas ao selecionar este público-alvo. */
+  subcatIds: string[];
+}
+
+const AUDIENCE_OPTIONS: AudienceOption[] = [
+  {
+    key: 'militar_ativa',
+    label: 'Militar da Ativa',
+    subcatIds: [
+      'f7dd0839-f465-434a-ba97-016a7dbe61f8', // Cadernos de Orientações (SEF) › Pagamento de Pessoal
+      '4931ac14-0ac8-4800-93a4-0fcfb47e3059', // Estágio IEFEx › 1 - Militar da Ativa
+      '922f8cbf-d1bf-4de1-9e32-a9a332c2ff38', // Orientações Técnicas CPEx › 1 - Militar da Ativa
+      '35678ecf-c75b-4cd4-b717-cf34298b3b24', // SIPPES › Geral
+    ],
+  },
+  {
+    key: 'veterano',
+    label: 'Veterano',
+    subcatIds: [
+      'f7dd0839-f465-434a-ba97-016a7dbe61f8', // Cadernos de Orientações (SEF) › Pagamento de Pessoal
+      '24ef64a3-eec1-49cd-885c-3908ced5ca5b', // Estágio IEFEx › 2 - Veteranos
+      '06472cdb-5c33-4990-963a-f9c06bb87b7c', // Orientações Técnicas CPEx › 2 - Veterano
+      '59b690cd-1794-4f16-9736-b897c0974841', // SIAPPES › Geral
+    ],
+  },
+  {
+    key: 'pensionista',
+    label: 'Pensionista',
+    subcatIds: [
+      'f7dd0839-f465-434a-ba97-016a7dbe61f8', // Cadernos de Orientações (SEF) › Pagamento de Pessoal
+      '79887ae5-e33e-4684-ac61-7440ab198224', // Estágio IEFEx › 3 - Pensionistas
+      '3bf2db77-3fea-42de-a66c-2b7cda875e6c', // Orientações Técnicas CPEx › 3 - Pensionista militar
+      '59b690cd-1794-4f16-9736-b897c0974841', // SIAPPES › Geral
+    ],
+  },
+  {
+    key: 'servidor_civil',
+    label: 'Servidor Civil',
+    subcatIds: [
+      'f7dd0839-f465-434a-ba97-016a7dbe61f8', // Cadernos de Orientações (SEF) › Pagamento de Pessoal
+      '93a03d44-4693-42c0-bfbd-d59ab7172eae', // Servidor civil › Geral
+      'c7381683-566d-4480-8429-7aee53639619', // SIAPE › Geral
+    ],
+  },
+];
+
 interface AndrecitoQueryProps {
   onBack: () => void;
   onLogout: () => void;
@@ -24,8 +80,24 @@ interface AndrecitoQueryProps {
 const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNavigate, currentView, userRole }) => {
   const [categories, setCategories] = useState<AndrecitoCategory[]>([]);
   const [subcategoriesMap, setSubcategoriesMap] = useState<Record<string, AndrecitoSubcategory[]>>({});
+  // Seleção MANUAL de subcategorias (refinamento opcional). As subcategorias
+  // travadas pelo público-alvo são controladas à parte (lockedSubcats) e não
+  // entram aqui — assim o usuário nunca consegue desmarcá-las.
   const [selectedSubcats, setSelectedSubcats] = useState<string[]>([]);
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
+  // Público-alvo escolhido (1 ou mais). Obrigatório para liberar a busca.
+  const [selectedAudiences, setSelectedAudiences] = useState<string[]>([]);
+  // Pop-up inicial com as instruções de uso (público-alvo obrigatório etc.).
+  // Aparece apenas uma vez por sessão do navegador (sessionStorage): ao fechar,
+  // marca-se a flag e ele não reabre até a aba/sessão ser encerrada.
+  const [showIntro, setShowIntro] = useState(() => {
+    try { return sessionStorage.getItem('andrecito_intro_seen') !== '1'; } catch { return true; }
+  });
+
+  const dismissIntro = useCallback(() => {
+    setShowIntro(false);
+    try { sessionStorage.setItem('andrecito_intro_seen', '1'); } catch { /* sessão sem storage */ }
+  }, []);
   const [expandedCat, setExpandedCat] = useState<string>('');
   const [estimatedDocCount, setEstimatedDocCount] = useState(0);
   const [query, setQuery] = useState('');
@@ -34,12 +106,42 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
   const [loading, setLoading] = useState(false);
   const [processingStep, setProcessingStep] = useState('');
 
-  const hasSelection = selectedSubcats.length > 0 || selectedCats.length > 0;
+  // Subcategorias travadas = união das subcategorias dos públicos-alvo marcados.
+  const lockedSubcats = useMemo(() => {
+    const set = new Set<string>();
+    selectedAudiences.forEach(key => {
+      const opt = AUDIENCE_OPTIONS.find(o => o.key === key);
+      opt?.subcatIds.forEach(id => set.add(id));
+    });
+    return set;
+  }, [selectedAudiences]);
+
+  // Conjunto efetivo enviado à busca = travadas (público-alvo) ∪ manuais.
+  const effectiveSubcats = useMemo(
+    () => Array.from(new Set<string>([...lockedSubcats, ...selectedSubcats])),
+    [lockedSubcats, selectedSubcats]
+  );
+
+  // Regra de obrigatoriedade: a busca só é liberada após escolher ao menos um
+  // público-alvo. Categorias/subcategorias manuais são refinamento opcional.
+  const canSearch = selectedAudiences.length > 0;
 
   const loadData = useCallback(async () => {
     try {
-      const cats = await andrecitoService.getCategories();
+      // Carrega categorias e TODAS as subcategorias de uma vez. Preencher o mapa
+      // completo (em vez de buscar sob demanda na expansão) permite refletir as
+      // subcategorias travadas pelo público-alvo em qualquer categoria que o
+      // usuário expandir, sem uma ida extra ao banco.
+      const [cats, allSubs] = await Promise.all([
+        andrecitoService.getCategories(),
+        andrecitoService.getAllSubcategories(),
+      ]);
       setCategories(cats);
+      const grouped: Record<string, AndrecitoSubcategory[]> = {};
+      allSubs.forEach(s => {
+        (grouped[s.category_id] ||= []).push(s);
+      });
+      setSubcategoriesMap(grouped);
     } catch (e) {
       console.error(e);
     }
@@ -47,14 +149,22 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
 
   const updateDocCount = useCallback(async () => {
     try {
-      const subPromises = selectedSubcats.map(id => andrecitoService.getDocuments(id));
+      const subPromises = effectiveSubcats.map(id => andrecitoService.getDocuments(id));
       const catPromises = selectedCats.map(id => andrecitoService.getDocumentsByCategory(id));
       const results = await Promise.all([...subPromises, ...catPromises]);
       setEstimatedDocCount(results.flat().length);
     } catch (e) {
       console.error(e);
     }
-  }, [selectedSubcats, selectedCats]);
+  }, [effectiveSubcats, selectedCats]);
+
+  // Alterna um público-alvo. Ao desmarcar, suas subcategorias travadas saem
+  // automaticamente (lockedSubcats é derivado de selectedAudiences).
+  const toggleAudience = useCallback((key: string) => {
+    setSelectedAudiences(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -64,7 +174,7 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
   }, [updateDocCount]);
 
   const handleSearch = useCallback(async () => {
-    if (!query.trim() || !hasSelection) return;
+    if (!query.trim() || !canSearch) return;
 
     setLoading(true);
     setResponse('');
@@ -72,7 +182,7 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
 
     try {
       setProcessingStep('Localizando documentos...');
-      const subPromises = selectedSubcats.map(id => andrecitoService.getDocuments(id));
+      const subPromises = effectiveSubcats.map(id => andrecitoService.getDocuments(id));
       const catPromises = selectedCats.map(id => andrecitoService.getDocumentsByCategory(id));
       const results = await Promise.all([...subPromises, ...catPromises]);
       const allDocs = results.flat();
@@ -93,7 +203,7 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
       setLoading(false);
       setProcessingStep('');
     }
-  }, [query, hasSelection, selectedSubcats, selectedCats]);
+  }, [query, canSearch, effectiveSubcats, selectedCats]);
 
   const handleDownloadPDF = useCallback(() => {
     if (!response) return;
@@ -284,7 +394,10 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
     doc.save(`Andrecito_Consulta_${new Date().toISOString().slice(0, 10)}.pdf`);
   }, [response, lastQuery]);
 
-  const categoryTree = useMemo(() => categories.map(cat => (
+  const categoryTree = useMemo(() => categories.map(cat => {
+    // Quantas subcategorias desta categoria estão travadas pelo público-alvo.
+    const lockedCount = (subcategoriesMap[cat.id] || []).filter(s => lockedSubcats.has(s.id)).length;
+    return (
     <div key={cat.id} className="mb-1.5">
       <button
         onClick={() => {
@@ -296,27 +409,48 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
         <span className="flex items-center gap-2">
           <Folder size={13} className={expandedCat === cat.id ? 'text-army-gold' : 'text-army-green/30'} />
           {cat.name}
+          {lockedCount > 0 && (
+            <span
+              className="flex items-center gap-0.5 text-[8.5px] font-bold text-army-gold bg-army-gold/10 px-1.5 py-0.5 rounded-full"
+              title={`${lockedCount} subcategoria(s) selecionada(s) pelo público-alvo`}
+            >
+              <Lock size={8} /> {lockedCount}
+            </span>
+          )}
         </span>
         {expandedCat === cat.id ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
       </button>
       {expandedCat === cat.id && (
         <div className="pl-4 space-y-0.5 mt-0.5 border-l border-army-gold/25 ml-1.5">
-          {subcategoriesMap[cat.id]?.map(sub => (
-            <button
-              key={sub.id}
-              onClick={() => setSelectedSubcats(p => p.includes(sub.id) ? p.filter(x => x !== sub.id) : [...p, sub.id])}
-              className={`w-full flex items-center gap-2 py-1.5 text-xs transition-all ${selectedSubcats.includes(sub.id) ? 'text-army-green font-semibold' : 'text-army-green/50 hover:text-army-green'}`}
-            >
-              {selectedSubcats.includes(sub.id)
-                ? <CheckSquare size={13} className="text-army-gold flex-shrink-0" />
-                : <Square size={13} className="text-army-green/20 flex-shrink-0" />}
-              {sub.name}
-            </button>
-          ))}
+          {subcategoriesMap[cat.id]?.map(sub => {
+            const isLocked = lockedSubcats.has(sub.id);
+            const isManual = selectedSubcats.includes(sub.id);
+            const isChecked = isLocked || isManual;
+            return (
+              <button
+                key={sub.id}
+                disabled={isLocked}
+                onClick={() => {
+                  // Itens travados pelo público-alvo não podem ser desmarcados.
+                  if (isLocked) return;
+                  setSelectedSubcats(p => p.includes(sub.id) ? p.filter(x => x !== sub.id) : [...p, sub.id]);
+                }}
+                title={isLocked ? 'Selecionado automaticamente pelo público-alvo (não editável)' : undefined}
+                className={`w-full flex items-center gap-2 py-1.5 text-xs transition-all ${isLocked ? 'text-army-green font-semibold cursor-not-allowed' : isManual ? 'text-army-green font-semibold' : 'text-army-green/50 hover:text-army-green'}`}
+              >
+                {isChecked
+                  ? <CheckSquare size={13} className="text-army-gold flex-shrink-0" />
+                  : <Square size={13} className="text-army-green/20 flex-shrink-0" />}
+                <span className="text-left flex-1">{sub.name}</span>
+                {isLocked && <Lock size={10} className="text-army-gold/60 flex-shrink-0" />}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
-  )), [categories, expandedCat, subcategoriesMap, selectedSubcats]);
+    );
+  }), [categories, expandedCat, subcategoriesMap, selectedSubcats, lockedSubcats]);
 
   const renderedResponse = useMemo(() => (
     <ReactMarkdown
@@ -459,21 +593,58 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
               <div className="flex-1 relative">
                 <input
                   type="text"
-                  className="w-full bg-army-cream border border-army-green/15 focus:border-army-green focus:bg-white py-3.5 pl-5 pr-20 outline-none text-sm text-army-charcoal placeholder-army-green/30 transition-all"
-                  placeholder="Sobre o que deseja pesquisar hoje?"
+                  className="w-full bg-army-cream border border-army-green/15 focus:border-army-green focus:bg-white py-3.5 pl-5 pr-20 outline-none text-sm text-army-charcoal placeholder-army-green/30 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  placeholder={canSearch ? 'Sobre o que deseja pesquisar hoje?' : 'Selecione ao menos um público-alvo abaixo para liberar a pesquisa…'}
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                  disabled={loading || !hasSelection}
+                  disabled={loading || !canSearch}
                 />
                 <button
                   onClick={handleSearch}
-                  disabled={loading || !hasSelection || !query.trim()}
+                  disabled={loading || !canSearch || !query.trim()}
                   className="absolute right-0 top-0 bottom-0 bg-army-green hover:bg-army-mid text-white px-5 font-medium transition-colors disabled:opacity-30 flex items-center justify-center"
                 >
                   <Send size={17} />
                 </button>
               </div>
+            </div>
+
+            {/* ── Público-alvo (obrigatório) ── */}
+            <div className="max-w-4xl mx-auto mt-4">
+              <div className="flex items-center gap-2 mb-2.5">
+                <Users size={13} className="text-army-gold" />
+                <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-army-green/60">
+                  Público-alvo da consulta
+                </p>
+                <span className="text-[9px] font-bold text-army-gold uppercase tracking-wide">· obrigatório</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {AUDIENCE_OPTIONS.map(opt => {
+                  const active = selectedAudiences.includes(opt.key);
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => toggleAudience(opt.key)}
+                      aria-pressed={active}
+                      className={`flex items-center gap-2 px-3 py-2.5 border text-xs font-medium transition-all ${active
+                        ? 'border-army-green bg-army-green/[0.06] text-army-green shadow-sm'
+                        : 'border-army-green/15 bg-army-cream/40 text-army-green/50 hover:border-army-green/40 hover:text-army-green'}`}
+                    >
+                      {active
+                        ? <CheckSquare size={15} className="text-army-gold flex-shrink-0" />
+                        : <Square size={15} className="text-army-green/25 flex-shrink-0" />}
+                      <span className="text-left leading-tight">{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {!canSearch && (
+                <p className="flex items-center gap-1.5 text-[11px] text-army-green/45 mt-2.5">
+                  <Info size={12} className="text-army-gold flex-shrink-0" />
+                  Escolha pelo menos um público-alvo. As pastas correspondentes serão selecionadas automaticamente; o refinamento por categorias é opcional.
+                </p>
+              )}
             </div>
           </div>
 
@@ -530,14 +701,66 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
                   <Search size={28} className="text-army-green/25" />
                 </div>
                 <h3 className="font-cormorant font-semibold text-2xl text-army-green/40 mb-2">Central de Inteligência</h3>
-                <p className="text-xs text-army-green/30 max-w-xs leading-relaxed font-medium">
-                  Selecione as pastas de documentos ao lado e digite sua dúvida jurídica ou administrativa abaixo.
+                <p className="text-xs text-army-green/30 max-w-sm leading-relaxed font-medium">
+                  Comece escolhendo o <span className="font-semibold text-army-green/50">público-alvo</span> da sua consulta abaixo.
+                  As pastas relacionadas serão selecionadas automaticamente — você ainda pode refinar pelas categorias ao lado — e então digite sua dúvida.
                 </p>
               </div>
             )}
           </div>
         </main>
       </div>
+
+      {/* ── Pop-up inicial de instruções ── */}
+      {showIntro && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 no-print">
+          <div className="absolute inset-0 bg-army-charcoal/50 backdrop-blur-sm" onClick={dismissIntro} />
+          <div className="relative bg-white w-full max-w-lg border-t-4 border-army-gold shadow-2xl">
+            <div className="flex items-start gap-4 px-7 pt-7 pb-5 border-b border-army-green/10">
+              <div className="w-11 h-11 bg-army-green flex items-center justify-center flex-shrink-0">
+                <ShieldCheck size={22} className="text-army-gold" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[9px] tracking-[0.16em] uppercase text-army-gold font-semibold">Como realizar sua consulta</p>
+                <h2 className="font-cormorant font-semibold text-2xl text-army-green leading-tight">Antes de pesquisar</h2>
+              </div>
+            </div>
+
+            <div className="px-7 py-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <span className="w-6 h-6 flex-shrink-0 bg-army-green text-white text-xs font-bold flex items-center justify-center">1</span>
+                <p className="text-sm text-army-charcoal/80 leading-relaxed">
+                  <span className="font-semibold text-army-green">Escolha o público-alvo (obrigatório).</span> Marque um ou mais entre
+                  Militar da Ativa, Veterano, Pensionista e Servidor Civil. As pastas correspondentes serão selecionadas automaticamente.
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="w-6 h-6 flex-shrink-0 bg-army-green text-white text-xs font-bold flex items-center justify-center">2</span>
+                <p className="text-sm text-army-charcoal/80 leading-relaxed">
+                  <span className="font-semibold text-army-green">Refine as categorias (opcional).</span> Se desejar, selecione no acervo ao lado
+                  outras categorias/subcategorias que tenham relação direta com a sua consulta.
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="w-6 h-6 flex-shrink-0 bg-army-green text-white text-xs font-bold flex items-center justify-center">3</span>
+                <p className="text-sm text-army-charcoal/80 leading-relaxed">
+                  <span className="font-semibold text-army-green">Seja específico no texto.</span> Quanto mais detalhada e objetiva for a sua pergunta,
+                  mais precisa será a resposta da Inteligência Artificial.
+                </p>
+              </div>
+            </div>
+
+            <div className="px-7 pb-7 pt-1">
+              <button
+                onClick={dismissIntro}
+                className="w-full bg-army-green hover:bg-army-mid text-white py-3.5 font-medium text-sm transition-colors flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 size={16} /> Entendi, vamos começar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
