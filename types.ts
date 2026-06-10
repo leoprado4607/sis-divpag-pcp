@@ -8,6 +8,7 @@ export interface SystemLink {
   url: string;
   icon: LucideIcon;
   iconImage?: string;
+  iconImageClassName?: string;
   variant: 'primary' | 'secondary' | 'accent';
   isUnderConstruction?: boolean;
   isRestricted?: boolean;

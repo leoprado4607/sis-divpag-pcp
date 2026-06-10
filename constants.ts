@@ -1,10 +1,11 @@
 
-import { BarChart3, Search, FileText, GitCompare, Activity, Calculator } from 'lucide-react';
+import { BarChart3, Search, FileText, GitCompare, Activity, Calculator, Library } from 'lucide-react';
 import { SystemLink } from './types';
 
 // Símbolos Oficiais
 export const LOGO_URL = "https://lh3.googleusercontent.com/d/1z58eVvaJZ55IAZ_ebEeLXzpPZCXO2fBU=s240";
 export const PLANILHA_BIZURADA_LOGO = "https://lh3.googleusercontent.com/d/1Qq4nhmU87T2PALVyaGjyDEROlWyZZgXb=s240";
+export const DAP_LOGO = "/Logo_DAP.png";
 export const PLACEHOLDER_LOGO = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Coat_of_arms_of_the_Brazilian_Army.svg/1200px-Coat_of_arms_of_the_Brazilian_Army.svg.png";
 
 export const SYSTEM_LINKS: SystemLink[] = [
@@ -51,6 +52,16 @@ export const SYSTEM_LINKS: SystemLink[] = [
     description: 'Pecuniária, diárias e Grat Rep',
     url: 'https://ebcalc.net/',
     icon: Calculator,
+    variant: 'accent'
+  },
+  {
+    id: 'repositorio-dap',
+    title: 'Repositório DAP',
+    description: 'Consulte a biblioteca da DAP',
+    url: 'http://a3e7.infra.7cta.eb.mil.br/rcdap/menu/',
+    icon: Library,
+    iconImage: DAP_LOGO,
+    iconImageClassName: 'w-9 h-9',
     variant: 'accent'
   }
 ];

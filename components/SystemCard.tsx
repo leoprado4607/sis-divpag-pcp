@@ -9,7 +9,7 @@ interface SystemCardProps {
 }
 
 const SystemCard: React.FC<SystemCardProps> = React.memo(({ system, onNavigate }) => {
-  const { title, description, url, icon: Icon, iconImage, isUnderConstruction, isRestricted, internalRoute } = system;
+  const { title, description, url, icon: Icon, iconImage, iconImageClassName, isUnderConstruction, isRestricted, internalRoute } = system;
 
   const renderTitle = (text: string) => {
     if (!text.includes('*')) return text;
@@ -59,7 +59,7 @@ const SystemCard: React.FC<SystemCardProps> = React.memo(({ system, onNavigate }
         <div className="flex items-start justify-between mb-4">
           <div className="inline-flex p-2.5 bg-army-cream border border-army-green/10 group-hover:bg-army-green/5 transition-colors">
             {iconImage ? (
-              <img src={iconImage} alt="" className="w-7 h-7 object-contain" />
+              <img src={iconImage} alt="" className={`${iconImageClassName || 'w-7 h-7'} object-contain`} />
             ) : (
               <Icon size={24} className="text-army-green" />
             )}
