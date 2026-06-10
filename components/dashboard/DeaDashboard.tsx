@@ -193,9 +193,8 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
   const currentYearStr = new Date().getFullYear().toString();
   const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
   const [availableYears, setAvailableYears] = useState<string[]>([]);
-  const [showAiModal, setShowAiModal] = useState(false);
-  const [aiPassword, setAiPassword] = useState('');
-  const [isAiAuthenticated, setIsAiAuthenticated] = useState(false);
+  const [accessPassword, setAccessPassword] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
 
@@ -234,11 +233,9 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
     return Object.entries(grouped).map(([name, value]) => ({ name, value: value as number })).sort((a, b) => b.value - a.value).slice(0, 15);
   }, [filteredData]);
 
-  const handleAiLogin = () => {
-    if (DEA_AI_PASSWORDS.includes(aiPassword)) {
-      setIsAiAuthenticated(true);
-      setShowAiModal(false);
-      generateAiAnalysis();
+  const handleAccessLogin = () => {
+    if (DEA_AI_PASSWORDS.includes(accessPassword)) {
+      setIsAuthenticated(true);
     } else { alert('Senha incorreta'); }
   };
 
@@ -274,6 +271,30 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
 
   const CHART_COLORS = ['#1a3c1a', '#4b6f44', '#f2c500', '#856404', '#002776'];
 
+  // GATE DE ACESSO: enquanto não autenticado, o sistema "Exercícios Anteriores"
+  // não é exibido. A mesma credencial antes usada apenas no "Parecer IA" agora
+  // restringe a entrada no sistema (acionado ao clicar no card da página inicial).
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-8 max-w-md w-full border-t-8 border-army-green shadow-2xl">
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 bg-army-green/5 text-army-green rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner"><Lock size={36} /></div>
+              <h3 className="text-2xl font-bold text-slate-800 font-montserrat">Acesso Restrito</h3>
+              <p className="text-xs text-slate-400 mt-1 uppercase font-bold tracking-wider">Exercícios Anteriores</p>
+            </div>
+            <div className="space-y-4">
+                <input type="password" placeholder="Digite a credencial..." value={accessPassword} onChange={e => setAccessPassword(e.target.value)} autoFocus className="w-full border-2 border-slate-100 p-4 rounded-2xl mb-2 text-center text-lg focus:border-army-green outline-none transition-colors bg-slate-50" onKeyDown={e => e.key === 'Enter' && handleAccessLogin()}/>
+                <div className="flex gap-3">
+                    <button onClick={onBack} className="flex-1 py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors uppercase text-xs tracking-widest">VOLTAR</button>
+                    <button onClick={handleAccessLogin} className="flex-1 bg-army-green text-white py-4 rounded-2xl font-black shadow-lg hover:bg-green-900 transition-all uppercase text-xs tracking-widest">AUTENTICAR</button>
+                </div>
+            </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-army-green text-white shadow-xl border-b-[6px] border-army-gold sticky top-0 z-50">
@@ -290,8 +311,8 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
                 {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
              </select>
              
-             <button 
-                onClick={() => isAiAuthenticated ? generateAiAnalysis() : setShowAiModal(true)} 
+             <button
+                onClick={generateAiAnalysis}
                 className="px-5 py-2 rounded-lg text-sm font-black flex items-center gap-2 transition-all shadow-md active:scale-95 bg-army-gold text-army-green hover:bg-white"
              >
                 <BrainCircuit size={18} className={aiLoading ? 'animate-pulse' : ''}/>
@@ -340,26 +361,6 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
             </div>
         )}
       </main>
-
-      {/* MODAL DE SENHA ANALISTA */}
-      {showAiModal && (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-3xl p-8 max-w-md w-full border-t-8 border-army-green shadow-2xl">
-                <div className="text-center mb-8">
-                  <div className="w-20 h-20 bg-army-green/5 text-army-green rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner"><Lock size={36} /></div>
-                  <h3 className="text-2xl font-bold text-slate-800 font-montserrat">Acesso Analista</h3>
-                  <p className="text-xs text-slate-400 mt-1 uppercase font-bold tracking-wider">Módulo de IA Restrito</p>
-                </div>
-                <div className="space-y-4">
-                    <input type="password" placeholder="Digite a credencial..." value={aiPassword} onChange={e => setAiPassword(e.target.value)} className="w-full border-2 border-slate-100 p-4 rounded-2xl mb-2 text-center text-lg focus:border-army-green outline-none transition-colors bg-slate-50" onKeyDown={e => e.key === 'Enter' && handleAiLogin()}/>
-                    <div className="flex gap-3">
-                        <button onClick={() => setShowAiModal(false)} className="flex-1 py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors uppercase text-xs tracking-widest">CANCELAR</button>
-                        <button onClick={handleAiLogin} className="flex-1 bg-army-green text-white py-4 rounded-2xl font-black shadow-lg hover:bg-green-900 transition-all uppercase text-xs tracking-widest">AUTENTICAR</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-      )}
     </div>
   );
 };

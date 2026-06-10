@@ -33,6 +33,7 @@ export const SYSTEM_LINKS: SystemLink[] = [
     url: '#',
     icon: BarChart3,
     variant: 'accent',
+    isRestricted: true,
     internalRoute: 'dea-dashboard'
   },
   {

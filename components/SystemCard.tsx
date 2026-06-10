@@ -9,7 +9,7 @@ interface SystemCardProps {
 }
 
 const SystemCard: React.FC<SystemCardProps> = React.memo(({ system, onNavigate }) => {
-  const { title, description, url, icon: Icon, iconImage, isUnderConstruction, internalRoute } = system;
+  const { title, description, url, icon: Icon, iconImage, isUnderConstruction, isRestricted, internalRoute } = system;
 
   const renderTitle = (text: string) => {
     if (!text.includes('*')) return text;
@@ -44,6 +44,13 @@ const SystemCard: React.FC<SystemCardProps> = React.memo(({ system, onNavigate }
       {isUnderConstruction && (
         <div className="absolute top-3 right-3 bg-red-50 text-red-500 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border border-red-200 z-10">
           Em construção
+        </div>
+      )}
+
+      {/* Restricted badge */}
+      {isRestricted && (
+        <div className="absolute top-3 right-3 bg-red-50 text-red-600 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border border-red-200 z-10">
+          Restrito
         </div>
       )}
 

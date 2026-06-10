@@ -10,6 +10,7 @@ export interface SystemLink {
   iconImage?: string;
   variant: 'primary' | 'secondary' | 'accent';
   isUnderConstruction?: boolean;
+  isRestricted?: boolean;
   internalRoute?: string;
 }
 
