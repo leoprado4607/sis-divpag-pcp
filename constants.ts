@@ -61,7 +61,6 @@ export const SYSTEM_LINKS: SystemLink[] = [
     url: 'http://a3e7.infra.7cta.eb.mil.br/rcdap/menu/',
     icon: Library,
     iconImage: DAP_LOGO,
-    iconImageClassName: 'w-9 h-9',
     variant: 'accent'
   }
 ];
