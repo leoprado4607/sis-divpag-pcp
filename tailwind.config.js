@@ -66,10 +66,15 @@ export default {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
+        growBar: {
+          '0%': { transform: 'scaleX(0)' },
+          '100%': { transform: 'scaleX(1)' },
+        },
       },
       animation: {
         'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
         'fade-in': 'fadeIn 0.4s ease-out forwards',
+        'grow-bar': 'growBar 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards',
       },
       spacing: {
         '74': '298px',

@@ -3,8 +3,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   ArrowLeft, Bot, Search, Library, Settings, LogOut,
   FolderPlus, Upload, Trash2, FileText, Database, Files, Trash, Clock, ChevronRight, Folder,
-  BarChart2, Users, Activity, Zap, RefreshCw, MessageSquare, MapPin, Globe
+  BarChart2, Users, Activity, Zap, RefreshCw, MessageSquare, MapPin, Globe,
+  Hash, Award, Calendar, TrendingUp
 } from 'lucide-react';
+import { andrecitoService } from '../../services/andrecitoService';
+import { adminRequest } from '../../services/adminClient';
+import { AndrecitoCategory, AndrecitoSubcategory, AndrecitoDocument } from '../../types';
+import { ViewState, UserRole } from './AndrecitoApp';
 
 // Converte código de país ISO (ex: "BR") no nome em português, com fallback ao código.
 const COUNTRY_NAMES: Record<string, string> = {
@@ -14,13 +19,6 @@ const COUNTRY_NAMES: Record<string, string> = {
 };
 const countryLabel = (code?: string | null) =>
   code ? (COUNTRY_NAMES[code.toUpperCase()] || code.toUpperCase()) : null;
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from 'recharts';
-import { andrecitoService } from '../../services/andrecitoService';
-import { adminRequest } from '../../services/adminClient';
-import { AndrecitoCategory, AndrecitoSubcategory, AndrecitoDocument } from '../../types';
-import { ViewState, UserRole } from './AndrecitoApp';
 
 interface AnalyticsData {
   totalQueries: number;
@@ -355,90 +353,149 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                   ))}
                 </div>
 
-                {/* Gráfico de uso diário */}
-                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                  <h3 className="text-xs font-black text-army-green uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <BarChart2 size={16} /> Consultas por Dia (últimos 30 dias)
-                  </h3>
-                  {analytics.dailyUsage.length === 0 ? (
-                    <p className="text-center text-slate-400 text-sm py-8">Nenhuma consulta registrada no período.</p>
-                  ) : (
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={analytics.dailyUsage.map(d => ({ ...d, dia: d.date.slice(5).replace('-', '/') }))}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                        <XAxis dataKey="dia" tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                        <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#94a3b8' }} width={28} />
-                        <Tooltip
-                          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
-                          formatter={(v: any) => [v, 'Consultas']}
-                          labelFormatter={(l) => `Dia ${l}`}
-                        />
-                        <Bar dataKey="count" fill="#4a7c59" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Palavras mais pesquisadas */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                    <h3 className="text-xs font-black text-army-green uppercase tracking-widest mb-4">Termos Mais Pesquisados</h3>
+                {/* Termos mais pesquisados — ranking */}
+                <div className="relative bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="h-1 w-full bg-gradient-to-r from-army-green via-army-light to-army-gold" />
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 rounded-xl bg-army-green/10 text-army-green"><Hash size={16} /></div>
+                        <div>
+                          <h3 className="text-xs font-black text-army-green uppercase tracking-widest font-montserrat">Termos Mais Pesquisados</h3>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Frequência nas consultas dos últimos 30 dias</p>
+                        </div>
+                      </div>
+                      <TrendingUp size={18} className="text-army-gold/40" />
+                    </div>
                     {analytics.recentQueries.length === 0 ? (
-                      <p className="text-center text-slate-400 text-sm py-4">Sem dados.</p>
+                      <p className="text-center text-slate-400 text-sm py-6">Sem dados.</p>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4">
                         {(() => {
                           const kws = topKeywords(analytics.recentQueries);
                           const maxCount = kws[0]?.count || 1;
-                          return kws.map(({ word, count }, i) => (
-                            <div key={word} className="flex items-center gap-3">
-                              <span className="text-[10px] font-black text-slate-300 w-4 text-right">{i + 1}</span>
-                              <div className="flex-1">
-                                <div className="flex justify-between items-center mb-1">
-                                  <span className="text-xs font-bold text-slate-700 capitalize">{word}</span>
-                                  <span className="text-[10px] font-black text-army-green">{count}×</span>
+                          return kws.map(({ word, count }, i) => {
+                            const isTop = i === 0;
+                            const isPodium = i < 3;
+                            return (
+                              <div
+                                key={word}
+                                className="group flex items-center gap-3 animate-fade-in-up opacity-0"
+                                style={{ animationDelay: `${i * 60}ms` }}
+                              >
+                                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black font-montserrat shadow-sm
+                                  ${isTop ? 'bg-gradient-to-br from-army-gold to-army-gold-light text-white ring-2 ring-army-gold/20'
+                                    : isPodium ? 'bg-army-green text-white'
+                                    : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
+                                  {isTop ? <Award size={14} /> : i + 1}
                                 </div>
-                                <div className="w-full bg-slate-100 h-1.5 rounded-full">
-                                  <div className="bg-army-green h-full rounded-full" style={{ width: `${(count / maxCount) * 100}%` }} />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex justify-between items-baseline mb-1.5">
+                                    <span className="text-sm font-bold text-slate-700 capitalize truncate group-hover:text-army-green transition-colors">{word}</span>
+                                    <span className="flex items-baseline gap-1 flex-shrink-0 ml-2">
+                                      <span className={`text-sm font-black font-montserrat ${isPodium ? 'text-army-green' : 'text-slate-500'}`}>{count}</span>
+                                      <span className="text-[9px] text-slate-400 font-bold uppercase">buscas</span>
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full origin-left animate-grow-bar"
+                                      style={{
+                                        width: `${(count / maxCount) * 100}%`,
+                                        background: isPodium
+                                          ? 'linear-gradient(90deg, #2E3D1A, #A8832A)'
+                                          : 'linear-gradient(90deg, #6B7A42, #C9A84C)',
+                                        animationDelay: `${i * 60}ms`,
+                                      }}
+                                    />
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ));
+                            );
+                          });
                         })()}
                       </div>
                     )}
                   </div>
+                </div>
 
-                  {/* Consultas recentes */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                    <h3 className="text-xs font-black text-army-green uppercase tracking-widest mb-4">Consultas Recentes</h3>
-                    <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-1">
-                      {analytics.recentQueries.length === 0 ? (
-                        <p className="text-center text-slate-400 text-sm py-4">Nenhuma consulta registrada ainda.</p>
-                      ) : analytics.recentQueries.map((q, i) => (
-                        <div key={i} className="border border-slate-100 rounded-xl p-3 hover:border-slate-200 transition-all">
-                          <p className="text-xs text-slate-700 font-medium leading-relaxed line-clamp-2">{q.query_text}</p>
-                          <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-2">
-                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full border uppercase ${q.user_type === 'admin' ? 'bg-army-green/10 text-army-green border-army-green/20' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
-                              {q.user_type}
-                            </span>
-                            <span className="text-[9px] text-slate-400 flex items-center gap-1"><Clock size={9} />{new Date(q.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
-                            {q.tokens_estimated > 0 && <span className="text-[9px] text-slate-400">~{q.tokens_estimated.toLocaleString('pt-BR')} tokens</span>}
-                            {q.ip_address && (
-                              <span className="text-[9px] text-slate-400 flex items-center gap-1 font-mono" title="Endereço IP de origem">
-                                <Globe size={9} />{q.ip_address}
-                              </span>
-                            )}
-                            {(q.city || q.region || q.country) && (
-                              <span className="text-[9px] text-slate-400 flex items-center gap-1" title="País / Região da consulta">
-                                <MapPin size={9} />
-                                {[q.city, q.region, countryLabel(q.country)].filter(Boolean).join(' / ')}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                {/* Consultas recentes — tabela */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-2.5 bg-slate-50/50">
+                    <div className="p-2 rounded-xl bg-army-green/10 text-army-green"><MessageSquare size={16} /></div>
+                    <div>
+                      <h3 className="text-xs font-black text-army-green uppercase tracking-widest font-montserrat">Consultas Recentes</h3>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{analytics.recentQueries.length} registros mais recentes</p>
                     </div>
+                  </div>
+                  <div className="overflow-x-auto custom-scrollbar max-h-[480px]">
+                    {analytics.recentQueries.length === 0 ? (
+                      <p className="text-center text-slate-400 text-sm py-16">Nenhuma consulta registrada ainda.</p>
+                    ) : (
+                      <table className="w-full text-left border-collapse">
+                        <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 sticky top-0 z-10">
+                          <tr>
+                            <th className="px-4 py-3 whitespace-nowrap">Data</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Horário</th>
+                            <th className="px-4 py-3 whitespace-nowrap">IP</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Local</th>
+                            <th className="px-4 py-3 whitespace-nowrap text-right">Tokens</th>
+                            <th className="px-4 py-3 w-2/5">Pergunta</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {analytics.recentQueries.map((q, i) => {
+                            const d = new Date(q.created_at);
+                            const local = [q.city, q.region, countryLabel(q.country)].filter(Boolean).join(' / ');
+                            return (
+                              <tr key={i} className="hover:bg-army-cream/40 transition-colors">
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
+                                    <Calendar size={11} className="text-slate-300" />
+                                    {d.toLocaleDateString('pt-BR')}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className="flex items-center gap-1.5 text-[11px] font-mono text-slate-500">
+                                    <Clock size={11} className="text-slate-300" />
+                                    {d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  {q.ip_address ? (
+                                    <span className="flex items-center gap-1.5 text-[11px] font-mono text-slate-500">
+                                      <Globe size={11} className="text-slate-300" />{q.ip_address}
+                                    </span>
+                                  ) : <span className="text-[11px] text-slate-300">—</span>}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  {local ? (
+                                    <span className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                                      <MapPin size={11} className="text-army-gold/70" />{local}
+                                    </span>
+                                  ) : <span className="text-[11px] text-slate-300">—</span>}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-right">
+                                  {q.tokens_estimated > 0 ? (
+                                    <span className="inline-block text-[10px] font-mono font-bold text-army-green bg-army-green/5 border border-army-green/10 px-2 py-0.5 rounded-md">
+                                      {q.tokens_estimated.toLocaleString('pt-BR')}
+                                    </span>
+                                  ) : <span className="text-[11px] text-slate-300">—</span>}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-start gap-2">
+                                    <span className={`flex-shrink-0 mt-0.5 text-[8px] font-black px-1.5 py-0.5 rounded-full border uppercase ${q.user_type === 'admin' ? 'bg-army-green/10 text-army-green border-army-green/20' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
+                                      {q.user_type}
+                                    </span>
+                                    <span className="text-[12px] text-slate-700 leading-snug line-clamp-2" title={q.query_text}>{q.query_text}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                 </div>
               </>
