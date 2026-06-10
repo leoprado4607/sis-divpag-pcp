@@ -153,7 +153,7 @@ export default async function handler(req: any, res: any) {
         const [totalRes, recentRes] = await Promise.all([
           db.from('andrecito_logs').select('*', { count: 'exact', head: true }),
           db.from('andrecito_logs')
-            .select('query_text, ip_hash, tokens_estimated, user_type, created_at, documents_used')
+            .select('query_text, ip_hash, ip_address, country, region, city, tokens_estimated, user_type, created_at, documents_used')
             .gte('created_at', thirtyDaysAgo)
             .order('created_at', { ascending: false })
             .limit(500),
@@ -189,6 +189,10 @@ export default async function handler(req: any, res: any) {
             tokens_estimated: r.tokens_estimated,
             documents_used: r.documents_used,
             created_at: r.created_at,
+            ip_address: r.ip_address ?? null,
+            country: r.country ?? null,
+            region: r.region ?? null,
+            city: r.city ?? null,
           })),
         });
       }

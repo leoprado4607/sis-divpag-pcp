@@ -6,7 +6,7 @@
 //   GEMINI_RATE_LIMIT            — (opcional) máx. de requisições por janela (default 20)
 //   GEMINI_RATE_WINDOW_SEC       — (opcional) tamanho da janela em segundos (default 60)
 import { createHash } from 'node:crypto';
-import { runGemini, isRequestAllowed, getClientIp } from './_gemini.js';
+import { runGemini, isRequestAllowed, getClientIp, getClientGeo } from './_gemini.js';
 import { checkRateLimitAsync } from './_ratelimit.js';
 import { readJsonBody } from './_http.js';
 import { getAdminSupabase } from './_supabaseAdmin.js';
@@ -71,7 +71,7 @@ export default async function handler(req: any, res: any) {
     const cached = getCachedResponse(cacheKey);
     if (cached) {
       // Hit de cache: devolve instantaneamente sem debitar tokens.
-      logQuery(_meta, geminiBody, cached, getClientIp(req), 0, true).catch(() => {});
+      logQuery(_meta, geminiBody, cached, getClientIp(req), getClientGeo(req), 0, true).catch(() => {});
       return res.status(200).json({ text: cached });
     }
 
@@ -82,7 +82,7 @@ export default async function handler(req: any, res: any) {
     setCachedResponse(cacheKey, text);
 
     // Grava log de uso de forma assíncrona — nunca bloqueia a resposta ao cliente.
-    logQuery(_meta, geminiBody, text, getClientIp(req), elapsed, false).catch(() => {});
+    logQuery(_meta, geminiBody, text, getClientIp(req), getClientGeo(req), elapsed, false).catch(() => {});
 
     return res.status(200).json({ text });
   } catch (err: any) {
@@ -96,6 +96,7 @@ async function logQuery(
   body: any,
   responseText: string,
   ip: string,
+  geo: { country: string | null; region: string | null; city: string | null },
   elapsedMs: number,
   fromCache = false,
 ): Promise<void> {
@@ -112,6 +113,10 @@ async function logQuery(
     documents_used: Array.isArray(meta.documents) ? meta.documents : [],
     user_type: meta.userType || 'guest',
     ip_hash: ipHash,
+    ip_address: ip || null,
+    country: geo.country,
+    region: geo.region,
+    city: geo.city,
     response_time_ms: elapsedMs,
     tokens_estimated: tokensEstimated,
   });

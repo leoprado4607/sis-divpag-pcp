@@ -78,6 +78,27 @@ export function getClientIp(req: any): string {
   return (req.socket && req.socket.remoteAddress) || 'unknown';
 }
 
+// Geolocalização do cliente a partir dos headers que a Vercel injeta automaticamente
+// na borda (sem custo / sem API externa). Em ambiente local esses headers não existem
+// e os campos voltam null.
+export function getClientGeo(req: any): {
+  country: string | null;
+  region: string | null;
+  city: string | null;
+} {
+  const h = req.headers || {};
+  const pick = (v: any): string | null => {
+    const s = Array.isArray(v) ? v[0] : v;
+    if (typeof s !== 'string' || !s.trim()) return null;
+    try { return decodeURIComponent(s.trim()); } catch { return s.trim(); }
+  };
+  return {
+    country: pick(h['x-vercel-ip-country']),
+    region: pick(h['x-vercel-ip-country-region']),
+    city: pick(h['x-vercel-ip-city']),
+  };
+}
+
 export function checkRateLimit(
   key: string,
   max: number,

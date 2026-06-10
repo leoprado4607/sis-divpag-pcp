@@ -56,6 +56,10 @@ CREATE TABLE IF NOT EXISTS public.andrecito_logs (
     documents_used JSONB NOT NULL DEFAULT '[]'::jsonb,
     user_type TEXT NOT NULL DEFAULT 'guest',
     ip_hash TEXT,
+    ip_address TEXT,           -- IP de origem (completo) — atenção LGPD
+    country TEXT,              -- País (código ISO, ex: BR) via header da Vercel
+    region TEXT,              -- Estado/região (ex: SP) via header da Vercel
+    city TEXT,               -- Cidade via header da Vercel
     response_time_ms INTEGER,
     tokens_estimated INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -63,6 +67,13 @@ CREATE TABLE IF NOT EXISTS public.andrecito_logs (
 
 -- Índice para ordenação e filtros de analytics (últimos N dias)
 CREATE INDEX IF NOT EXISTS idx_andrecito_logs_created ON public.andrecito_logs(created_at DESC);
+
+-- MIGRAÇÃO (banco já existente): adiciona as colunas de IP/geolocalização.
+-- Seguro rodar várias vezes (IF NOT EXISTS).
+ALTER TABLE public.andrecito_logs ADD COLUMN IF NOT EXISTS ip_address TEXT;
+ALTER TABLE public.andrecito_logs ADD COLUMN IF NOT EXISTS country TEXT;
+ALTER TABLE public.andrecito_logs ADD COLUMN IF NOT EXISTS region TEXT;
+ALTER TABLE public.andrecito_logs ADD COLUMN IF NOT EXISTS city TEXT;
 
 -- RLS habilitado: nenhuma policy pública — acesso apenas via service_role (API admin)
 ALTER TABLE public.andrecito_logs ENABLE ROW LEVEL SECURITY;
