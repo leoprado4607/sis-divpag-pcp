@@ -9,7 +9,7 @@ export interface GeminiRequest {
   config?: any;
 }
 
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-2.0-flash';
 
 // Teto defensivo de payload. Alinhado ao limite de body de funções serverless da
 // Vercel (~4,5 MB): acima disso a própria Vercel rejeita antes de chegar aqui.

@@ -73,7 +73,7 @@ const GEMINI_TEMPERATURE = (() => {
 // usam gemini-1.5-flash — mais barato, sem tokens de raciocínio. Consultas
 // complexas usam gemini-2.5-flash. VITE_GEMINI_MODEL sobrescreve ambos.
 const SIMPLE_MODEL = 'gemini-1.5-flash';
-const COMPLEX_MODEL = 'gemini-2.5-flash';
+const COMPLEX_MODEL = 'gemini-2.0-flash';
 // Modelos que suportam thinkingConfig. Adicione aqui ao adotar novos modelos.
 const THINKING_MODELS = new Set(['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.5-flash-lite']);
 
