@@ -9,7 +9,9 @@ export interface GeminiRequest {
   config?: any;
 }
 
-const DEFAULT_MODEL = 'gemini-2.0-flash';
+// gemini-2.0-flash foi descontinuado (404 "no longer available"); 2.5-flash é o
+// fallback ativo quando o cliente não especifica um modelo.
+const DEFAULT_MODEL = 'gemini-2.5-flash';
 
 // Teto defensivo de payload. Alinhado ao limite de body de funções serverless da
 // Vercel (~4,5 MB): acima disso a própria Vercel rejeita antes de chegar aqui.

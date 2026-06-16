@@ -70,10 +70,12 @@ const GEMINI_TEMPERATURE = (() => {
 })();
 
 // Seleção adaptativa de modelo: consultas simples (poucas palavras, poucos docs)
-// usam gemini-1.5-flash — mais barato, sem tokens de raciocínio. Consultas
-// complexas usam gemini-2.5-flash. VITE_GEMINI_MODEL sobrescreve ambos.
-const SIMPLE_MODEL = 'gemini-1.5-flash';
-const COMPLEX_MODEL = 'gemini-2.0-flash';
+// usam gemini-2.5-flash-lite — mais barato. Consultas complexas usam
+// gemini-2.5-flash. VITE_GEMINI_MODEL sobrescreve ambos.
+// NOTA: gemini-1.5-flash e gemini-2.0-flash foram DESCONTINUADOS pelo Google
+// (generateContent retorna 404 "no longer available") — não reintroduzir.
+const SIMPLE_MODEL = 'gemini-2.5-flash-lite';
+const COMPLEX_MODEL = 'gemini-2.5-flash';
 // Modelos que suportam thinkingConfig. Adicione aqui ao adotar novos modelos.
 const THINKING_MODELS = new Set(['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.5-flash-lite']);
 
@@ -736,7 +738,7 @@ export const andrecitoService = {
       // modelo declara explicitamente quais arquivos usou no campo "fontesUtilizadas".
       const model = selectModel(query, documents.length);
       // thinkingConfig só é aplicado em modelos de raciocínio (gemini-2.5+).
-      // Para o gemini-1.5-flash (modelo leve), o parâmetro é ignorado ou causa erro.
+      // Em modelos sem suporte a thinking o parâmetro é ignorado ou causa erro.
       const isThinkingModel = THINKING_MODELS.has(model);
 
       // thinkingBudget adaptativo: escala com complexidade da consulta para não
