@@ -70,8 +70,10 @@ export default async function handler(req: any, res: any) {
     const cacheKey = buildCacheKey(geminiBody);
     const cached = getCachedResponse(cacheKey);
     if (cached) {
-      // Hit de cache: devolve instantaneamente sem debitar tokens.
-      logQuery(_meta, geminiBody, cached, getClientIp(req), getClientGeo(req), 0, true).catch(() => {});
+      // Hit de cache: devolve sem debitar tokens. O log é AGUARDADO de propósito:
+      // em serverless (Vercel) a função é congelada após o response, então um log
+      // "fire-and-forget" se perderia. O insert é rápido e não compromete a UX.
+      await logQuery(_meta, geminiBody, cached, getClientIp(req), getClientGeo(req), 0, true).catch(() => {});
       return res.status(200).json({ text: cached });
     }
 
@@ -81,8 +83,11 @@ export default async function handler(req: any, res: any) {
 
     setCachedResponse(cacheKey, text);
 
-    // Grava log de uso de forma assíncrona — nunca bloqueia a resposta ao cliente.
-    logQuery(_meta, geminiBody, text, getClientIp(req), getClientGeo(req), elapsed, false).catch(() => {});
+    // Grava log de uso. AGUARDADO de propósito: em serverless (Vercel) a função é
+    // congelada/encerrada assim que a resposta é enviada, então um log disparado em
+    // "fire-and-forget" frequentemente nunca chega ao Supabase. O insert é rápido e
+    // o .catch garante que uma falha de log nunca derrube a resposta ao cliente.
+    await logQuery(_meta, geminiBody, text, getClientIp(req), getClientGeo(req), elapsed, false).catch(() => {});
 
     return res.status(200).json({ text });
   } catch (err: any) {
