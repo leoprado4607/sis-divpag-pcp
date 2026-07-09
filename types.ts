@@ -107,7 +107,6 @@ export interface PersonRecord {
 }
 
 export interface ComparisonResult {
-  samePrecDifferentName: Array<{ t1: PersonRecord; t2: PersonRecord }>;
   sameCpfDifferentPrec: Array<{ t1: PersonRecord; t2: PersonRecord }>;
   sameCpfDifferentName: Array<{ t1: PersonRecord; t2: PersonRecord }>;
   sameNameDifferentCpf: Array<{ t1: PersonRecord; t2: PersonRecord }>;

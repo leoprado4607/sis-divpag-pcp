@@ -136,10 +136,10 @@ const ComparisonApp: React.FC<ComparisonAppProps> = ({ onBack }) => {
         const mapT1ByPrec = new Map<string, PersonRecord>(listT1.map(p => [p.precCp, p]));
         const mapT2ByName = new Map<string, PersonRecord>(listT2.map(p => [normalize(p.nome), p]));
         const mapT1ByName = new Map<string, PersonRecord>(listT1.map(p => [normalize(p.nome), p]));
-        const mapT2ByCpf = new Map<string, PersonRecord>(listT2.map(p => [p.cpf, p]));
+        const mapT2ByCpf = new Map<string, PersonRecord>(listT2.filter(p => p.cpf.length >= 11).map(p => [p.cpf, p]));
+        const mapT1ByCpf = new Map<string, PersonRecord>(listT1.filter(p => p.cpf.length >= 11).map(p => [p.cpf, p]));
 
         const res: ComparisonResult = {
-            samePrecDifferentName: [],
             sameCpfDifferentPrec: [],
             sameCpfDifferentName: [],
             sameNameDifferentCpf: [],
@@ -153,17 +153,14 @@ const ComparisonApp: React.FC<ComparisonAppProps> = ({ onBack }) => {
 
         listT1.forEach(p1 => {
             const p2 = mapT2ByPrec.get(p1.precCp);
-            
-            // Divergência de Nome
-            if (p2 && !areNamesEquivalent(p1.nome, p2.nome)) res.samePrecDifferentName.push({ t1: p1, t2: p2 });
-            
+
             // Divergência de CPF (Mesmo Prec-CP)
             if (p2 && p1.cpf !== p2.cpf && p1.cpf.length >= 11 && p2.cpf.length >= 11) {
               res.samePrecDifferentCpf.push({ t1: p1, t2: p2 });
             }
 
-            // Faltam no SiCaPEx
-            if (!p2) res.missingInT2.push(p1);
+            // Faltam no SiCaPEx (comparação por CPF)
+            if (!mapT2ByCpf.get(p1.cpf)) res.missingInT2.push(p1);
 
             // Pagamento Zerado no CPEx
             if (p1.valorLiquido === 0) {
@@ -172,7 +169,7 @@ const ComparisonApp: React.FC<ComparisonAppProps> = ({ onBack }) => {
         });
 
         listT2.forEach(p2 => {
-            if (!mapT1ByPrec.has(p2.precCp)) res.missingInT1.push(p2);
+            if (!mapT1ByCpf.has(p2.cpf)) res.missingInT1.push(p2);
         });
 
         listT1.forEach(p1 => {
@@ -343,7 +340,7 @@ const ComparisonApp: React.FC<ComparisonAppProps> = ({ onBack }) => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
                           <ResultCard 
                               title="Faltam no SiCaPEx"
-                              description="Presentes no CPEx mas não localizados no SiCaPEx (por Prec-CP)"
+                              description="Presentes no CPEx mas não localizados no SiCaPEx (por CPF)"
                               count={result.missingInT2.length}
                               color="bg-red-500"
                               icon={UserX}
@@ -358,12 +355,12 @@ const ComparisonApp: React.FC<ComparisonAppProps> = ({ onBack }) => {
                               onClick={() => openModal("Não constam no CPEx", result.missingInT1, 'simple')}
                           />
                           <ResultCard 
-                              title="Prec x Nome Divergente"
-                              description="Prec-CP coincidente porém com nomes diferentes nas bases"
-                              count={result.samePrecDifferentName.length}
+                              title="CPF x Nome Divergente"
+                              description="CPF coincidente porém com nomes diferentes nas bases"
+                              count={result.sameCpfDifferentName.length}
                               color="bg-purple-500"
                               icon={RefreshCw}
-                              onClick={() => openModal("Divergência: Prec-CP x Nome", result.samePrecDifferentName, 'conflict')}
+                              onClick={() => openModal("Divergência: CPF x Nome", result.sameCpfDifferentName, 'conflict')}
                           />
                           <ResultCard 
                               title="CPF x Prec Divergente"
