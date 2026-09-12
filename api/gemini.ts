@@ -118,7 +118,9 @@ async function logQuery(
     documents_used: Array.isArray(meta.documents) ? meta.documents : [],
     user_type: meta.userType || 'guest',
     ip_hash: ipHash,
-    ip_address: ip || null,
+    // LGPD: não gravamos mais o IP completo (dado pessoal). Mantemos apenas o
+    // hash pseudonimizado (ip_hash, p/ contagem de únicos) e a geo aproximada.
+    ip_address: null,
     country: geo.country,
     region: geo.region,
     city: geo.city,

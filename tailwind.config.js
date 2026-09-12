@@ -26,10 +26,6 @@ export default {
         sans: ['"DM Sans"', 'Inter', 'sans-serif'],
         cormorant: ['"Cormorant Garamond"', 'serif'],
         montserrat: ['Montserrat', 'sans-serif'],
-        'roboto-slab': ['"Roboto Slab"', 'serif'],
-        oswald: ['Oswald', 'sans-serif'],
-        titillium: ['"Titillium Web"', 'sans-serif'],
-        merriweather: ['Merriweather', 'serif'],
       },
       colors: {
         army: {

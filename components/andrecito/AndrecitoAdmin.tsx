@@ -269,7 +269,7 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
         </div>
         <div className="max-w-[1600px] mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-4 w-full md:w-auto">
-            <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"><ArrowLeft className="w-6 h-6 text-army-gold" /></button>
+            <button onClick={onBack} aria-label="Voltar" className="p-2 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"><ArrowLeft className="w-6 h-6 text-army-gold" /></button>
             <div className="flex items-center gap-3">
                <Bot className="w-10 h-10 text-white opacity-90" />
                <div className="text-left">

@@ -8,6 +8,30 @@ body {
   padding: 0;
 }
 
+/* Acessibilidade: respeita quem pede menos movimento (SO/navegador).
+   Neutraliza animações e transições — inclusive as classes animate-* do
+   Tailwind e o shimmer/spinner — mantendo o conteúdo visível (sem ficar
+   preso em opacity:0 de animações "forwards"). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Acessibilidade (WCAG 2.4.7): foco de teclado SEMPRE visível, inclusive onde o
+   componente usa outline-none. :focus-visible só ativa para teclado, então o
+   mouse não vê o anel. Anel dourado tem contraste ≥3:1 com verde e creme. */
+:focus-visible {
+  outline: 2px solid #A8832A !important;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;

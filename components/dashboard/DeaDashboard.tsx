@@ -300,7 +300,7 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
       <header className="bg-army-green text-white shadow-xl border-b-[6px] border-army-gold sticky top-0 z-50">
         <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full transition-colors"><ArrowLeft className="w-6 h-6 text-army-gold" /></button>
+            <button onClick={onBack} aria-label="Voltar" className="p-2 hover:bg-white/10 rounded-full transition-colors"><ArrowLeft className="w-6 h-6 text-army-gold" /></button>
             <div className="flex flex-col">
                 <h1 className="text-xl font-bold leading-none">Painel DEA</h1>
                 <span className="text-[10px] text-army-gold font-bold uppercase tracking-widest mt-1">Análise de Exercícios Anteriores</span>

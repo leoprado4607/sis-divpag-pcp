@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS public.andrecito_logs (
     documents_used JSONB NOT NULL DEFAULT '[]'::jsonb,
     user_type TEXT NOT NULL DEFAULT 'guest',
     ip_hash TEXT,
-    ip_address TEXT,           -- IP de origem (completo) — atenção LGPD
+    ip_address TEXT,           -- LEGADO/LGPD: não é mais populado (fica NULL nas novas linhas); use ip_hash
     country TEXT,              -- País (código ISO, ex: BR) via header da Vercel
     region TEXT,              -- Estado/região (ex: SP) via header da Vercel
     city TEXT,               -- Cidade via header da Vercel

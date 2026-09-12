@@ -10,10 +10,12 @@ declare global {
 }
 
 // --- CARREGAMENTO SOB DEMANDA DO PDF.JS ---
-// Antes o pdf.min.js (~300KB) era carregado sincronamente no <head> em TODA página.
-// Agora só é injetado na primeira vez que precisamos processar um PDF.
-const PDFJS_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-const PDFJS_WORKER_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+// pdf.js é AUTO-HOSPEDADO em /vendor/pdfjs (same-origin), não mais via cdnjs:
+// remove a dependência de terceiro em runtime (sem risco de supply-chain/SRI) e
+// permite tirar o cdnjs da CSP. Só é injetado na 1ª vez que processamos um PDF.
+// Para atualizar a versão, baixe pdf.min.js + pdf.worker.min.js correspondentes.
+const PDFJS_SRC = '/vendor/pdfjs/pdf.min.js';
+const PDFJS_WORKER_SRC = '/vendor/pdfjs/pdf.worker.min.js';
 let pdfjsPromise: Promise<any> | null = null;
 
 const ensurePdfJs = (): Promise<any> => {

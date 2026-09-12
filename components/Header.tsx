@@ -19,6 +19,7 @@ const Header: React.FC<HeaderProps> = ({ onBack }) => {
         {onBack && (
           <button
             onClick={onBack}
+            aria-label="Voltar ao portal"
             className="flex-shrink-0 flex items-center gap-1.5 text-white/45 hover:text-army-gold transition-colors text-[11px] font-medium tracking-[0.14em] uppercase mr-1"
           >
             <ArrowLeft size={13} />

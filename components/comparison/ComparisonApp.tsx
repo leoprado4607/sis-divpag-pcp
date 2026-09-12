@@ -220,7 +220,7 @@ const ComparisonApp: React.FC<ComparisonAppProps> = ({ onBack }) => {
           <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
           <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between relative z-10">
             <div className="flex items-center gap-4">
-              <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full transition-colors"><ArrowLeft className="w-6 h-6 text-army-gold" /></button>
+              <button onClick={onBack} aria-label="Voltar" className="p-2 hover:bg-white/10 rounded-full transition-colors"><ArrowLeft className="w-6 h-6 text-army-gold" /></button>
               <div>
                   <h1 className="text-xl font-montserrat font-bold leading-none">Comparador de Relações</h1>
                   <p className="text-army-gold text-[10px] font-bold uppercase mt-1 tracking-widest">Auditoria de Folha de Pagamento</p>
@@ -271,7 +271,7 @@ const ComparisonApp: React.FC<ComparisonAppProps> = ({ onBack }) => {
       <header className="bg-army-green text-white shadow-xl border-b-[6px] border-army-gold sticky top-0 z-50">
         <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => setCurrentView('landing')} className="p-2 hover:bg-white/10 rounded-full transition-colors"><ArrowLeft className="w-6 h-6 text-army-gold" /></button>
+            <button onClick={() => setCurrentView('landing')} aria-label="Voltar" className="p-2 hover:bg-white/10 rounded-full transition-colors"><ArrowLeft className="w-6 h-6 text-army-gold" /></button>
             <div className="flex items-center gap-3">
                <GitCompare className="w-8 h-8 text-army-gold" />
                <div>
@@ -285,7 +285,7 @@ const ComparisonApp: React.FC<ComparisonAppProps> = ({ onBack }) => {
                 {processing ? <RefreshCw className="animate-spin" size={16} /> : <GitCompare size={16} />} 
                 {processing ? 'PROCESSANDO...' : 'EXECUTAR COMPARAÇÃO'}
               </button>
-              <button onClick={() => { setTextT1(''); setTextT2(''); setResult(null); }} className="p-2 text-white/50 hover:text-white transition-colors" title="Limpar Tudo"><Trash2 size={20}/></button>
+              <button onClick={() => { setTextT1(''); setTextT2(''); setResult(null); }} className="p-2 text-white/50 hover:text-white transition-colors" title="Limpar Tudo" aria-label="Limpar tudo"><Trash2 size={20}/></button>
           </div>
         </div>
       </header>
@@ -401,7 +401,7 @@ const ComparisonApp: React.FC<ComparisonAppProps> = ({ onBack }) => {
                         <h3 className="text-lg font-black text-army-green uppercase tracking-widest font-montserrat">{modalTitle}</h3>
                         <p className="text-xs text-slate-400 font-bold mt-1">Total: {currentData.length} registros</p>
                     </div>
-                    <button onClick={() => setModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={24} className="text-slate-400" /></button>
+                    <button onClick={() => setModalOpen(false)} aria-label="Fechar" className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={24} className="text-slate-400" /></button>
                 </div>
                 
                 <div className="flex-1 overflow-auto p-4 custom-scrollbar">

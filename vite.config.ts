@@ -94,11 +94,37 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
+            // O helper __vitePreload (lazy-loading) precisa viajar num chunk que já
+            // é sempre carregado (vendor-react). Se ficar num chunk pesado e lazy
+            // (ex.: vendor-pdf), o entry passa a importá-lo estaticamente e arrasta
+            // o chunk inteiro para o carregamento da home.
+            if (id.includes('preload-helper') || id.includes('modulepreload')) {
+              return 'vendor-react';
+            }
             if (id.includes('node_modules')) {
-              if (id.includes('jspdf') || id.includes('pdfjs')) {
+              if (id.includes('/react-dom/') || id.includes('/react/') || id.includes('/scheduler/')) {
+                return 'vendor-react';
+              }
+              // Cadeia do jspdf (geração de PDF) — PESADA e usada SÓ no Painel DEA
+              // (lazy). Inclui deps que não têm "jspdf" no path (html2canvas, canvg,
+              // etc.); sem listá-las, elas caíam no vendor-base e carregavam na home.
+              if (
+                id.includes('jspdf') || id.includes('pdfjs') ||
+                id.includes('html2canvas') || id.includes('canvg') ||
+                id.includes('svg-pathdata') || id.includes('stackblur') ||
+                id.includes('rgbcolor') || id.includes('css-line-break') ||
+                id.includes('text-segmentation') || id.includes('fflate') ||
+                id.includes('/raf/') || id.includes('performance-now')
+              ) {
                 return 'vendor-pdf';
               }
-              if (id.includes('recharts') || id.includes('d3-')) {
+              // Cadeia do recharts (gráficos) — usada só no Painel DEA (lazy).
+              if (
+                id.includes('recharts') || id.includes('d3-') ||
+                id.includes('victory-vendor') || id.includes('internmap') ||
+                id.includes('decimal.js-light') || id.includes('react-smooth') ||
+                id.includes('fast-equals') || id.includes('eventemitter3')
+              ) {
                 return 'vendor-charts';
               }
               if (id.includes('lucide')) {
