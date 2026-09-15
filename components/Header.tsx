@@ -38,7 +38,7 @@ const Header: React.FC<HeaderProps> = ({ onBack }) => {
             />
           </div>
           <div className="leading-tight min-w-0">
-            <p className="text-[9px] tracking-[0.15em] uppercase text-white/45 font-medium">
+            <p className="text-[11px] sm:text-[15px] tracking-[0.12em] uppercase text-white font-semibold whitespace-nowrap">
               Divisão de Pagamento de Pessoal
             </p>
           </div>

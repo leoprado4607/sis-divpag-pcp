@@ -67,24 +67,14 @@ const App: React.FC = () => {
             <h2 className="font-cormorant font-semibold text-3xl sm:text-4xl lg:text-5xl leading-[1.1]
                            text-army-charcoal mb-4 animate-fade-in-up"
                 style={{ animationDelay: '0.08s' }}>
-              Portal de Informações de<br />
-              <span className="italic text-army-green">Pagamento de Pessoal</span>
+              Portal de consultas sobre<br />
+              <span className="italic text-army-green">pagamento de pessoal</span>
             </h2>
             <p className="text-sm text-army-green/55 leading-relaxed max-w-md mb-8 animate-fade-in-up"
                style={{ animationDelay: '0.16s' }}>
               Acesse os sistemas, ferramentas e dados da Divisão de Pagamento de Pessoal
               do Batalhão de Administração da Guarnição de Natal.
             </p>
-            <a
-              href="#sistemas"
-              className="inline-flex items-center gap-2 self-start bg-army-green text-white
-                         px-6 py-3 text-sm font-medium tracking-wide uppercase
-                         hover:bg-army-mid transition-colors duration-200 animate-fade-in-up"
-              style={{ animationDelay: '0.24s' }}
-            >
-              Ver sistemas disponíveis
-              <span className="text-army-gold">→</span>
-            </a>
           </div>
 
           {/* Right: background image with overlay */}
@@ -107,16 +97,6 @@ const App: React.FC = () => {
                 backgroundSize: '40px 40px',
               }}
             />
-            {/* Info card */}
-            <div className="absolute bottom-8 left-8 right-8 border border-army-gold/25 bg-white/6 backdrop-blur-sm p-5">
-              <p className="font-cormorant font-semibold text-lg text-white mb-1">
-                Divisão de Pagamento de Pessoal
-              </p>
-              <p className="text-xs text-white/50 leading-relaxed">
-                Responsável pelo processamento e controle da folha de pagamento dos
-                militares da ativa, veteranos e pensionistas da Guarnição de Natal.
-              </p>
-            </div>
           </div>
         </div>
       </section>
