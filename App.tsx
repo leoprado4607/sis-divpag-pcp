@@ -64,11 +64,6 @@ const App: React.FC = () => {
 
           {/* Left: text content */}
           <div className="flex flex-col justify-center px-6 sm:px-10 lg:px-16 py-14 bg-army-cream relative z-10">
-            <p className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.16em] uppercase
-                          text-army-gold mb-4 animate-fade-in-up">
-              <span className="w-5 h-px bg-army-gold" />
-              B Adm Gu Natal
-            </p>
             <h2 className="font-cormorant font-semibold text-3xl sm:text-4xl lg:text-5xl leading-[1.1]
                            text-army-charcoal mb-4 animate-fade-in-up"
                 style={{ animationDelay: '0.08s' }}>
