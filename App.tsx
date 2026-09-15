@@ -3,7 +3,6 @@ import React, { useState, useCallback, Suspense, lazy } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import SystemCard from './components/SystemCard';
-import QuickLinks from './components/QuickLinks';
 import { SYSTEM_LINKS } from './constants';
 // @ts-ignore
 import { SpeedInsights } from "@vercel/speed-insights/react";
@@ -126,9 +125,6 @@ const App: React.FC = () => {
           </div>
         </div>
       </section>
-
-      {/* ── Dados de Pagamento ── */}
-      <QuickLinks />
 
       {/* ── Systems grid ── */}
       <section id="sistemas" className="flex-grow bg-white px-4 sm:px-6 lg:px-8 py-12">
