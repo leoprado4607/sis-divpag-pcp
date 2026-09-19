@@ -55,3 +55,11 @@ migrated_prompt_history/
 
 # Claude Code: config pessoal/local (permissões da máquina) — não versionar
 .claude/settings.local.json
+
+# Painel DEA: dados pessoais e estado do pipeline NUNCA no repositório
+# (vivem no bucket privado "dea-privado" do Supabase).
+dea/app/dados.js
+dea/estado/
+dea/**/*.xlsx
+dea/credencial.json
+__pycache__/

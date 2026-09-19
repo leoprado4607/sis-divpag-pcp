@@ -34,17 +34,6 @@ export interface DashboardData {
   rejeitados: number;
 }
 
-// Tipos para o Dashboard DEA
-export interface DeaProtocol {
-  protocolo: string;
-  unidade: string;
-  valor: number;
-  situacao: string;
-  parecer: string;
-  nome: string;
-  dataImplantacao: string;
-}
-
 // Tipos para o Repositório de Notas (DivPag)
 export interface GeneralSubject {
   id: string;

@@ -1,0 +1,2388 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Acompanhamento DEA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap">
+
+<style>
+:root{
+  --ground:#F5F2EA;
+  --surface:#FFFFFF;
+  --surface-2:#FAF8F2;
+  --ink:#1A1D12;
+  --ink-2:#4C523E;
+  --ink-3:#7C8269;
+  --line:rgba(46,61,26,.14);
+  --line-forte:rgba(46,61,26,.28);
+  --verde:#2E3D1A;
+  --verde-claro:#3F5427;
+  --dourado:#A8832A;
+  --dourado-c:#C9A84C;
+  --critico:#9E2A1F;
+  --critico-bg:#FAEDEB;
+  --alerta:#8A5A12;
+  --alerta-bg:#FAF2E1;
+  --ok:#2F6B3A;
+  --ok-bg:#ECF3ED;
+  --neutro:#6E7360;
+  --neutro-bg:#F0EFE8;
+  --sans:'DM Sans',Inter,system-ui,-apple-system,Segoe UI,sans-serif;
+  --serif:'Cormorant Garamond',Georgia,'Times New Roman',serif;
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--sans); font-size:14px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{margin:0; text-wrap:balance}
+button{font:inherit; color:inherit; cursor:pointer}
+a{color:var(--verde)}
+:focus-visible{outline:2px solid var(--dourado); outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+
+.env{max-width:1500px; margin:0 auto; padding-inline:var(--s4)}
+@media(min-width:900px){.env{padding-inline:var(--s5)}}
+
+/* ---------- cabeçalho ---------- */
+.topo{
+  position:sticky; top:0; z-index:60;
+  background:var(--verde); border-bottom:2px solid var(--dourado);
+}
+.topo-in{
+  min-height:72px; display:flex; align-items:center; gap:var(--s4);
+  flex-wrap:wrap; padding-block:10px;
+}
+.marca{display:flex; align-items:center; gap:14px; min-width:0}
+.brasao{
+  width:52px; height:52px; flex:0 0 auto; border-radius:50%;
+  background:rgba(255,255,255,.06); border:1px solid rgba(168,131,42,.35);
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+}
+.brasao img{width:42px; height:42px; object-fit:contain; max-width:100%}
+.marca-txt{min-width:0; line-height:1.15}
+.sobretitulo{
+  margin:0 0 2px; font-size:9px; letter-spacing:.15em; text-transform:uppercase;
+  color:rgba(255,255,255,.45); font-weight:500;
+}
+.titulo{
+  font-family:var(--serif); font-weight:600; font-size:1.2rem; color:#fff;
+  letter-spacing:-.01em;
+}
+.topo-dir{margin-left:auto; display:flex; align-items:center; gap:var(--s2); flex-wrap:wrap}
+.pastilha{
+  display:flex; align-items:center; gap:8px;
+  background:rgba(255,255,255,.07); border:1px solid rgba(168,131,42,.25);
+  padding:7px 14px; color:rgba(255,255,255,.8); font-size:.72rem;
+}
+.ponto{
+  width:7px; height:7px; border-radius:50%; background:#34D399; flex:0 0 auto;
+  animation:pulsa 2.4s ease-in-out infinite;
+}
+@keyframes pulsa{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ---------- aviso de topo (só aparece se os dados não carregarem) ---------- */
+.aviso-topo{
+  margin:var(--s5) 0 0; padding:14px var(--s4); font-size:.82rem; color:var(--critico);
+  background:var(--critico-bg); border:1px solid rgba(158,42,31,.25);
+}
+
+/* ---------- barra de segmento ---------- */
+.segbar{
+  display:flex; align-items:center; gap:var(--s3); flex-wrap:wrap;
+  background:var(--surface); border:1px solid var(--line-forte);
+  margin-top:var(--s5); padding:12px var(--s4);
+}
+.segbar .chip i{font-style:normal; opacity:.6; font-size:.9em; margin-left:4px}
+.seg-resumo{font-size:.76rem; color:var(--ink-3); margin-left:auto; font-variant-numeric:tabular-nums}
+
+/* ---------- abas ---------- */
+.abas{
+  display:flex; gap:0; margin-top:var(--s5); border-bottom:1px solid var(--line-forte);
+  overflow-x:auto; scrollbar-width:thin;
+}
+.aba{
+  background:none; border:0; border-bottom:2px solid transparent;
+  padding:12px 18px; white-space:nowrap; color:var(--ink-2);
+  font-size:.82rem; font-weight:500; letter-spacing:.01em;
+}
+.aba:hover{color:var(--verde)}
+.aba[aria-selected="true"]{
+  color:var(--verde); font-weight:600; border-bottom-color:var(--dourado);
+}
+.aba .cnt{
+  display:inline-block; margin-left:7px; padding:1px 7px; font-size:.68rem;
+  background:var(--neutro-bg); color:var(--ink-2); font-variant-numeric:tabular-nums;
+}
+.aba.urgente .cnt{background:var(--critico); color:#fff}
+
+.painel{padding-block:var(--s5) var(--s7)}
+
+/* ---------- blocos genéricos ---------- */
+.rotulo{
+  font-size:9px; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--ink-3);
+}
+.cartao{background:var(--surface); border:1px solid var(--line)}
+.secao-cab{display:flex; align-items:baseline; gap:var(--s3); flex-wrap:wrap; margin-bottom:var(--s3)}
+.secao-tit{font-family:var(--serif); font-weight:600; font-size:1.35rem; letter-spacing:-.01em}
+.nota{
+  font-size:.78rem; color:var(--ink-2); background:var(--surface-2);
+  border-left:3px solid var(--dourado); padding:10px 14px;
+}
+.nota.vazio{border-left-color:var(--ink-3)}
+
+/* ---------- controles ---------- */
+.controles{
+  display:flex; gap:var(--s3); flex-wrap:wrap; align-items:flex-end;
+  background:var(--surface); border:1px solid var(--line); padding:var(--s4);
+  margin-bottom:var(--s4);
+}
+.campo{display:flex; flex-direction:column; gap:5px; min-width:0}
+.campo label{font-size:9px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3)}
+.campo input,.campo select{
+  font:inherit; font-size:.82rem; padding:8px 10px; background:var(--surface);
+  border:1px solid var(--line-forte); border-radius:0; color:var(--ink);
+  min-width:130px; max-width:100%;
+}
+.campo input:focus,.campo select:focus{border-color:var(--dourado); outline:none}
+.chips{display:flex; gap:6px; flex-wrap:wrap}
+.chip{
+  background:var(--surface); border:1px solid var(--line-forte); padding:7px 12px;
+  font-size:.75rem; color:var(--ink-2);
+}
+.chip[aria-pressed="true"]{background:var(--verde); border-color:var(--verde); color:#fff; font-weight:500}
+.btn{
+  background:var(--verde); color:#fff; border:1px solid var(--verde);
+  padding:8px 18px; font-size:.78rem; letter-spacing:.35px;
+}
+.btn:hover{background:var(--verde-claro)}
+.btn.secundario{background:transparent; color:var(--verde)}
+.btn.secundario:hover{background:var(--neutro-bg)}
+.resumo-filtro{
+  font-size:.78rem; color:var(--ink-2); margin-bottom:var(--s3);
+  display:flex; gap:var(--s3); flex-wrap:wrap; align-items:center;
+}
+.resumo-filtro b{font-variant-numeric:tabular-nums; color:var(--ink)}
+
+/* ---------- selos de situação ---------- */
+.selo{
+  display:inline-block; padding:2px 8px; font-size:.7rem; font-weight:500;
+  white-space:nowrap; border:1px solid transparent;
+}
+.selo.pago{background:var(--ok-bg); color:var(--ok); border-color:rgba(47,107,58,.25)}
+.selo.rejeitado{background:var(--critico-bg); color:var(--critico); border-color:rgba(158,42,31,.25)}
+.selo.andamento{background:var(--alerta-bg); color:var(--alerta); border-color:rgba(138,90,18,.25)}
+.selo.excluido{background:var(--neutro-bg); color:var(--neutro); border-color:var(--line-forte)}
+.selo.ausente{background:repeating-linear-gradient(45deg,#F0EFE8,#F0EFE8 4px,#E7E5DB 4px,#E7E5DB 8px); color:var(--ink-3); border-color:var(--line-forte)}
+
+/* ---------- grupos Prec-cp ---------- */
+.grupos{display:flex; flex-direction:column; gap:var(--s3)}
+.grupo{background:var(--surface); border:1px solid var(--line); border-left-width:4px}
+.grupo.risco{border-left-color:var(--critico)}
+.grupo.atencao{border-left-color:var(--alerta)}
+.grupo.resolvido{border-left-color:var(--ok)}
+.grupo-cab{
+  display:grid; gap:var(--s3) var(--s4); align-items:center; width:100%;
+  background:none; border:0; text-align:left; padding:14px var(--s4);
+  grid-template-columns:auto 1fr auto;
+}
+.grupo-cab:hover{background:var(--surface-2)}
+.seta{
+  font-size:.7rem; color:var(--ink-3); width:14px; flex:0 0 auto;
+  transition:transform .15s ease;
+}
+.grupo[data-aberto="1"] .seta{transform:rotate(90deg)}
+.grupo-id{min-width:0}
+.grupo-nome{display:block; font-weight:600; font-size:.92rem; overflow-wrap:anywhere}
+.grupo-meta{display:block; font-size:.76rem; color:var(--ink-2); margin-top:3px; font-variant-numeric:tabular-nums}
+.mud-nome,.mud-meta,.mud-tr{display:block}
+.grupo-dir{display:flex; align-items:center; gap:var(--s2); flex-wrap:wrap; justify-content:flex-end}
+.contagens{display:flex; gap:var(--s1); flex-wrap:wrap}
+.veredito{
+  font-size:.7rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+  padding:4px 10px; white-space:nowrap;
+}
+.veredito.risco{background:var(--critico); color:#fff}
+.veredito.atencao{background:var(--alerta); color:#fff}
+.veredito.resolvido{background:var(--ok-bg); color:var(--ok); border:1px solid rgba(47,107,58,.3)}
+.selo-incerto{
+  font-size:.66rem; padding:3px 8px; background:var(--neutro-bg);
+  color:var(--ink-2); border:1px dashed var(--line-forte); white-space:nowrap;
+}
+.grupo-corpo{border-top:1px solid var(--line); padding:var(--s4); background:var(--surface-2)}
+.grupo-expl{font-size:.78rem; color:var(--ink-2); margin-bottom:var(--s3); max-width:74ch}
+
+/* ---------- tabelas ---------- */
+.rolagem{overflow-x:auto; border:1px solid var(--line); background:var(--surface)}
+table{border-collapse:collapse; width:100%; font-size:.8rem}
+thead th{
+  position:sticky; top:0; background:var(--verde); color:#fff; z-index:2;
+  text-align:left; padding:9px 12px; font-size:.68rem; font-weight:600;
+  letter-spacing:.1em; text-transform:uppercase; white-space:nowrap;
+}
+thead th.ord{cursor:pointer; user-select:none}
+thead th.ord:hover{background:var(--verde-claro)}
+thead th .dir{color:var(--dourado-c); margin-left:4px}
+tbody td{padding:8px 12px; border-top:1px solid var(--line); vertical-align:top}
+tbody tr:nth-child(even) td{background:var(--surface-2)}
+tbody tr.aberta td{background:#F3F0E6}
+td.num{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap}
+td.mono{font-variant-numeric:tabular-nums; white-space:nowrap}
+.tbl-interna thead th{background:var(--neutro-bg); color:var(--ink-2); position:static}
+.linha-parecer td{background:#F3F0E6; font-size:.78rem; color:var(--ink-2)}
+.parecer-txt{max-width:100ch; white-space:pre-wrap; overflow-wrap:anywhere}
+.btn-exp{background:none; border:1px solid var(--line-forte); padding:1px 7px; font-size:.7rem; color:var(--ink-2)}
+.paginacao{
+  display:flex; gap:var(--s2); align-items:center; justify-content:center;
+  flex-wrap:wrap; margin-top:var(--s4); font-size:.8rem;
+}
+.paginacao button{
+  background:var(--surface); border:1px solid var(--line-forte); padding:6px 14px; font-size:.78rem;
+}
+.paginacao button:disabled{opacity:.4; cursor:default}
+.vazio-msg{padding:var(--s6) var(--s4); text-align:center; color:var(--ink-3); font-size:.85rem}
+
+/* ---------- diff ---------- */
+.diff-grid{display:grid; gap:var(--s4); grid-template-columns:1fr}
+@media(min-width:1000px){.diff-grid{grid-template-columns:1fr 1fr}}
+.mud{
+  display:grid; grid-template-columns:auto 1fr; gap:var(--s3);
+  padding:11px var(--s4); border-top:1px solid var(--line); align-items:start;
+}
+.mud:first-of-type{border-top:0}
+.mud-seta{font-size:1rem; line-height:1.2; font-weight:700}
+.mud-seta.avanco{color:var(--ok)}
+.mud-seta.retrocesso{color:var(--critico)}
+.mud-seta.lateral{color:var(--ink-3)}
+.mud-nome{font-weight:600; font-size:.84rem; overflow-wrap:anywhere}
+.mud-meta{font-size:.74rem; color:var(--ink-3); font-variant-numeric:tabular-nums; margin-top:2px}
+.mud-tr{font-size:.78rem; margin-top:5px; display:flex; gap:7px; flex-wrap:wrap; align-items:center}
+.mud-de{color:var(--ink-3); text-decoration:line-through}
+
+/* ---------- fila de homologação ---------- */
+.alerta-faixa{
+  display:grid; gap:var(--s3) var(--s4); grid-template-columns:auto 1fr auto;
+  align-items:center; background:var(--surface); border:1px solid var(--line);
+  border-left:4px solid var(--neutro); padding:14px var(--s4); margin-bottom:var(--s3);
+}
+.alerta-faixa.critico{border-left-color:var(--critico)}
+.alerta-faixa.novo{border-left-color:var(--dourado)}
+.alerta-faixa.calmo{border-left-color:var(--ok)}
+.alerta-num{
+  font-family:var(--serif); font-weight:600; font-size:2rem; line-height:1;
+  font-variant-numeric:tabular-nums; min-width:1.6ch; text-align:center;
+}
+.alerta-faixa.critico .alerta-num{color:var(--critico)}
+.alerta-faixa.novo .alerta-num{color:var(--dourado)}
+.alerta-faixa.calmo .alerta-num{color:var(--ok)}
+.alerta-tit{display:block; font-weight:600; font-size:.92rem}
+.alerta-txt{display:block; font-size:.78rem; color:var(--ink-2); margin-top:3px; max-width:78ch}
+.alerta-lista{display:flex; gap:var(--s1); flex-wrap:wrap; justify-content:flex-end; max-width:46%}
+.dias-selo{
+  display:inline-block; padding:2px 8px; font-size:.72rem; font-weight:600;
+  font-variant-numeric:tabular-nums; white-space:nowrap; border:1px solid transparent;
+}
+.dias-selo.ok{background:var(--ok-bg); color:var(--ok); border-color:rgba(47,107,58,.25)}
+.dias-selo.atencao{background:var(--alerta-bg); color:var(--alerta); border-color:rgba(138,90,18,.25)}
+.dias-selo.grave{background:var(--critico); color:#fff}
+.dias-selo.nd{background:var(--neutro-bg); color:var(--ink-3); border-color:var(--line-forte)}
+
+/* ---------- histórico ---------- */
+.hist-dia{background:var(--surface); border:1px solid var(--line); margin-bottom:var(--s3)}
+.hist-cab{
+  display:grid; grid-template-columns:auto 1fr auto; gap:var(--s3) var(--s4);
+  align-items:center; width:100%; background:none; border:0; text-align:left;
+  padding:14px var(--s4);
+}
+.hist-cab:hover{background:var(--surface-2)}
+.hist-dia[data-aberto="1"] .seta{transform:rotate(90deg)}
+.hist-data{display:block; font-weight:600; font-size:.95rem; font-variant-numeric:tabular-nums}
+.hist-meta{display:block; font-size:.76rem; color:var(--ink-2); margin-top:3px; font-variant-numeric:tabular-nums}
+.hist-tot{
+  font-family:var(--serif); font-weight:600; font-size:1.5rem; line-height:1;
+  font-variant-numeric:tabular-nums; min-width:2ch; text-align:right;
+}
+.hist-tot.zero{color:var(--ink-3); font-size:1rem}
+.hist-corpo{border-top:1px solid var(--line); padding:var(--s4); background:var(--surface-2)}
+.hist-pilulas{display:flex; gap:var(--s1); flex-wrap:wrap; justify-content:flex-end}
+.hist-snap{
+  display:flex; gap:var(--s4); flex-wrap:wrap; font-size:.74rem; color:var(--ink-3);
+  margin-top:var(--s3); padding-top:var(--s3); border-top:1px solid var(--line);
+  font-variant-numeric:tabular-nums;
+}
+.hist-snap b{color:var(--ink-2)}
+
+/* ---------- visão geral ---------- */
+.geral-grid{display:grid; gap:var(--s4); grid-template-columns:1fr}
+@media(min-width:1000px){.geral-grid{grid-template-columns:1.4fr 1fr}}
+.legenda{display:flex; gap:var(--s4); flex-wrap:wrap; font-size:.75rem; margin-top:var(--s3)}
+.legenda span{display:flex; align-items:center; gap:6px; color:var(--ink-2)}
+.sw{width:11px; height:11px; flex:0 0 auto}
+.barra-lista{display:flex; flex-direction:column}
+.barra-item{display:grid; grid-template-columns:1fr auto; gap:var(--s3); align-items:center; padding:7px 0; border-top:1px solid var(--line)}
+.barra-item:first-child{border-top:0}
+.barra-rot{font-size:.78rem; overflow-wrap:anywhere}
+.barra-val{font-variant-numeric:tabular-nums; font-size:.78rem; font-weight:600}
+.barra-trilho{grid-column:1/-1; height:5px; background:var(--neutro-bg)}
+.barra-fill{height:100%; background:var(--verde)}
+.rodape{
+  margin-top:var(--s7); padding-top:var(--s4); border-top:1px solid var(--line-forte);
+  font-size:.74rem; color:var(--ink-3); display:flex; gap:var(--s4); flex-wrap:wrap;
+}
+/* ---------- relatório para PDF ---------- */
+body{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+
+.rel-barra{
+  position:sticky; top:0; z-index:70; display:flex; gap:var(--s3); align-items:center;
+  flex-wrap:wrap; background:var(--verde); color:#fff; padding:12px var(--s4);
+  border-bottom:2px solid var(--dourado); margin-bottom:var(--s5);
+}
+.rel-barra-tit{font-family:var(--serif); font-size:1.05rem; font-weight:600}
+.rel-barra .btn{background:var(--dourado); border-color:var(--dourado); color:#1A1D12; font-weight:600}
+.rel-barra .btn:hover{background:var(--dourado-c)}
+.rel-barra .btn.secundario{background:transparent; color:#fff; border-color:rgba(255,255,255,.45)}
+.rel-barra .btn.secundario:hover{background:rgba(255,255,255,.1)}
+.rel-dica{font-size:.72rem; color:rgba(255,255,255,.7); flex:1 1 260px; min-width:0}
+
+body.modo-relatorio .topo,
+body.modo-relatorio .aviso-topo,
+body.modo-relatorio .segbar,
+body.modo-relatorio .abas,
+body.modo-relatorio .painel,
+body.modo-relatorio .rodape{display:none !important}
+
+.relatorio{max-width:840px; margin:0 auto; padding-bottom:var(--s7)}
+.relatorio.paisagem{max-width:1120px}
+
+.rel-capa{border-top:3px solid var(--verde); padding-top:var(--s5)}
+.rel-capa-marca{display:flex; align-items:center; gap:14px}
+.rel-capa-marca img{width:56px; height:56px; object-fit:contain; flex:0 0 auto}
+.rel-org{font-size:9px; letter-spacing:.15em; text-transform:uppercase; color:var(--ink-3); margin:0 0 3px}
+.rel-unid{font-family:var(--serif); font-size:1.05rem; font-weight:600; margin:0}
+.rel-tit{font-family:var(--serif); font-size:2.1rem; font-weight:700; letter-spacing:-.02em;
+  line-height:1.1; margin:var(--s5) 0 var(--s3)}
+.rel-sub{font-size:.86rem; color:var(--ink-2); max-width:64ch; margin:0; line-height:1.55}
+.rel-carimbo{margin-top:var(--s4); padding-top:var(--s3); border-top:1px solid var(--line);
+  font-size:.74rem; color:var(--ink-3); display:flex; gap:var(--s5); flex-wrap:wrap;
+  font-variant-numeric:tabular-nums}
+.rel-ind{display:grid; grid-template-columns:repeat(auto-fit,minmax(176px,1fr)); gap:1px;
+  background:var(--line-forte); border:1px solid var(--line-forte); margin-top:var(--s5)}
+.rel-ind div{background:var(--surface); padding:12px 14px}
+.rel-ind .r{font-size:8.5px; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--ink-3); margin:0}
+.rel-ind .v{font-family:var(--serif); font-size:1.5rem; font-weight:600; margin:3px 0 0;
+  font-variant-numeric:tabular-nums; line-height:1.05}
+.rel-legenda{margin-top:var(--s5)}
+.rel-legenda dl{break-inside:avoid}
+.rel-legenda dl{margin:0; display:grid; grid-template-columns:auto 1fr; gap:6px var(--s3)}
+.rel-legenda dt{font-weight:700; font-size:.78rem; white-space:nowrap}
+.rel-legenda dd{margin:0; font-size:.78rem; color:var(--ink-2); line-height:1.5}
+.rel-legenda .marca{display:inline-block; width:3px; height:.85em; margin-right:6px;
+  vertical-align:-1px; background:var(--neutro)}
+.rel-legenda .risco .marca{background:var(--critico)}
+.rel-legenda .atencao .marca{background:var(--alerta)}
+.rel-legenda .resolvido .marca{background:var(--ok)}
+.rel-filtros{margin:var(--s4) 0 0; font-size:.76rem; color:var(--ink-2);
+  background:var(--surface-2); border-left:3px solid var(--dourado); padding:10px 14px}
+
+.rel-secao{margin-top:var(--s6)}
+.rel-secao-tit{font-family:var(--serif); font-size:1.4rem; font-weight:600;
+  border-bottom:2px solid var(--dourado); padding-bottom:6px; margin-bottom:var(--s4)}
+.rel-grupo{border:1px solid var(--line); border-left:4px solid var(--neutro);
+  background:var(--surface); margin-bottom:var(--s4)}
+.rel-grupo.risco{border-left-color:var(--critico)}
+.rel-grupo.atencao{border-left-color:var(--alerta)}
+.rel-grupo.resolvido{border-left-color:var(--ok)}
+.rel-grupo-cab{padding:12px var(--s4); border-bottom:1px solid var(--line);
+  display:flex; gap:var(--s3); align-items:flex-start; justify-content:space-between; flex-wrap:wrap}
+.rel-grupo-nome{font-weight:700; font-size:.94rem; margin:0; overflow-wrap:anywhere}
+.rel-grupo-meta{font-size:.75rem; color:var(--ink-2); margin:3px 0 0; font-variant-numeric:tabular-nums}
+.rel-grupo-dir{display:flex; gap:5px; align-items:center; flex-wrap:wrap; justify-content:flex-end}
+.rel-grupo-corpo{padding:var(--s3) var(--s4) var(--s4)}
+.rel-expl{font-size:.75rem; color:var(--ink-2); margin:0 0 var(--s3); max-width:82ch; line-height:1.5}
+.rel-tab{width:100%; border-collapse:collapse; font-size:.72rem; table-layout:auto}
+/* dentro das tabelas do relatório a situação vira texto com filete lateral:
+   a pílula com padding quebrava em 4 linhas e triplicava a altura da folha.
+   As pílulas continuam no cabeçalho do grupo, onde há espaço. */
+.rel-tab .selo{
+  display:block; white-space:normal; background:none !important; border:0;
+  border-left:3px solid currentColor; padding:1px 0 1px 7px; font-weight:500;
+}
+.rel-tab .selo.ausente{color:var(--ink-3); font-style:italic}
+.rel-tab th{background:var(--verde); color:#fff; text-align:left; padding:6px 8px;
+  font-size:.63rem; letter-spacing:.08em; text-transform:uppercase; font-weight:600}
+.rel-tab td{padding:5px 8px; border-top:1px solid var(--line); vertical-align:top}
+.rel-tab .num{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap}
+.rel-tab .mono{font-variant-numeric:tabular-nums; white-space:nowrap}
+.rel-tab .rel-parecer td{background:var(--surface-2); color:var(--ink-2); font-size:.7rem;
+  white-space:pre-wrap; overflow-wrap:anywhere}
+.rel-sublegenda{font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3);
+  margin:var(--s4) 0 6px}
+.rel-vazio{font-size:.8rem; color:var(--ink-3); padding:var(--s5); text-align:center;
+  border:1px dashed var(--line-forte)}
+.rel-rodape{margin-top:var(--s6); padding-top:var(--s3); border-top:1px solid var(--line-forte);
+  font-size:.7rem; color:var(--ink-3)}
+
+@media print{
+  @page{size:A4 portrait; margin:14mm 12mm}
+  @page retrato{size:A4 portrait; margin:14mm 12mm}
+  @page paisagem{size:A4 landscape; margin:12mm}
+  .relatorio{page:retrato}
+  .relatorio.paisagem{page:paisagem}
+  html,body{background:#fff !important}
+  body{font-size:10pt}
+  .rel-barra{display:none !important}
+  .relatorio{max-width:none; margin:0; padding:0}
+  .rel-capa{break-after:auto; page-break-after:auto}
+  .rel-legenda{break-after:page; page-break-after:always}
+  .rel-secao{margin-top:0}
+  .rel-secao-tit{break-after:avoid; page-break-after:avoid}
+  .rel-grupo{margin-bottom:10px}
+  .rel-grupo-cab{break-after:avoid; page-break-after:avoid}
+  .rel-expl{break-after:avoid; page-break-after:avoid}
+  tr{break-inside:avoid; page-break-inside:avoid}
+  thead{display:table-header-group}
+}
+
+</style>
+
+<header class="topo">
+  <div class="env topo-in">
+    <div class="marca">
+      <span class="brasao"><img src="data:image/webp;base64,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" alt="Brasão da Divisão de Pagamento de Pessoal"></span>
+      <span class="marca-txt">
+        <p class="sobretitulo">B Adm Gu Natal &middot; Despesas de Exercícios Anteriores</p>
+        <h1 class="titulo">Acompanhamento de Processos DEA</h1>
+      </span>
+    </div>
+    <div class="topo-dir">
+      <span class="pastilha"><span class="ponto"></span><span id="carimbo">—</span></span>
+    </div>
+  </div>
+</header>
+
+<main class="env">
+  <p class="aviso-topo" id="avisoTopo" hidden></p>
+
+  <div class="segbar">
+    <span class="rotulo" id="lbl-seg">Segmento</span>
+    <div class="chips" role="group" aria-labelledby="lbl-seg">
+      <button class="chip" id="seg-Veteranos" data-seg="Veteranos" aria-pressed="true" type="button">Veteranos <i>96…</i></button>
+      <button class="chip" id="seg-Pensionistas" data-seg="Pensionistas" aria-pressed="true" type="button">Pensionistas <i>98…</i></button>
+      <button class="chip" id="seg-Ativa" data-seg="Ativa" aria-pressed="true" type="button">Ativa <i>demais</i></button>
+    </div>
+    <span class="seg-resumo" id="seg-resumo"></span>
+  </div>
+
+  <div class="abas" role="tablist" aria-label="Seções do painel">
+    <button class="aba urgente" role="tab" id="t-grupos" aria-controls="p-grupos" aria-selected="true" type="button">Prec-cp repetido<span class="cnt" id="c-grupos">0</span></button>
+    <button class="aba urgente" role="tab" id="t-entreanos" aria-controls="p-entreanos" aria-selected="false" type="button">Entre anos<span class="cnt" id="c-entreanos">0</span></button>
+    <button class="aba" role="tab" id="t-pagofora" aria-controls="p-pagofora" aria-selected="false" type="button">Pago em outro ano<span class="cnt" id="c-pagofora">0</span></button>
+    <button class="aba" role="tab" id="t-diff" aria-controls="p-diff" aria-selected="false" type="button">Alterações do dia<span class="cnt" id="c-diff">0</span></button>
+    <button class="aba" role="tab" id="t-fila" aria-controls="p-fila" aria-selected="false" type="button">Fila de homologação<span class="cnt" id="c-fila">0</span></button>
+    <button class="aba" role="tab" id="t-historico" aria-controls="p-historico" aria-selected="false" type="button">Histórico<span class="cnt" id="c-historico">0</span></button>
+    <button class="aba" role="tab" id="t-homologados" aria-controls="p-homologados" aria-selected="false" type="button">Homologados para lançamento<span class="cnt" id="c-homologados">0</span></button>
+    <button class="aba" role="tab" id="t-consulta" aria-controls="p-consulta" aria-selected="false" type="button">Consulta de processos<span class="cnt" id="c-consulta">0</span></button>
+    <button class="aba" role="tab" id="t-geral" aria-controls="p-geral" aria-selected="false" type="button">Visão geral</button>
+  </div>
+
+  <!-- ============ GRUPOS ============ -->
+  <section class="painel" id="p-grupos" role="tabpanel" aria-labelledby="t-grupos">
+    <div class="secao-cab">
+      <h2 class="secao-tit">Mesmo Prec-cp, mesmo ano, valores próximos</h2>
+    </div>
+    <p class="nota" id="notaRegra"></p>
+
+    <div class="controles" style="margin-top:var(--s4)">
+      <div class="campo">
+        <span class="rotulo" id="lbl-gstatus">Situação do grupo</span>
+        <div class="chips" role="group" aria-labelledby="lbl-gstatus">
+          <button class="chip" id="g-risco" data-st="risco" aria-pressed="true" type="button">Em risco</button>
+          <button class="chip" id="g-atencao" data-st="atencao" aria-pressed="true" type="button">Atenção</button>
+          <button class="chip" id="g-resolvido" data-st="resolvido" aria-pressed="false" type="button">Resolvidos</button>
+        </div>
+      </div>
+      <div class="campo">
+        <label for="g-ano">Ano</label>
+        <select id="g-ano"><option value="">Todos</option></select>
+      </div>
+      <div class="campo" style="flex:1 1 220px">
+        <label for="g-busca">Nome ou Prec-cp</label>
+        <input id="g-busca" type="search" placeholder="ex.: MARCIO ou 411648310" autocomplete="off">
+      </div>
+      <button class="btn secundario" id="g-limpar" type="button">Limpar</button>
+      <button class="btn" id="g-pdf" type="button">Relatório PDF</button>
+    </div>
+
+    <p class="resumo-filtro"><span><b id="g-cont">0</b> grupo(s) · <b id="g-proto">0</b> protocolo(s)</span></p>
+    <div class="grupos" id="g-lista"></div>
+  </section>
+
+  <!-- ============ ENTRE ANOS ============ -->
+  <section class="painel" id="p-entreanos" role="tabpanel" aria-labelledby="t-entreanos" hidden>
+    <div class="secao-cab">
+      <h2 class="secao-tit">Mesmo Prec-cp atravessando a virada do ano</h2>
+    </div>
+    <p class="nota" id="notaEA"></p>
+
+    <div class="controles" style="margin-top:var(--s4)">
+      <div class="campo">
+        <span class="rotulo" id="lbl-estatus">Situação do grupo</span>
+        <div class="chips" role="group" aria-labelledby="lbl-estatus">
+          <button class="chip" id="e-risco" data-st="risco" aria-pressed="true" type="button">Em risco</button>
+          <button class="chip" id="e-atencao" data-st="atencao" aria-pressed="true" type="button">Atenção</button>
+          <button class="chip" id="e-resolvido" data-st="resolvido" aria-pressed="false" type="button">Resolvidos</button>
+        </div>
+      </div>
+      <div class="campo" style="flex:1 1 220px">
+        <label for="e-busca">Nome ou Prec-cp</label>
+        <input id="e-busca" type="search" placeholder="ex.: 359172131" autocomplete="off">
+      </div>
+      <button class="btn secundario" id="e-limpar" type="button">Limpar</button>
+      <button class="btn" id="e-pdf" type="button">Relatório PDF</button>
+    </div>
+
+    <p class="resumo-filtro"><span><b id="e-cont">0</b> grupo(s) · <b id="e-proto">0</b> protocolo(s)</span></p>
+    <div class="grupos" id="e-lista"></div>
+  </section>
+
+  <!-- ============ PAGO EM OUTRO ANO ============ -->
+  <section class="painel" id="p-pagofora" role="tabpanel" aria-labelledby="t-pagofora" hidden>
+    <div class="secao-cab">
+      <h2 class="secao-tit">Rejeitados num ano, pagos em outro</h2>
+    </div>
+    <p class="nota" id="notaPF"></p>
+
+    <div class="controles" style="margin-top:var(--s4)">
+      <div class="campo">
+        <span class="rotulo" id="lbl-pfsent">Momento do pagamento</span>
+        <div class="chips" role="group" aria-labelledby="lbl-pfsent">
+          <button class="chip" id="pf-posterior" aria-pressed="true" type="button">Ano posterior</button>
+          <button class="chip" id="pf-anterior" aria-pressed="true" type="button">Ano anterior</button>
+        </div>
+      </div>
+      <div class="campo" style="flex:1 1 220px">
+        <label for="pf-busca">Nome ou Prec-cp</label>
+        <input id="pf-busca" type="search" placeholder="ex.: 346157275" autocomplete="off">
+      </div>
+      <button class="btn secundario" id="pf-limpar" type="button">Limpar</button>
+      <button class="btn" id="pf-pdf" type="button">Relatório PDF</button>
+    </div>
+
+    <p class="resumo-filtro"><span><b id="pf-cont">0</b> grupo(s) · <b id="pf-proto">0</b> protocolo(s) rejeitado(s)</span></p>
+    <div class="grupos" id="pf-lista"></div>
+  </section>
+
+  <!-- ============ DIFF ============ -->
+  <section class="painel" id="p-diff" role="tabpanel" aria-labelledby="t-diff" hidden>
+    <div class="secao-cab">
+      <h2 class="secao-tit">Alterações em relação ao dia anterior</h2>
+    </div>
+    <p class="nota" id="diff-nota"></p>
+    <div class="controles" style="margin-top:var(--s4)">
+      <button class="btn" id="d-pdf" type="button">Relatório PDF</button>
+      <span style="font-size:.76rem;color:var(--ink-2)">Gera um documento A4 com todas as alterações do dia, pronto para compartilhar.</span>
+    </div>
+    <div class="diff-grid" id="diff-grid" style="margin-top:var(--s4)"></div>
+  </section>
+
+  <!-- ============ FILA DE HOMOLOGAÇÃO ============ -->
+  <section class="painel" id="p-fila" role="tabpanel" aria-labelledby="t-fila" hidden>
+    <div class="secao-cab">
+      <h2 class="secao-tit">Fila de homologação</h2>
+    </div>
+    <p class="nota" id="notaFila"></p>
+
+    <div id="fl-alertas" style="margin-top:var(--s4)"></div>
+
+    <div class="controles">
+      <div class="campo">
+        <span class="rotulo" id="lbl-fl">Mostrar</span>
+        <div class="chips" role="group" aria-labelledby="lbl-fl">
+          <button class="chip" id="fl-alerta" aria-pressed="false" type="button">Só os parados</button>
+          <button class="chip" id="fl-novos" aria-pressed="false" type="button">Só os novos</button>
+        </div>
+      </div>
+      <div class="campo" style="flex:1 1 220px">
+        <label for="fl-busca">Protocolo, nome ou Prec-cp</label>
+        <input id="fl-busca" type="search" placeholder="ex.: 529224 ou MARCIO" autocomplete="off">
+      </div>
+      <button class="btn secundario" id="fl-limpar" type="button">Limpar</button>
+      <button class="btn" id="fl-pdf" type="button">Relatório PDF</button>
+    </div>
+
+    <p class="resumo-filtro">
+      <span><b id="fl-cont">0</b> de <b id="fl-tot">0</b> protocolo(s) na fila</span>
+      <span id="fl-soma"></span>
+    </p>
+    <div id="fl-area"></div>
+  </section>
+
+  <!-- ============ HISTÓRICO ============ -->
+  <section class="painel" id="p-historico" role="tabpanel" aria-labelledby="t-historico" hidden>
+    <div class="secao-cab">
+      <h2 class="secao-tit">Histórico de atualizações</h2>
+    </div>
+    <p class="nota" id="notaHist"></p>
+
+    <div class="controles" style="margin-top:var(--s4)">
+      <div class="campo">
+        <span class="rotulo" id="lbl-hs">Dias</span>
+        <div class="chips" role="group" aria-labelledby="lbl-hs">
+          <button class="chip" id="hs-comuns" aria-pressed="true" type="button">Com alteração</button>
+          <button class="chip" id="hs-vazios" aria-pressed="false" type="button">Sem alteração</button>
+        </div>
+      </div>
+      <div class="campo" style="flex:1 1 220px">
+        <label for="hs-busca">Protocolo, nome ou Prec-cp</label>
+        <input id="hs-busca" type="search" placeholder="ex.: 532091 ou SERGIO" autocomplete="off">
+      </div>
+      <button class="btn secundario" id="hs-limpar" type="button">Limpar</button>
+      <button class="btn" id="hs-pdf" type="button">Relatório PDF</button>
+    </div>
+
+    <p class="resumo-filtro"><span><b id="hs-cont">0</b> dia(s) · <b id="hs-mud">0</b> alteração(ões)</span></p>
+    <div id="hs-lista"></div>
+  </section>
+
+  <!-- ============ HOMOLOGADOS PARA LANÇAMENTO ============ -->
+  <section class="painel" id="p-homologados" role="tabpanel" aria-labelledby="t-homologados" hidden>
+    <div class="secao-cab">
+      <h2 class="secao-tit">Homologados para lançamento</h2>
+    </div>
+    <p class="nota" id="notaHL"></p>
+    <p class="resumo-filtro" style="margin-top:var(--s4)">
+      <span><b id="hl-cont">0</b> protocolo(s) prontos para lançamento</span>
+      <span id="hl-soma"></span>
+      <button class="btn" id="hl-pdf" type="button" style="margin-left:auto">Relatório PDF</button>
+    </p>
+    <div id="hl-area"></div>
+  </section>
+
+  <!-- ============ CONSULTA ============ -->
+  <section class="painel" id="p-consulta" role="tabpanel" aria-labelledby="t-consulta" hidden>
+    <div class="secao-cab">
+      <h2 class="secao-tit">Consulta de processos</h2>
+    </div>
+
+    <div class="controles">
+      <div class="campo">
+        <label for="f-ano">Ano</label>
+        <select id="f-ano"><option value="">Todos</option></select>
+      </div>
+      <div class="campo">
+        <label for="f-proto">Nº de protocolo</label>
+        <input id="f-proto" type="search" placeholder="ex.: 490447" autocomplete="off">
+      </div>
+      <div class="campo">
+        <label for="f-prec">Prec-cp</label>
+        <input id="f-prec" type="search" placeholder="ex.: 411648310" autocomplete="off">
+      </div>
+      <div class="campo" style="flex:1 1 200px">
+        <label for="f-nome">Nome</label>
+        <input id="f-nome" type="search" placeholder="ex.: MARCIO EMANOEL" autocomplete="off">
+      </div>
+      <div class="campo" style="flex:1 1 240px">
+        <label for="f-sit">Situação vigente</label>
+        <select id="f-sit"><option value="">Todas</option></select>
+        <span style="font-size:.68rem;color:var(--ink-3)">Acompanhamento; para os que aguardam o CPEx, a aba DEA</span>
+      </div>
+      <div class="campo">
+        <span class="rotulo" id="lbl-atalhos">Atalhos</span>
+        <div class="chips" role="group" aria-labelledby="lbl-atalhos">
+          <button class="chip" id="f-div" aria-pressed="false" type="button">Só divergentes</button>
+          <button class="chip" id="f-sem" aria-pressed="false" type="button">Aguardando CPEx</button>
+        </div>
+      </div>
+      <button class="btn secundario" id="f-limpar" type="button">Limpar</button>
+    </div>
+
+    <p class="resumo-filtro">
+      <span><b id="f-cont">0</b> de <b id="f-total">0</b> processos</span>
+      <span id="f-soma"></span>
+    </p>
+
+    <div class="rolagem">
+      <table id="tabela">
+        <thead>
+          <tr>
+            <th scope="col"></th>
+            <th scope="col" class="ord" data-c="protocolo">Protocolo</th>
+            <th scope="col" class="ord" data-c="data_ord">Data</th>
+            <th scope="col" class="ord" data-c="ano">Ano</th>
+            <th scope="col" class="ord" data-c="prec_cp">Prec-cp</th>
+            <th scope="col" class="ord" data-c="nome">Nome</th>
+            <th scope="col" class="ord" data-c="valor">Valor</th>
+            <th scope="col" class="ord" data-c="sit_dea">Situação — aba DEA</th>
+            <th scope="col" class="ord" data-c="sit_acomp">Situação — Acompanhamento</th>
+            <th scope="col" class="ord" data-c="codom">CODOM</th>
+          </tr>
+        </thead>
+        <tbody id="tcorpo"></tbody>
+      </table>
+    </div>
+    <div class="paginacao" id="pag"></div>
+  </section>
+
+  <!-- ============ GERAL ============ -->
+  <section class="painel" id="p-geral" role="tabpanel" aria-labelledby="t-geral" hidden>
+    <div class="secao-cab">
+      <h2 class="secao-tit">Visão geral</h2>
+    </div>
+    <div class="geral-grid">
+      <div class="cartao" style="padding:var(--s5)">
+        <p class="rotulo">Processos por ano de protocolo</p>
+        <div id="grafico" style="margin-top:var(--s4)"></div>
+        <div class="legenda">
+          <span><i class="sw" style="background:#2F6B3A"></i>Pago</span>
+          <span><i class="sw" style="background:#A8832A"></i>Em andamento</span>
+          <span><i class="sw" style="background:#9E2A1F"></i>Rejeitado</span>
+          <span><i class="sw" style="background:#B7B5A8"></i>Excluído</span>
+        </div>
+      </div>
+      <div class="cartao" style="padding:var(--s5)">
+        <p class="rotulo">Situações mais frequentes</p>
+        <div class="barra-lista" id="lista-sit" style="margin-top:var(--s3)"></div>
+      </div>
+    </div>
+    <div class="cartao" style="padding:var(--s5); margin-top:var(--s4)">
+      <p class="rotulo">Cobertura do cruzamento</p>
+      <div id="qualidade" style="margin-top:var(--s3)"></div>
+    </div>
+  </section>
+
+  <div class="rel-barra" id="rel-barra" hidden>
+    <span class="rel-barra-tit">Pré-visualização do relatório</span>
+    <button class="btn" id="rel-imprimir" type="button">Salvar em PDF</button>
+    <button class="btn secundario" id="rel-voltar" type="button">Voltar ao painel</button>
+    <span class="rel-dica">Se a janela de impressão não abrir sozinha, use Ctrl+P (ou &#8984;+P) e escolha “Salvar como PDF”.</span>
+  </div>
+  <section class="relatorio" id="relatorio" hidden aria-label="Relatório para impressão"></section>
+
+  <footer class="rodape">
+    <span id="rod-fonte"></span>
+    <span id="rod-org"></span>
+  </footer>
+</main>
+
+<script src="dados.js"></script>
+<script>
+(function(){
+"use strict";
+
+var D = window.DEA_DATA;
+var elAviso = document.getElementById('avisoTopo');
+
+if(!D){
+  elAviso.textContent = 'Dados indisponíveis — o arquivo dados.js não foi carregado junto com esta página. '+
+    'Atualize o painel ou solicite uma nova publicação.';
+  elAviso.hidden = false;
+  return;
+}
+
+/* ---------- reidratação ---------- */
+var campos = D.campos, A = D.agregados, META = D.meta, DIFF = D.diff;
+var P = D.processos.map(function(l){
+  var o = {};
+  for(var i=0;i<campos.length;i++) o[campos[i]] = l[i];
+  // chave de ordenação estável para data dd/mm/aaaa
+  o.data_ord = o.data ? o.data.slice(6,10)+o.data.slice(3,5)+o.data.slice(0,2) : '';
+  o._busca = semAcento(o.nome);
+  return o;
+});
+function hidratarGrupos(lista){
+  return (lista||[]).map(function(g){
+    g.itens = g.idx.map(function(i){ return P[i]; });
+    if(g.pago_fora) g.pago_fora.itens = g.pago_fora.idx.map(function(i){ return P[i]; });
+    g._busca = semAcento((g.nomes||[]).join(' ')) + ' ' + g.prec_cp;
+    return g;
+  });
+}
+var GRUPOS = hidratarGrupos(D.grupos);
+var GRUPOS_EA = hidratarGrupos(D.grupos_entre_anos);
+var GRUPOS_PF = hidratarGrupos(D.grupos_pagos_fora);
+var HOMOL = (D.homologados_idx || []).map(function(i){ return P[i]; });
+var HIST = (D.historico || []);
+var FILA = D.homolog || {disponivel:false, motivo:'', itens:[], novos:[], saidos:[], alerta:[], total:0};
+
+/* ---------- recorte por segmento (vale para todas as abas) ---------- */
+var SEG = {Veteranos:true, Pensionistas:true, Ativa:true};
+function segOK(s){ return SEG[s || 'Ativa'] !== false; }
+function porSeg(g){ return segOK(g.segmento); }
+var V = {};
+function recortar(){
+  V.P  = P.filter(porSeg);
+  V.G  = GRUPOS.filter(porSeg);
+  V.EA = GRUPOS_EA.filter(porSeg);
+  V.PF = GRUPOS_PF.filter(porSeg);
+  V.HL = HOMOL.filter(porSeg);
+  V.HIST = HIST.map(function(h){
+    if(h.resumido) return h;   // entrada antiga: só contagens, não dá para recortar
+    var a = (h.acomp||[]).filter(porSeg), d = (h.dea2026||[]).filter(porSeg),
+        n = (h.novos||[]).filter(porSeg), r = h.removidos||[];
+    return {id:h.id, data:h.data, gerado_em:h.gerado_em, base:h.base, totais:h.totais,
+            acomp:a, dea2026:d, novos:n, removidos:r,
+            total:a.length+d.length+n.length+r.length};
+  });
+  V.FILA = (function(){
+    if(!FILA.disponivel) return FILA;
+    var it = (FILA.itens || []).filter(porSeg);
+    var lim = FILA.limite_alerta || 2;
+    return {
+      disponivel:true, motivo:'', base:FILA.base, primeira_vez:FILA.primeira_vez,
+      limite_alerta:lim, itens:it, total:it.length,
+      sem_dea: it.filter(function(i){ return !i.no_dea; }).length,
+      novos: it.filter(function(i){ return i.novo; }),
+      alerta: it.filter(function(i){ return i.dias_fila != null && i.dias_fila >= lim; }),
+      saidos: (FILA.saidos || []).filter(porSeg)
+    };
+  })();
+  V.DIFF = {
+    disponivel: DIFF.disponivel, base: DIFF.base, motivo: DIFF.motivo,
+    acomp:   (DIFF.acomp   || []).filter(porSeg),
+    dea2026: (DIFF.dea2026 || []).filter(porSeg),
+    novos:   (DIFF.novos   || []).filter(porSeg),
+    removidos: DIFF.removidos || []
+  };
+  V.DIFF.total = V.DIFF.acomp.length + V.DIFF.dea2026.length +
+                 V.DIFF.novos.length + V.DIFF.removidos.length;
+}
+recortar();
+function somaValor(lista){ return lista.reduce(function(t,x){ return t + (x.valor||0); }, 0); }
+function valorVivo(grupos){
+  return grupos.reduce(function(t,g){
+    return t + g.itens.reduce(function(u,i){
+      return u + (i.sit_efetiva_classe === 'rejeitado' || i.sit_efetiva_classe === 'andamento'
+                  ? (i.valor||0) : 0);
+    }, 0);
+  }, 0);
+}
+
+function semAcento(s){
+  return (s==null?'':String(s)).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+}
+function esc(s){
+  return (s==null?'':String(s)).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function brl(n){
+  if(n==null||isNaN(n)) return '—';
+  return 'R$ ' + n.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+}
+function num(n){ return (n==null?0:n).toLocaleString('pt-BR'); }
+
+/* ---------- cabeçalho ---------- */
+document.getElementById('carimbo').textContent = 'Atualizado em ' + META.gerado_em;
+document.getElementById('rod-fonte').textContent = META.fonte + ' · retrato de ' + META.data_ref;
+document.getElementById('rod-org').textContent = META.organizacao;
+
+/* ---------- abas ---------- */
+var ABAS = ['grupos','entreanos','pagofora','diff','fila','historico','homologados','consulta','geral'];
+function mostrarAba(id){
+  ABAS.forEach(function(a){
+    var t = document.getElementById('t-'+a), p = document.getElementById('p-'+a);
+    var on = (a===id);
+    t.setAttribute('aria-selected', on?'true':'false');
+    p.hidden = !on;
+  });
+  try{ localStorage.setItem('dea_aba', id); }catch(e){}
+}
+ABAS.forEach(function(a){
+  document.getElementById('t-'+a).addEventListener('click', function(){ mostrarAba(a); });
+});
+function renderBadges(){
+  document.getElementById('c-grupos').textContent =
+    num(V.G.filter(function(g){return g.status==='risco';}).length);
+  document.getElementById('c-entreanos').textContent =
+    num(V.EA.filter(function(g){return g.status==='risco';}).length);
+  document.getElementById('c-pagofora').textContent =
+    num(V.PF.filter(function(g){return g.pago_fora.sentido==='posterior';}).length);
+  document.getElementById('c-diff').textContent = V.DIFF.disponivel ? num(V.DIFF.total) : '—';
+  document.getElementById('c-fila').textContent =
+    V.FILA.disponivel ? num(V.FILA.total) : '—';
+  document.getElementById('t-fila').classList.toggle('urgente',
+    !!(V.FILA.disponivel && V.FILA.alerta.length));
+  document.getElementById('c-historico').textContent = num(V.HIST.length);
+  document.getElementById('c-homologados').textContent = num(V.HL.length);
+  document.getElementById('c-consulta').textContent = num(V.P.length);
+  document.getElementById('t-homologados').classList.toggle('urgente', V.HL.length > 0);
+}
+
+/* =======================================================================
+   1. GRUPOS Prec-cp
+   ======================================================================= */
+document.getElementById('notaRegra').innerHTML =
+  'Reúne protocolos do <b>mesmo Prec-cp</b>, no <b>mesmo ano</b>, cujos valores não diferem '+
+  'entre si mais que <b>'+brl(META.tolerancia_valor)+'</b> — o padrão de um processo rejeitado, '+
+  'corrigido e relançado. <b>Em risco</b>: nenhum protocolo do grupo foi pago e ainda há processo vivo. '+
+  '<b>Atenção</b>: nenhum pago, todos excluídos pelo operador. '+
+  '<b>Resolvido</b>: um dos protocolos foi pago, os demais foram as tentativas corrigidas — '+
+  'inclui os grupos cujo crédito saiu em <b>ano posterior</b> (esses deixam de contar como risco; '+
+  'veja a aba "Pago em outro ano"). '+
+  'A situação considerada é a da aba Acompanhamento; para os processos que ainda aguardam avaliação do CPEx, vale a da aba DEA.';
+
+var gEstado = {status:{risco:true, atencao:true, resolvido:false}, ano:'', busca:''};
+
+(function(){
+  var anos = A.anos.slice().sort(function(a,b){ return b-a; });
+  var sel = document.getElementById('g-ano');
+  anos.forEach(function(a){
+    var o = document.createElement('option'); o.value = a; o.textContent = a; sel.appendChild(o);
+  });
+})();
+
+function gruposFiltrados(){
+  var b = semAcento(gEstado.busca).trim();
+  return V.G.filter(function(g){
+    if(!gEstado.status[g.status]) return false;
+    if(gEstado.ano && String(g.ano) !== gEstado.ano) return false;
+    if(b && g._busca.indexOf(b) === -1) return false;
+    return true;
+  });
+}
+
+function desenharGrupos(lista, pref, modo){
+  document.getElementById(pref+'-cont').textContent = num(lista.length);
+  document.getElementById(pref+'-proto').textContent = num(lista.reduce(function(s,g){ return s+g.qtd; },0));
+  var alvo = document.getElementById(pref+'-lista');
+
+  if(!lista.length){
+    alvo.innerHTML = '<p class="vazio-msg">Nenhum grupo corresponde aos filtros.</p>';
+    return;
+  }
+
+  var VER = {risco:'Em risco', atencao:'Atenção', resolvido:'Resolvido'};
+  alvo.innerHTML = lista.slice(0,400).map(function(g,i){
+    var cont = [];
+    if(g.qtd_pago)      cont.push('<span class="selo pago">'+g.qtd_pago+' pago</span>');
+    if(g.qtd_rejeitado) cont.push('<span class="selo rejeitado">'+g.qtd_rejeitado+' rejeitado</span>');
+    if(g.qtd_andamento) cont.push('<span class="selo andamento">'+g.qtd_andamento+' em andamento</span>');
+    if(g.qtd_excluido)  cont.push('<span class="selo excluido">'+g.qtd_excluido+' excluído</span>');
+
+    var pf = g.pago_fora, post = pf && pf.sentido === 'posterior';
+    var cls = g.status, verd = VER[g.status];
+    if(modo === 'pf'){
+      cls  = post ? 'resolvido' : 'atencao';
+      verd = post ? 'Pago em '+esc(pf.anos_txt) : 'Pagamento anterior';
+    } else if(g.resolvido_por === 'ano_posterior'){
+      // saiu do risco porque o crédito foi pago num ano seguinte
+      verd = 'Pago em '+esc(pf.anos_txt);
+      cont.push('<span class="selo pago">crédito pago em '+esc(pf.anos_txt)+'</span>');
+    }
+
+    return '<article class="grupo '+cls+'" data-i="'+i+'" data-aberto="0">'+
+      '<button class="grupo-cab" type="button" aria-expanded="false">'+
+        '<span class="seta">&#9656;</span>'+
+        '<span class="grupo-id">'+
+          '<span class="grupo-nome">'+esc(g.nomes.join(' / ') || '(sem nome)')+'</span>'+
+          '<span class="grupo-meta">Prec-cp '+esc(g.prec_cp)+' &middot; '+
+            (modo==='ea'
+              ? esc(g.anos_txt)+' &middot; '+esc(g.intervalo)+' ('+g.meses+' meses)'
+              : g.ano)+
+            ' &middot; '+g.qtd+' protocolos &middot; valores em torno de '+esc(g.valor_ref_fmt)+
+            ' (amplitude '+esc(g.amplitude_fmt)+')</span>'+
+        '</span>'+
+        '<span class="grupo-dir">'+
+          (g.incerto?'<span class="selo-incerto">'+g.sem_acomp+' aguardando CPEx</span>':'')+
+          '<span class="contagens">'+cont.join('')+'</span>'+
+          '<span class="veredito '+cls+'">'+verd+'</span>'+
+        '</span>'+
+      '</button>'+
+      '<div class="grupo-corpo" hidden></div>'+
+    '</article>';
+  }).join('') + (lista.length>400
+      ? '<p class="nota vazio">Exibindo os 400 primeiros de '+num(lista.length)+' grupos. Refine o filtro para ver os demais.</p>'
+      : '');
+
+  alvo.querySelectorAll('.grupo').forEach(function(art){
+    var g = lista[+art.dataset.i];
+    art.querySelector('.grupo-cab').addEventListener('click', function(){
+      var corpo = art.querySelector('.grupo-corpo');
+      var aberto = art.dataset.aberto === '1';
+      if(!aberto && !corpo.dataset.pronto){
+        corpo.innerHTML = corpoGrupo(g, modo);
+        corpo.dataset.pronto = '1';
+      }
+      art.dataset.aberto = aberto ? '0' : '1';
+      corpo.hidden = aberto;
+      this.setAttribute('aria-expanded', aberto?'false':'true');
+    });
+  });
+}
+
+function explicacaoGrupo(g, modo){
+  var expl = g.status === 'risco'
+    ? (modo === 'ea'
+        ? 'Nenhum protocolo deste grupo consta como pago e ainda há processo em aberto — e o ciclo atravessa a virada do ano ('+g.intervalo+'), por isso ele não aparece na tela principal, que agrupa apenas dentro do mesmo ano.'
+        : 'Nenhum protocolo deste grupo consta como pago e ainda há processo em aberto. É o caso que exige conferência: se as tentativas foram rejeitadas e a correção não gerou pagamento, o crédito segue pendente.')
+    : g.status === 'atencao'
+    ? 'Nenhum protocolo consta como pago e todos foram excluídos pelo operador. Não há pagamento pendente em curso, mas também não houve pagamento — confira se o direito foi abandonado por engano.'
+    : 'Um dos protocolos do grupo foi pago. Os demais correspondem às tentativas rejeitadas e corrigidas ao longo do processo.';
+  if(modo === 'pf'){
+    var pfx = g.pago_fora;
+    expl = pfx.sentido === 'posterior'
+      ? 'Os protocolos abaixo não foram pagos em '+g.ano+', mas o mesmo Prec-cp registra pagamento de valor equivalente em '+pfx.anos_txt+'. O crédito saiu: as tentativas de '+g.ano+' foram as rejeitadas antes do acerto. Este grupo aparece como "em risco" na tela principal apenas porque a regra ali confina a busca ao ano.'
+      : 'O pagamento de valor equivalente é ANTERIOR ('+pfx.anos_txt+') às tentativas de '+g.ano+'. Isso não comprova quitação destes protocolos: um pagamento que veio antes costuma se referir a outra dívida, de outro período, com valor por acaso parecido. Trate este grupo como pendência até conferir a competência de cada processo.';
+  }
+  if(g.incerto) expl += ' Observação: '+g.sem_acomp+' protocolo(s) deste grupo ainda não foram avaliados, aprovados/rejeitados ou homologados pelo CPEx — por isso não constam na aba Acompanhamento, e a situação exibida é a registrada na aba DEA, que é a vigente para eles.';
+  return expl;
+}
+
+function corpoGrupo(g, modo){
+  var expl = explicacaoGrupo(g, modo);
+  var linhas = g.itens.map(function(p){
+    return '<tr>'+
+      '<td class="mono">'+esc(p.protocolo)+'</td>'+
+      '<td class="mono">'+esc(p.data)+'</td>'+
+      (modo==='ea' ? '<td class="mono">'+esc(p.ano)+'</td>' : '')+
+      '<td class="num">'+esc(p.valor_fmt)+'</td>'+
+      '<td>'+esc(p.nr_bi)+'</td>'+
+      '<td><span class="selo '+esc(p.sit_dea_classe)+'">'+esc(p.sit_dea)+'</span></td>'+
+      '<td>'+(p.tem_acomp
+          ? '<span class="selo '+esc(p.sit_acomp_classe)+'">'+esc(p.sit_acomp)+'</span>'
+          : '<span class="selo ausente" title="Ainda não avaliado, aprovado/rejeitado ou homologado pelo CPEx">aguardando CPEx</span>')+'</td>'+
+      '<td class="parecer-txt">'+esc(p.parecer||'—')+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var extraPF = '';
+  if(g.pago_fora && (modo === 'pf' || g.pago_fora.sentido === 'posterior')){
+    extraPF = '<p class="rotulo" style="margin:var(--s4) 0 var(--s2)">Pagamento localizado em outro ano</p>'+
+      '<div class="rolagem"><table class="tbl-interna"><thead><tr>'+
+        '<th scope="col">Protocolo</th><th scope="col">Data</th><th scope="col">Ano</th>'+
+        '<th scope="col">Valor</th><th scope="col">Nome</th><th scope="col">Situação</th>'+
+      '</tr></thead><tbody>'+
+      g.pago_fora.itens.map(function(q){
+        return '<tr>'+
+          '<td class="mono">'+esc(q.protocolo)+'</td>'+
+          '<td class="mono">'+esc(q.data)+'</td>'+
+          '<td class="mono">'+esc(q.ano)+'</td>'+
+          '<td class="num">'+esc(q.valor_fmt)+'</td>'+
+          '<td>'+esc(q.nome)+'</td>'+
+          '<td><span class="selo pago">'+esc(q.sit_efetiva)+'</span></td>'+
+        '</tr>';
+      }).join('')+'</tbody></table></div>';
+  }
+
+  return '<p class="grupo-expl">'+esc(expl)+'</p>'+
+    '<div class="rolagem"><table class="tbl-interna"><thead><tr>'+
+      '<th scope="col">Protocolo</th><th scope="col">Data</th>'+
+      (modo==='ea' ? '<th scope="col">Ano</th>' : '')+'<th scope="col">Valor</th>'+
+      '<th scope="col">Nr BI</th><th scope="col">Situação — DEA</th>'+
+      '<th scope="col">Situação — Acompanhamento</th><th scope="col">Parecer</th>'+
+    '</tr></thead><tbody>'+linhas+'</tbody></table></div>' + extraPF;
+}
+
+function pintaGrupos(){ desenharGrupos(gruposFiltrados(), 'g', 'ano'); }
+
+['risco','atencao','resolvido'].forEach(function(st){
+  var b = document.getElementById('g-'+st);
+  b.addEventListener('click', function(){
+    gEstado.status[st] = !gEstado.status[st];
+    b.setAttribute('aria-pressed', gEstado.status[st]?'true':'false');
+    pintaGrupos();
+  });
+});
+document.getElementById('g-ano').addEventListener('change', function(){ gEstado.ano = this.value; pintaGrupos(); });
+document.getElementById('g-busca').addEventListener('input', function(){ gEstado.busca = this.value; pintaGrupos(); });
+document.getElementById('g-limpar').addEventListener('click', function(){
+  gEstado = {status:{risco:true, atencao:true, resolvido:false}, ano:'', busca:''};
+  ['risco','atencao','resolvido'].forEach(function(st){
+    document.getElementById('g-'+st).setAttribute('aria-pressed', gEstado.status[st]?'true':'false');
+  });
+  document.getElementById('g-ano').value = '';
+  document.getElementById('g-busca').value = '';
+  pintaGrupos();
+});
+pintaGrupos();
+
+/* =======================================================================
+   1b. GRUPOS ENTRE ANOS
+   ======================================================================= */
+document.getElementById('notaEA').innerHTML =
+  'O ciclo rejeição → correção → relançamento não respeita o calendário: um processo rejeitado em '+
+  'outubro costuma voltar corrigido em janeiro. Esta tela aplica o mesmo critério de valor '+
+  '(<b>'+brl(META.tolerancia_valor)+'</b>) <b>sem a trava do ano</b>, e mostra apenas os grupos que '+
+  '<b>atravessam a virada</b> — os de ano único já estão na tela principal. '+
+  '<span id="ea-numeros"></span>';
+
+function notaEANumeros(){
+  var r = V.EA.filter(function(g){ return g.status === 'risco'; });
+  var precs = {}; r.forEach(function(g){ precs[g.prec_cp] = 1; });
+  document.getElementById('ea-numeros').innerHTML = r.length
+    ? 'Neste recorte há <b>'+num(r.length)+'</b> grupo(s) em risco, somando <b>'+
+      num(r.reduce(function(t,g){return t+g.qtd;},0))+'</b> protocolos de <b>'+
+      num(Object.keys(precs).length)+'</b> Prec-cp e <b>'+esc(brl(valorVivo(r)))+'</b> sem pagamento.'
+    : 'Neste recorte não há grupo em risco atravessando a virada do ano.';
+}
+
+var eEstado = {status:{risco:true, atencao:true, resolvido:false}, busca:''};
+
+function eaFiltrados(){
+  var b = semAcento(eEstado.busca).trim();
+  return V.EA.filter(function(g){
+    if(!eEstado.status[g.status]) return false;
+    if(b && g._busca.indexOf(b) === -1) return false;
+    return true;
+  });
+}
+function pintaEA(){ notaEANumeros(); desenharGrupos(eaFiltrados(), 'e', 'ea'); }
+
+['risco','atencao','resolvido'].forEach(function(st){
+  var b = document.getElementById('e-'+st);
+  b.addEventListener('click', function(){
+    eEstado.status[st] = !eEstado.status[st];
+    b.setAttribute('aria-pressed', eEstado.status[st]?'true':'false');
+    pintaEA();
+  });
+});
+document.getElementById('e-busca').addEventListener('input', function(){ eEstado.busca = this.value; pintaEA(); });
+document.getElementById('e-limpar').addEventListener('click', function(){
+  eEstado = {status:{risco:true, atencao:true, resolvido:false}, busca:''};
+  ['risco','atencao','resolvido'].forEach(function(st){
+    document.getElementById('e-'+st).setAttribute('aria-pressed', eEstado.status[st]?'true':'false');
+  });
+  document.getElementById('e-busca').value = '';
+  pintaEA();
+});
+pintaEA();
+
+/* =======================================================================
+   1c. PAGO EM OUTRO ANO
+   ======================================================================= */
+document.getElementById('notaPF').innerHTML =
+  'Grupos da tela <b>Prec-cp repetido</b> que não tiveram pagamento no próprio ano, '+
+  'mas cujo Prec-cp registra pagamento de valor equivalente (até <b>'+brl(META.tolerancia_valor)+
+  '</b>) em <b>outro ano</b>. '+
+  '<span id="pf-numeros"></span>';
+
+function notaPFNumeros(){
+  var post = V.PF.filter(function(g){ return g.pago_fora.sentido === 'posterior'; });
+  var ant  = V.PF.filter(function(g){ return g.pago_fora.sentido !== 'posterior'; });
+  var bruto = V.G.filter(function(g){ return g.status_ano === 'risco'; }).length;
+  var liq   = V.G.filter(function(g){ return g.status === 'risco'; }).length;
+  document.getElementById('pf-numeros').innerHTML =
+    '<b>Ano posterior</b> ('+num(post.length)+' grupos, '+
+    num(post.reduce(function(t,g){return t+g.qtd;},0))+' protocolos): o processo foi rejeitado e o '+
+    'crédito saiu depois — deixa de ser pendência. <b>Ano anterior</b> ('+num(ant.length)+'): o pagamento '+
+    'veio ANTES das tentativas, o que em geral indica outra dívida de valor parecido e <b>não</b> comprova '+
+    'quitação — esses <b>continuam</b> no risco. Pela regra do mesmo ano haveria '+num(bruto)+
+    ' grupos em risco; excluídos os '+num(post.length)+' já pagos depois, o indicador mostra <b>'+num(liq)+'</b>.';
+}
+
+var pfEstado = {posterior:true, anterior:true, busca:''};
+
+function pfFiltrados(){
+  var b = semAcento(pfEstado.busca).trim();
+  return V.PF.filter(function(g){
+    var post = g.pago_fora.sentido === 'posterior';
+    if(post && !pfEstado.posterior) return false;
+    if(!post && !pfEstado.anterior) return false;
+    if(b && g._busca.indexOf(b) === -1) return false;
+    return true;
+  }).sort(function(x,y){
+    var px = x.pago_fora.sentido === 'posterior' ? 0 : 1;
+    var py = y.pago_fora.sentido === 'posterior' ? 0 : 1;
+    return px - py || y.ano - x.ano;
+  });
+}
+function pintaPF(){ notaPFNumeros(); desenharGrupos(pfFiltrados(), 'pf', 'pf'); }
+
+[['pf-posterior','posterior'],['pf-anterior','anterior']].forEach(function(t){
+  var b = document.getElementById(t[0]);
+  b.addEventListener('click', function(){
+    pfEstado[t[1]] = !pfEstado[t[1]];
+    b.setAttribute('aria-pressed', pfEstado[t[1]]?'true':'false');
+    pintaPF();
+  });
+});
+document.getElementById('pf-busca').addEventListener('input', function(){ pfEstado.busca = this.value; pintaPF(); });
+document.getElementById('pf-limpar').addEventListener('click', function(){
+  pfEstado = {posterior:true, anterior:true, busca:''};
+  ['pf-posterior','pf-anterior'].forEach(function(id){
+    document.getElementById(id).setAttribute('aria-pressed','true');
+  });
+  document.getElementById('pf-busca').value = '';
+  pintaPF();
+});
+pintaPF();
+
+/* =======================================================================
+   1c-bis. HISTÓRICO DE ATUALIZAÇÕES
+   Uma entrada por execução; a tela agrupa por dia. O registro começa na
+   primeira execução que teve base de comparação — antes disso o painel não
+   guardava histórico, e não há como reconstruí-lo.
+   ======================================================================= */
+var hsEstado = {comuns:true, vazios:false, busca:''};
+
+function histPorDia(){
+  var b = semAcento(hsEstado.busca).trim();
+  var dias = {}, ordem = [];
+  V.HIST.forEach(function(h){
+    if(!dias[h.data]){ dias[h.data] = {data:h.data, execs:[], total:0,
+      acomp:[], dea2026:[], novos:[], removidos:[], resumido:false}; ordem.push(h.data); }
+    var d = dias[h.data];
+    d.execs.push(h);
+    if(h.resumido){ d.resumido = true; d.total += (h.total||0); return; }
+    d.acomp = d.acomp.concat(h.acomp); d.dea2026 = d.dea2026.concat(h.dea2026);
+    d.novos = d.novos.concat(h.novos); d.removidos = d.removidos.concat(h.removidos);
+    d.total += h.total;
+  });
+  var lista = ordem.map(function(k){ return dias[k]; });
+  if(b){
+    lista = lista.filter(function(d){
+      return [].concat(d.acomp, d.dea2026, d.novos).some(function(m){
+        return String(m.protocolo||'').indexOf(b) !== -1 ||
+               String(m.prec_cp||'').indexOf(b) !== -1 ||
+               semAcento(m.nome||'').indexOf(b) !== -1;
+      });
+    });
+  }
+  return lista.filter(function(d){
+    return d.total > 0 ? hsEstado.comuns : hsEstado.vazios;
+  });
+}
+
+function dataBR(iso){
+  if(!iso || iso.length < 10) return iso || '—';
+  return iso.slice(8,10)+'/'+iso.slice(5,7)+'/'+iso.slice(0,4);
+}
+
+function linhasMud(arr, tipo){
+  return arr.map(function(m){
+    var seta = tipo === 'novo' ? '+' : tipo === 'saiu' ? '&minus;'
+      : (m.sentido==='retrocesso'?'&#8600;':m.sentido==='avanco'?'&#8599;':'&#8594;');
+    var cls = tipo === 'novo' ? 'lateral' : tipo === 'saiu' ? 'retrocesso' : esc(m.sentido||'lateral');
+    var transicao = tipo === 'novo'
+      ? '<b>'+esc(m.sit||'')+'</b>'
+      : tipo === 'saiu'
+      ? 'deixou de constar na planilha'
+      : '<span class="mud-de">'+esc(m.de)+'</span><span aria-hidden="true">&rarr;</span><b>'+esc(m.para)+'</b>';
+    return '<div class="mud">'+
+      '<span class="mud-seta '+cls+'" aria-hidden="true">'+seta+'</span>'+
+      '<span><span class="mud-nome">'+esc(m.nome||'(protocolo '+m.protocolo+')')+'</span>'+
+      '<span class="mud-meta">Protocolo '+esc(m.protocolo)+
+        (m.prec_cp?' &middot; Prec-cp '+esc(m.prec_cp):'')+
+        (m.ano?' &middot; '+esc(m.ano):'')+
+        (m.valor_fmt?' &middot; '+esc(m.valor_fmt):'')+'</span>'+
+      '<span class="mud-tr">'+transicao+'</span></span></div>';
+  }).join('');
+}
+
+function pintaHist(){
+  var lista = histPorDia();
+  document.getElementById('hs-cont').textContent = num(lista.length);
+  document.getElementById('hs-mud').textContent = num(lista.reduce(function(t,d){ return t+d.total; },0));
+  var alvo = document.getElementById('hs-lista');
+
+  if(!lista.length){
+    alvo.innerHTML = '<p class="vazio-msg">Nenhum dia corresponde aos filtros.</p>';
+    return;
+  }
+
+  alvo.innerHTML = lista.map(function(d,i){
+    var pil = [];
+    if(d.acomp.length)     pil.push('<span class="selo andamento">'+d.acomp.length+' Acompanhamento</span>');
+    if(d.dea2026.length)   pil.push('<span class="selo andamento">'+d.dea2026.length+' DEA 2026</span>');
+    if(d.novos.length)     pil.push('<span class="selo pago">'+d.novos.length+' novo(s)</span>');
+    if(d.removidos.length) pil.push('<span class="selo rejeitado">'+d.removidos.length+' removido(s)</span>');
+    var ult = d.execs[0] || {};
+    return '<article class="hist-dia" data-i="'+i+'" data-aberto="0">'+
+      '<button class="hist-cab" type="button" aria-expanded="false">'+
+        '<span class="seta">&#9656;</span>'+
+        '<span><span class="hist-data">'+esc(dataBR(d.data))+'</span>'+
+        '<span class="hist-meta">'+d.execs.length+' atualização(ões) &middot; última às '+
+          esc((ult.gerado_em||'').split('às ')[1] || '—')+
+          (ult.base?' &middot; comparado com '+esc(dataBR(ult.base)):'')+
+          (d.resumido?' &middot; registro resumido':'')+'</span></span>'+
+        '<span class="hist-pilulas">'+pil.join('')+
+          '<span class="hist-tot'+(d.total?'':' zero')+'">'+(d.total?num(d.total):'sem alteração')+'</span></span>'+
+      '</button>'+
+      '<div class="hist-corpo" hidden></div>'+
+    '</article>';
+  }).join('');
+
+  alvo.querySelectorAll('.hist-dia').forEach(function(art){
+    var d = lista[+art.dataset.i];
+    art.querySelector('.hist-cab').addEventListener('click', function(){
+      var corpo = art.querySelector('.hist-corpo');
+      var aberto = art.dataset.aberto === '1';
+      if(!aberto && !corpo.dataset.pronto){
+        var h = '';
+        if(d.resumido){
+          h += '<p class="nota vazio">Registro antigo: o painel guarda a lista detalhada das '+
+               'atualizações mais recentes e, para as anteriores, apenas as contagens.</p>';
+        }
+        if(d.acomp.length)     h += '<p class="rotulo" style="margin:0 0 var(--s2)">Mudanças na aba Acompanhamento</p>'+linhasMud(d.acomp,'mud');
+        if(d.dea2026.length)   h += '<p class="rotulo" style="margin:var(--s4) 0 var(--s2)">Mudanças na aba DEA 2026</p>'+linhasMud(d.dea2026,'mud');
+        if(d.novos.length)     h += '<p class="rotulo" style="margin:var(--s4) 0 var(--s2)">Novos protocolos</p>'+linhasMud(d.novos,'novo');
+        if(d.removidos.length) h += '<p class="rotulo" style="margin:var(--s4) 0 var(--s2)">Protocolos removidos</p>'+linhasMud(d.removidos,'saiu');
+        if(!h) h = '<p class="vazio-msg">Nenhuma alteração registrada neste dia.</p>';
+        var t = (d.execs[0]||{}).totais;
+        if(t){
+          h += '<div class="hist-snap">'+
+            '<span>Situação ao fim do dia:</span>'+
+            '<span><b>'+num(t.processos)+'</b> processos</span>'+
+            '<span><b>'+num(t.risco)+'</b> grupos em risco</span>'+
+            '<span><b>'+num(t.ea_risco)+'</b> entre anos</span>'+
+            '<span><b>'+num(t.homologados)+'</b> p/ lançar</span>'+
+            '<span><b>'+num(t.divergentes)+'</b> divergências</span>'+
+            '<span><b>'+num(t.sem_acomp)+'</b> aguardando CPEx</span></div>';
+        }
+        corpo.innerHTML = h;
+        corpo.dataset.pronto = '1';
+      }
+      art.dataset.aberto = aberto ? '0' : '1';
+      corpo.hidden = aberto;
+      this.setAttribute('aria-expanded', aberto?'false':'true');
+    });
+  });
+}
+
+[['hs-comuns','comuns'],['hs-vazios','vazios']].forEach(function(t){
+  var b = document.getElementById(t[0]);
+  b.addEventListener('click', function(){
+    hsEstado[t[1]] = !hsEstado[t[1]];
+    b.setAttribute('aria-pressed', hsEstado[t[1]]?'true':'false');
+    pintaHist();
+  });
+});
+document.getElementById('hs-busca').addEventListener('input', function(){ hsEstado.busca = this.value; pintaHist(); });
+document.getElementById('hs-limpar').addEventListener('click', function(){
+  hsEstado = {comuns:true, vazios:false, busca:''};
+  document.getElementById('hs-comuns').setAttribute('aria-pressed','true');
+  document.getElementById('hs-vazios').setAttribute('aria-pressed','false');
+  document.getElementById('hs-busca').value = '';
+  pintaHist();
+});
+
+/* =======================================================================
+   1d. HOMOLOGADOS PARA LANÇAMENTO
+   ======================================================================= */
+document.getElementById('notaHist').innerHTML =
+  'Um registro por atualização do painel, agrupado por dia. Cada dia mostra o que mudou de '+
+  'situação nas abas DEA e no Acompanhamento, os protocolos que entraram ou saíram, e como os '+
+  'indicadores ficaram ao fim do dia. O painel é regenerado automaticamente às <b>09:00 nos dias '+
+  'úteis</b>; o histórico começa na primeira atualização com base de comparação — antes disso '+
+  'nada era guardado, e não há como reconstruir.';
+
+document.getElementById('notaHL').innerHTML =
+  'Processos das abas DEA com situação <b>"Pagamento autorizado (CPEx). Aguardando lançamento da OM '+
+  'no SIPPES"</b> ou <b>"Homologado pelo OD do CPEx. Efetuar lançamento no SIPPES até o final da 2ª '+
+  'corrida / SIAPPES Automático"</b> que <b>ainda não foram pagos</b> — no Acompanhamento constam '+
+  'como <b>"Processado o Pagamento"</b>, ou seja, o CPEx processou e cabe à OM lançar no '+
+  'SIPPES/SIAPPES. Os que já constam como <b>"Pago"</b> ficam de fora: estão encerrados.';
+
+function renderHL(){
+  var lista = V.HL;
+  document.getElementById('hl-cont').textContent = num(lista.length);
+  document.getElementById('hl-soma').textContent = lista.length
+    ? 'Soma dos valores: ' + brl(somaValor(lista)) : '';
+  document.getElementById('hl-pdf').hidden = !lista.length;
+  var area = document.getElementById('hl-area');
+
+  if(!lista.length){
+    area.innerHTML = '<div class="cartao" style="padding:var(--s5)">'+
+      '<p class="vazio-msg">Nenhum protocolo pronto para lançamento neste recorte.</p>'+
+      (A.hl_ja_pagos ? '<p class="nota vazio">'+num(A.hl_ja_pagos)+' protocolo(s) liberados pelo '+
+        'CPEx ficaram de fora por já constarem como "Pago" no Acompanhamento.</p>' : '')+
+      '</div>';
+    return;
+  }
+
+  area.innerHTML = '<div class="rolagem"><table><thead><tr>'+
+      '<th scope="col">Protocolo</th><th scope="col">Data</th><th scope="col">Ano</th>'+
+      '<th scope="col">Prec-cp</th><th scope="col">Segmento</th><th scope="col">Nome</th>'+
+      '<th scope="col">Valor</th><th scope="col">Situação — aba DEA</th>'+
+      '<th scope="col">Situação — Acompanhamento</th><th scope="col">CODOM</th>'+
+    '</tr></thead><tbody>'+
+    lista.map(function(p){
+      return '<tr>'+
+        '<td class="mono">'+esc(p.protocolo)+'</td>'+
+        '<td class="mono">'+esc(p.data)+'</td>'+
+        '<td class="mono">'+esc(p.ano)+'</td>'+
+        '<td class="mono">'+esc(p.prec_cp)+'</td>'+
+        '<td>'+esc(p.segmento)+'</td>'+
+        '<td>'+esc(p.nome)+'</td>'+
+        '<td class="num">'+esc(p.valor_fmt)+'</td>'+
+        '<td><span class="selo andamento">'+esc(p.sit_dea)+'</span></td>'+
+        '<td>'+(p.tem_acomp
+            ? '<span class="selo '+esc(p.sit_acomp_classe)+'">'+esc(p.sit_acomp)+'</span>'
+            : '<span class="selo ausente" title="Ainda não avaliado, aprovado/rejeitado ou homologado pelo CPEx">aguardando CPEx</span>')+'</td>'+
+        '<td class="mono">'+esc(p.codom)+'</td>'+
+      '</tr>';
+    }).join('')+'</tbody></table></div>'+
+    (A.hl_ja_pagos ? '<p class="nota vazio" style="margin-top:var(--s3)">Mais '+num(A.hl_ja_pagos)+
+      ' protocolo(s) liberados pelo CPEx não entram nesta lista por já constarem como "Pago" no '+
+      'Acompanhamento — estão encerrados.</p>' : '');
+}
+
+/* =======================================================================
+   2. ALTERAÇÕES DO DIA
+   ======================================================================= */
+function renderDiff(){
+  var DIFF = V.DIFF;
+  var nota = document.getElementById('diff-nota');
+  var grid = document.getElementById('diff-grid');
+
+  if(!DIFF.disponivel){
+    nota.className = 'nota vazio';
+    nota.textContent = DIFF.motivo;
+    grid.innerHTML = '';
+    return;
+  }
+  nota.innerHTML = 'Comparação entre o retrato de <b>'+esc(META.data_ref)+'</b> e o de <b>'+esc(DIFF.base)+'</b>. '+
+    'Setas indicam o sentido da mudança no fluxo do processo.';
+
+  function bloco(tit, sub, arr){
+    var corpo = arr.length
+      ? arr.map(function(m){
+          return '<div class="mud">'+
+            '<span class="mud-seta '+esc(m.sentido)+'" aria-hidden="true">'+
+              (m.sentido==='retrocesso'?'&#8600;':m.sentido==='avanco'?'&#8599;':'&#8594;')+'</span>'+
+            '<span>'+
+              '<span class="mud-nome">'+esc(m.nome||'(sem nome)')+'</span>'+
+              '<span class="mud-meta">Protocolo '+esc(m.protocolo)+' &middot; Prec-cp '+esc(m.prec_cp)+
+                ' &middot; '+esc(m.ano)+' &middot; '+esc(m.valor_fmt)+'</span>'+
+              '<span class="mud-tr"><span class="mud-de">'+esc(m.de)+'</span>'+
+                '<span aria-hidden="true">&rarr;</span><b>'+esc(m.para)+'</b></span>'+
+            '</span></div>';
+        }).join('')
+      : '<p class="vazio-msg">Nenhuma alteração.</p>';
+    return '<section class="cartao"><div style="padding:var(--s4) var(--s4) var(--s3)">'+
+      '<p class="rotulo">'+esc(sub)+'</p>'+
+      '<h3 style="font-family:var(--serif);font-weight:600;font-size:1.1rem;margin-top:4px">'+
+        esc(tit)+' <span style="font-variant-numeric:tabular-nums;color:var(--ink-3)">'+arr.length+'</span></h3>'+
+      '</div>'+corpo+'</section>';
+  }
+
+  var html = bloco('Mudanças de situação', 'Aba Acompanhamento', DIFF.acomp) +
+             bloco('Mudanças de situação', 'Aba DEA 2026', DIFF.dea2026);
+
+  if(DIFF.novos.length){
+    html += '<section class="cartao"><div style="padding:var(--s4) var(--s4) var(--s3)">'+
+      '<p class="rotulo">Entradas</p>'+
+      '<h3 style="font-family:var(--serif);font-weight:600;font-size:1.1rem;margin-top:4px">Novos protocolos '+
+      '<span style="font-variant-numeric:tabular-nums;color:var(--ink-3)">'+DIFF.novos.length+'</span></h3></div>'+
+      DIFF.novos.map(function(n){
+        return '<div class="mud"><span class="mud-seta lateral" aria-hidden="true">+</span><span>'+
+          '<span class="mud-nome">'+esc(n.nome||'(sem nome)')+'</span>'+
+          '<span class="mud-meta">Protocolo '+esc(n.protocolo)+' &middot; '+esc(n.ano)+' &middot; '+esc(n.valor_fmt)+'</span>'+
+          '<span class="mud-tr"><b>'+esc(n.sit)+'</b></span></span></div>';
+      }).join('')+'</section>';
+  }
+  if(DIFF.removidos.length){
+    html += '<section class="cartao"><div style="padding:var(--s4) var(--s4) var(--s3)">'+
+      '<p class="rotulo">Saídas</p>'+
+      '<h3 style="font-family:var(--serif);font-weight:600;font-size:1.1rem;margin-top:4px">Protocolos removidos '+
+      '<span style="font-variant-numeric:tabular-nums;color:var(--ink-3)">'+DIFF.removidos.length+'</span></h3></div>'+
+      DIFF.removidos.map(function(n){
+        return '<div class="mud"><span class="mud-seta retrocesso" aria-hidden="true">&minus;</span>'+
+          '<span><span class="mud-nome">Protocolo '+esc(n.protocolo)+'</span>'+
+          '<span class="mud-meta">deixou de constar na planilha</span></span></div>';
+      }).join('')+'</section>';
+  }
+  grid.innerHTML = html;
+}
+
+/* =======================================================================
+   3. CONSULTA
+   ======================================================================= */
+var fEstado = {ano:'', proto:'', prec:'', nome:'', sit:'', div:false, sem:false,
+               ord:'data_ord', dir:-1, pag:1};
+var POR_PAG = 100;
+
+(function(){
+  var selA = document.getElementById('f-ano');
+  A.anos.slice().sort(function(a,b){ return b-a; }).forEach(function(a){
+    var o = document.createElement('option'); o.value = a; o.textContent = a; selA.appendChild(o);
+  });
+  var selS = document.getElementById('f-sit');
+  var vistos = {};
+  P.forEach(function(p){ var s = p.sit_efetiva; if(s && !vistos[s]){ vistos[s] = 1; } });
+  Object.keys(vistos).sort().forEach(function(s){
+    var o = document.createElement('option'); o.value = s; o.textContent = s; selS.appendChild(o);
+  });
+  document.getElementById('f-total').textContent = num(P.length);
+})();
+
+function filtrados(){
+  var nome = semAcento(fEstado.nome).trim();
+  return V.P.filter(function(p){
+    if(fEstado.ano && String(p.ano) !== fEstado.ano) return false;
+    if(fEstado.proto && String(p.protocolo).indexOf(fEstado.proto.trim()) === -1) return false;
+    if(fEstado.prec && String(p.prec_cp).indexOf(fEstado.prec.trim()) === -1) return false;
+    if(nome && p._busca.indexOf(nome) === -1) return false;
+    if(fEstado.sit && p.sit_efetiva !== fEstado.sit) return false;
+    if(fEstado.div && !p.divergente) return false;
+    if(fEstado.sem && p.tem_acomp) return false;
+    return true;
+  }).sort(function(a,b){
+    var x = a[fEstado.ord], y = b[fEstado.ord];
+    if(typeof x === 'number' || typeof y === 'number'){
+      x = x==null?-Infinity:x; y = y==null?-Infinity:y;
+      return (x<y?-1:x>y?1:0) * fEstado.dir;
+    }
+    return String(x==null?'':x).localeCompare(String(y==null?'':y), 'pt-BR') * fEstado.dir;
+  });
+}
+
+function pintaTabela(){
+  var lista = filtrados();
+  var total = lista.length;
+  var paginas = Math.max(1, Math.ceil(total / POR_PAG));
+  if(fEstado.pag > paginas) fEstado.pag = paginas;
+  var ini = (fEstado.pag - 1) * POR_PAG;
+  var fatia = lista.slice(ini, ini + POR_PAG);
+
+  document.getElementById('f-cont').textContent = num(total);
+  var soma = lista.reduce(function(s,p){ return s + (p.valor||0); }, 0);
+  document.getElementById('f-soma').textContent = 'Soma dos valores: ' + brl(soma);
+
+  document.getElementById('tcorpo').innerHTML = fatia.length ? fatia.map(function(p,i){
+    return '<tr data-k="'+esc(p.protocolo)+'">'+
+      '<td><button class="btn-exp" type="button" aria-expanded="false" aria-label="Ver parecer do protocolo '+esc(p.protocolo)+'">+</button></td>'+
+      '<td class="mono">'+esc(p.protocolo)+'</td>'+
+      '<td class="mono">'+esc(p.data)+'</td>'+
+      '<td class="mono">'+esc(p.ano)+'</td>'+
+      '<td class="mono">'+esc(p.prec_cp)+'</td>'+
+      '<td>'+esc(p.nome)+'</td>'+
+      '<td class="num">'+esc(p.valor_fmt)+'</td>'+
+      '<td><span class="selo '+esc(p.sit_dea_classe)+'">'+esc(p.sit_dea)+'</span></td>'+
+      '<td>'+(p.tem_acomp
+          ? '<span class="selo '+esc(p.sit_acomp_classe)+'">'+esc(p.sit_acomp)+'</span>'
+          : '<span class="selo ausente" title="Ainda não avaliado, aprovado/rejeitado ou homologado pelo CPEx">aguardando CPEx</span>')+'</td>'+
+      '<td class="mono">'+esc(p.codom)+'</td>'+
+    '</tr>';
+  }).join('') : '<tr><td colspan="10"><p class="vazio-msg">Nenhum processo corresponde aos filtros.</p></td></tr>';
+
+  // expandir parecer
+  document.querySelectorAll('#tcorpo .btn-exp').forEach(function(b, i){
+    b.addEventListener('click', function(){
+      var tr = b.closest('tr');
+      var p = fatia[i];
+      var prox = tr.nextElementSibling;
+      if(prox && prox.classList.contains('linha-parecer')){
+        prox.remove(); tr.classList.remove('aberta');
+        b.textContent = '+'; b.setAttribute('aria-expanded','false');
+        return;
+      }
+      var nova = document.createElement('tr');
+      nova.className = 'linha-parecer';
+      nova.innerHTML = '<td colspan="10"><b>Parecer:</b> <span class="parecer-txt">'+
+        esc(p.parecer||'—')+'</span>'+
+        (p.divergente?'<br><b>Divergência:</b> a aba DEA registra “'+esc(p.sit_dea)+
+          '” e o Acompanhamento “'+esc(p.sit_acomp)+'”.':'')+'</td>';
+      tr.after(nova);
+      tr.classList.add('aberta');
+      b.innerHTML = '&minus;';
+      b.setAttribute('aria-expanded','true');
+    });
+  });
+
+  // paginação
+  var pag = document.getElementById('pag');
+  if(total <= POR_PAG){ pag.innerHTML = ''; }
+  else{
+    pag.innerHTML = '<button type="button" id="pg-ant"'+(fEstado.pag<=1?' disabled':'')+'>Anterior</button>'+
+      '<span>Página <b>'+fEstado.pag+'</b> de '+paginas+' · linhas '+(ini+1)+'–'+Math.min(ini+POR_PAG,total)+'</span>'+
+      '<button type="button" id="pg-pro"'+(fEstado.pag>=paginas?' disabled':'')+'>Próxima</button>';
+    var a = document.getElementById('pg-ant'), pr = document.getElementById('pg-pro');
+    if(a) a.addEventListener('click', function(){ fEstado.pag--; pintaTabela(); });
+    if(pr) pr.addEventListener('click', function(){ fEstado.pag++; pintaTabela(); });
+  }
+
+  // indicador de ordenação
+  document.querySelectorAll('#tabela thead th.ord').forEach(function(th){
+    var d = th.querySelector('.dir'); if(d) d.remove();
+    if(th.dataset.c === fEstado.ord){
+      var s = document.createElement('span');
+      s.className = 'dir'; s.textContent = fEstado.dir === 1 ? '▲' : '▼';
+      th.appendChild(s);
+    }
+  });
+}
+
+document.querySelectorAll('#tabela thead th.ord').forEach(function(th){
+  th.addEventListener('click', function(){
+    var c = th.dataset.c;
+    if(fEstado.ord === c) fEstado.dir = -fEstado.dir;
+    else { fEstado.ord = c; fEstado.dir = 1; }
+    fEstado.pag = 1; pintaTabela();
+  });
+});
+[['f-ano','ano','change'],['f-proto','proto','input'],['f-prec','prec','input'],
+ ['f-nome','nome','input'],['f-sit','sit','change']].forEach(function(t){
+  document.getElementById(t[0]).addEventListener(t[2], function(){
+    fEstado[t[1]] = this.value; fEstado.pag = 1; pintaTabela();
+  });
+});
+['div','sem'].forEach(function(k){
+  var b = document.getElementById('f-'+k);
+  b.addEventListener('click', function(){
+    fEstado[k] = !fEstado[k];
+    b.setAttribute('aria-pressed', fEstado[k]?'true':'false');
+    fEstado.pag = 1; pintaTabela();
+  });
+});
+document.getElementById('f-limpar').addEventListener('click', function(){
+  fEstado = {ano:'', proto:'', prec:'', nome:'', sit:'', div:false, sem:false,
+             ord:'data_ord', dir:-1, pag:1};
+  ['f-ano','f-proto','f-prec','f-nome','f-sit'].forEach(function(id){ document.getElementById(id).value = ''; });
+  ['f-div','f-sem'].forEach(function(id){ document.getElementById(id).setAttribute('aria-pressed','false'); });
+  pintaTabela();
+});
+pintaTabela();
+
+/* =======================================================================
+   4. VISÃO GERAL
+   ======================================================================= */
+function renderGeral(){
+  var porAno = {};
+  V.P.forEach(function(x){
+    var b = porAno[x.ano] || (porAno[x.ano] = {ano:x.ano, total:0, pago:0, rejeitado:0, excluido:0, andamento:0, valor:0});
+    b.total++; b[x.sit_efetiva_classe]++; b.valor += (x.valor||0);
+  });
+  var dados = Object.keys(porAno).sort().map(function(k){ return porAno[k]; });
+  if(!dados.length){
+    document.getElementById('grafico').innerHTML = '<p class="vazio-msg">Nenhum processo no segmento selecionado.</p>';
+    document.getElementById('lista-sit').innerHTML = '';
+    document.getElementById('qualidade').innerHTML = '';
+    return;
+  }
+  var CORES = {pago:'#2F6B3A', andamento:'#A8832A', rejeitado:'#9E2A1F', excluido:'#B7B5A8'};
+  var SERIES = ['pago','andamento','rejeitado','excluido'];
+
+  var W = 680, H = 290, mT = 18, mR = 14, mB = 42, mL = 46;
+  var gw = W - mL - mR, gh = H - mT - mB;
+  var maxV = Math.max.apply(null, dados.map(function(d){ return d.total; }));
+  // teto "redondo" para as marcas do eixo
+  var passo = Math.pow(10, Math.floor(Math.log10(maxV))) / 2;
+  var teto = Math.ceil(maxV / passo) * passo;
+  var ticks = 4, s = [];
+  for(var t = 0; t <= ticks; t++) s.push(Math.round(teto * t / ticks));
+
+  var lb = gw / dados.length, bw = Math.min(54, lb * 0.58);
+  var svg = ['<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" '+
+    'aria-label="Processos por ano, separados por situação" style="width:100%;height:auto;max-width:100%;display:block">'];
+
+  s.forEach(function(v){
+    var y = mT + gh - (v / teto) * gh;
+    svg.push('<line x1="'+mL+'" y1="'+y.toFixed(1)+'" x2="'+(mL+gw)+'" y2="'+y.toFixed(1)+
+      '" stroke="rgba(46,61,26,.12)" stroke-width="1"/>');
+    svg.push('<text x="'+(mL-8)+'" y="'+(y+4).toFixed(1)+'" text-anchor="end" fill="#7C8269" '+
+      'font-size="11" font-family="DM Sans, sans-serif">'+v+'</text>');
+  });
+
+  dados.forEach(function(d,i){
+    var cx = mL + lb * i + lb / 2;
+    var y = mT + gh;
+    SERIES.forEach(function(k){
+      var v = d[k] || 0;
+      if(!v) return;
+      var h = (v / teto) * gh;
+      y -= h;
+      svg.push('<rect x="'+(cx - bw/2).toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+
+        '" height="'+h.toFixed(1)+'" fill="'+CORES[k]+'"><title>'+d.ano+' · '+k+': '+v+'</title></rect>');
+    });
+    svg.push('<text x="'+cx.toFixed(1)+'" y="'+(mT+gh+18)+'" text-anchor="middle" fill="#4C523E" '+
+      'font-size="12" font-family="DM Sans, sans-serif">'+d.ano+'</text>');
+    svg.push('<text x="'+cx.toFixed(1)+'" y="'+(mT+gh+34)+'" text-anchor="middle" fill="#7C8269" '+
+      'font-size="10" font-family="DM Sans, sans-serif">'+d.total+'</text>');
+  });
+
+  svg.push('<line x1="'+mL+'" y1="'+(mT+gh)+'" x2="'+(mL+gw)+'" y2="'+(mT+gh)+
+    '" stroke="rgba(46,61,26,.35)" stroke-width="1"/>');
+  svg.push('</svg>');
+  document.getElementById('grafico').innerHTML = svg.join('');
+
+  // situações mais frequentes
+  var cs = {};
+  V.P.forEach(function(x){ cs[x.sit_efetiva] = (cs[x.sit_efetiva]||0)+1; });
+  var porSit = Object.keys(cs).map(function(k){ return {rotulo:k, qtd:cs[k]}; })
+                     .sort(function(a,b){ return b.qtd - a.qtd; });
+  var maxS = porSit.length ? porSit[0].qtd : 1;
+  document.getElementById('lista-sit').innerHTML = porSit.slice(0,10).map(function(s){
+    return '<div class="barra-item">'+
+      '<span class="barra-rot">'+esc(s.rotulo)+'</span>'+
+      '<span class="barra-val">'+num(s.qtd)+'</span>'+
+      '<span class="barra-trilho"><span class="barra-fill" style="width:'+
+        (s.qtd/maxS*100).toFixed(1)+'%"></span></span>'+
+    '</div>';
+  }).join('');
+
+  // qualidade do cruzamento
+  var semAc = V.P.filter(function(x){ return !x.tem_acomp; });
+  var cse = {};
+  semAc.forEach(function(x){ cse[x.sit_dea] = (cse[x.sit_dea]||0)+1; });
+  var q = [
+    ['Processos nas 8 abas DEA', num(V.P.length)],
+    ['Já avaliados pelo CPEx (constam no Acompanhamento)', num(V.P.length - semAc.length)],
+    ['Aguardando o CPEx (só nas abas DEA)', num(semAc.length)],
+    ['Situação divergente entre as abas', num(V.P.filter(function(x){return x.divergente;}).length)],
+    ['Só no Acompanhamento (outras OM / anos anteriores)', num(A.so_no_acompanhamento)],
+    ['Grupos Prec-cp/ano analisados', num(V.G.length)]
+  ];
+  var extra = Object.keys(cse).sort(function(a,b){return cse[b]-cse[a];}).map(function(k){
+    var s = {rotulo:k, qtd:cse[k]};
+    return '<div class="barra-item"><span class="barra-rot" style="padding-left:14px;color:var(--ink-3)">↳ '+
+      esc(s.rotulo)+'</span><span class="barra-val">'+num(s.qtd)+'</span></div>';
+  }).join('');
+  var explCob = '<p class="nota" style="margin-bottom:var(--s4)">Um processo só ganha linha na aba '+
+    '<b>Acompanhamento</b> depois de avaliado, aprovado ou rejeitado e/ou homologado pelo <b>CPEx</b>. '+
+    'Os que ainda não passaram por essa etapa constam apenas nas abas DEA — não é lacuna de registro, '+
+    'é a fase em que o processo se encontra. Para eles, a situação vigente é a da própria aba DEA.</p>';
+  document.getElementById('qualidade').innerHTML = explCob + q.map(function(r,i){
+    return '<div class="barra-item"><span class="barra-rot">'+esc(r[0])+
+      '</span><span class="barra-val">'+esc(r[1])+'</span></div>' + (i===2?extra:'');
+  }).join('') + (META.avisos && META.avisos.length
+    ? '<p class="nota" style="margin-top:var(--s4)">'+META.avisos.map(esc).join('<br>')+'</p>' : '');
+}
+
+/* =======================================================================
+   5. RELATÓRIO PARA PDF
+   Sem biblioteca externa: monta um documento A4 no próprio DOM e entrega
+   à impressão do navegador ("Salvar como PDF"). Se o print() programático
+   for bloqueado, a pré-visualização fica na tela e o Ctrl+P resolve.
+   Os números da capa saem do recorte ativo (segmento + filtros da tela),
+   não dos totais globais — o documento tem de bater com o que está à vista.
+   ======================================================================= */
+var relAlvo  = document.getElementById('relatorio');
+var relBarra = document.getElementById('rel-barra');
+
+var VEREDITO = {risco:'Em risco', atencao:'Atenção', resolvido:'Resolvido'};
+var SENTIDO  = {avanco:'Avanço', retrocesso:'Retrocesso', lateral:'Lateral'};
+
+function selo(cls, txt){ return '<span class="selo '+esc(cls)+'">'+esc(txt)+'</span>'; }
+
+// "ND", travessão e afins são ausência de parecer — não viram linha no relatório
+function temParecer(t){
+  if(!t) return false;
+  var v = String(t).trim();
+  return v !== '' && !/^(nd|n\/d|n\/a|na|-+|—|–|\.)$/i.test(v);
+}
+
+function segAtivos(){
+  return ['Veteranos','Pensionistas','Ativa'].filter(function(k){ return SEG[k]; });
+}
+function segTexto(){
+  var on = segAtivos();
+  return on.length === 3 ? 'todos os segmentos' : (on.length ? on.join(', ') : 'nenhum segmento');
+}
+function riscoDe(lista){ return lista.filter(function(g){ return g.status === 'risco'; }); }
+
+// A explicação de cada veredito é idêntica para todos os grupos do mesmo status.
+// Num documento ela é legenda — escrita uma vez, na folha de rosto — e não um
+// parágrafo repetido dezenas de vezes.
+function relLegenda(modo){
+  var itens = modo === 'pf'
+    ? [['resolvido','Pago em ano posterior','O processo foi rejeitado num ano e o crédito de valor equivalente saiu em ano seguinte. O grupo deixa de ser pendência.'],
+       ['atencao','Pagamento anterior','O pagamento de valor equivalente é ANTERIOR às tentativas rejeitadas. Não comprova quitação: costuma se referir a outra dívida, de outro período, com valor por acaso parecido. Continua no risco.']]
+    : [['risco','Em risco','Nenhum protocolo do grupo consta como pago e ainda há processo em aberto. É o caso que exige conferência: se as tentativas foram rejeitadas e a correção não gerou pagamento, o crédito segue pendente.'],
+       ['atencao','Atenção','Nenhum pago e todos excluídos pelo operador. Não há pagamento pendente em curso, mas também não houve pagamento — confira se o direito foi abandonado por engano.'],
+       ['resolvido','Resolvido','Um dos protocolos do grupo foi pago; os demais são as tentativas rejeitadas e corrigidas. Inclui os grupos cujo crédito saiu em ano posterior.']];
+  itens.push(['','Aguardando CPEx','Protocolo ainda não avaliado, aprovado/rejeitado ou homologado pelo CPEx. Por isso não consta na aba Acompanhamento, e a situação vigente para ele é a da aba DEA.']);
+  return '<section class="rel-legenda"><p class="rel-sublegenda">Como ler este relatório</p><dl>'+
+    itens.map(function(i){
+      return '<dt class="'+esc(i[0])+'"><span class="marca"></span>'+esc(i[1])+'</dt><dd>'+esc(i[2])+'</dd>';
+    }).join('')+'</dl></section>';
+}
+
+function relCapa(tit, sub, inds, filtros){
+  var img = document.querySelector('.brasao img');
+  return '<header class="rel-capa">'+
+    '<div class="rel-capa-marca">'+
+      (img ? '<img src="'+img.getAttribute('src')+'" alt="">' : '')+
+      '<div><p class="rel-org">Despesas de Exercícios Anteriores</p>'+
+      '<p class="rel-unid">'+esc(META.organizacao)+'</p></div>'+
+    '</div>'+
+    '<h1 class="rel-tit">'+esc(tit)+'</h1>'+
+    '<p class="rel-sub">'+esc(sub)+'</p>'+
+    '<div class="rel-carimbo">'+
+      '<span>Retrato de '+esc(META.data_ref)+'</span>'+
+      '<span>Gerado em '+esc(META.gerado_em)+'</span>'+
+      '<span>'+esc(META.fonte)+'</span>'+
+    '</div>'+
+    '<div class="rel-ind">'+inds.map(function(k){
+      return '<div><p class="r">'+esc(k[0])+'</p><p class="v">'+esc(k[1])+'</p></div>';
+    }).join('')+'</div>'+
+    (filtros ? '<p class="rel-filtros">'+filtros+'</p>' : '')+
+  '</header>';
+}
+
+function relTabela(g, modo){
+  var cols = modo === 'ea' ? 7 : 6;
+  var cab = '<tr><th>Protocolo</th><th>Data</th>'+(modo==='ea'?'<th>Ano</th>':'')+
+    '<th class="num">Valor</th><th>Nr BI</th><th>Situação (DEA)</th>'+
+    '<th>Situação (Acomp.)</th></tr>';
+  var linhas = g.itens.map(function(p){
+    var tr = '<tr>'+
+      '<td class="mono">'+esc(p.protocolo)+'</td>'+
+      '<td class="mono">'+esc(p.data)+'</td>'+
+      (modo==='ea' ? '<td class="mono">'+esc(p.ano)+'</td>' : '')+
+      '<td class="num">'+esc(p.valor_fmt)+'</td>'+
+      '<td>'+esc(p.nr_bi)+'</td>'+
+      '<td>'+selo(p.sit_dea_classe, p.sit_dea)+'</td>'+
+      '<td>'+(p.tem_acomp
+          ? selo(p.sit_acomp_classe, p.sit_acomp)
+          : '<span class="selo ausente">aguardando CPEx</span>')+'</td>'+
+    '</tr>';
+    if(temParecer(p.parecer)){
+      tr += '<tr class="rel-parecer"><td colspan="'+cols+'">'+
+        '<b>Parecer · '+esc(p.protocolo)+':</b> '+esc(p.parecer)+'</td></tr>';
+    }
+    return tr;
+  }).join('');
+  return '<table class="rel-tab"><thead>'+cab+'</thead><tbody>'+linhas+'</tbody></table>';
+}
+
+function relPagoFora(g){
+  if(!g.pago_fora) return '';
+  return '<p class="rel-sublegenda">Pagamento localizado em outro ano</p>'+
+    '<table class="rel-tab"><thead><tr><th>Protocolo</th><th>Data</th><th>Ano</th>'+
+    '<th class="num">Valor</th><th>Nome</th><th>Situação</th></tr></thead><tbody>'+
+    g.pago_fora.itens.map(function(q){
+      return '<tr><td class="mono">'+esc(q.protocolo)+'</td>'+
+        '<td class="mono">'+esc(q.data)+'</td><td class="mono">'+esc(q.ano)+'</td>'+
+        '<td class="num">'+esc(q.valor_fmt)+'</td><td>'+esc(q.nome)+'</td>'+
+        '<td>'+selo('pago', q.sit_efetiva)+'</td></tr>';
+    }).join('')+'</tbody></table>';
+}
+
+function relGrupo(g, modo){
+  var pf = g.pago_fora, post = pf && pf.sentido === 'posterior';
+  var cls = g.status, verd = VEREDITO[g.status];
+  if(modo === 'pf'){
+    cls  = post ? 'resolvido' : 'atencao';
+    verd = post ? 'Pago em '+pf.anos_txt : 'Pagamento anterior';
+  } else if(g.resolvido_por === 'ano_posterior'){
+    verd = 'Pago em '+pf.anos_txt;
+  }
+  var cont = [];
+  if(g.qtd_pago)      cont.push(selo('pago', g.qtd_pago+' pago'));
+  if(g.qtd_rejeitado) cont.push(selo('rejeitado', g.qtd_rejeitado+' rejeitado'));
+  if(g.qtd_andamento) cont.push(selo('andamento', g.qtd_andamento+' em andamento'));
+  if(g.qtd_excluido)  cont.push(selo('excluido', g.qtd_excluido+' excluído'));
+  if(g.incerto)       cont.push('<span class="selo-incerto">'+g.sem_acomp+' aguardando CPEx</span>');
+
+  var meta = 'Prec-cp '+esc(g.prec_cp)+' · '+
+    (modo === 'ea'
+      ? esc(g.anos_txt)+' · '+esc(g.intervalo)+' ('+g.meses+' meses)'
+      : esc(g.ano))+
+    ' · '+esc(g.segmento||'')+' · '+g.qtd+' protocolos · valores em torno de '+esc(g.valor_ref_fmt)+
+    ' (amplitude '+esc(g.amplitude_fmt)+')';
+
+  return '<article class="rel-grupo '+cls+'">'+
+    '<div class="rel-grupo-cab">'+
+      '<div><p class="rel-grupo-nome">'+esc(g.nomes.join(' / ') || '(sem nome)')+'</p>'+
+      '<p class="rel-grupo-meta">'+meta+'</p></div>'+
+      '<div class="rel-grupo-dir">'+cont.join('')+
+        '<span class="veredito '+cls+'">'+esc(verd)+'</span></div>'+
+    '</div>'+
+    '<div class="rel-grupo-corpo">'+
+      relTabela(g, modo)+
+      ((modo === 'pf' || post) ? relPagoFora(g) : '')+
+    '</div></article>';
+}
+
+function relLista(lista, modo, vazio){
+  return lista.length
+    ? lista.map(function(g){ return relGrupo(g, modo); }).join('')
+    : '<p class="rel-vazio">'+esc(vazio)+'</p>';
+}
+
+function relFiltros(est, comAno){
+  var rot = {risco:'Em risco', atencao:'Atenção', resolvido:'Resolvidos'};
+  var st = ['risco','atencao','resolvido'].filter(function(k){ return est.status[k]; })
+             .map(function(k){ return rot[k]; });
+  var t = ['segmento <b>'+esc(segTexto())+'</b>',
+           'situação do grupo <b>'+(st.length ? esc(st.join(', ')) : 'nenhuma')+'</b>'];
+  if(comAno && est.ano) t.push('ano <b>'+esc(est.ano)+'</b>');
+  if(est.busca)         t.push('busca <b>'+esc(est.busca)+'</b>');
+  return 'Recorte deste relatório: '+t.join(' · ')+'. '+
+    'Os filtros da tela valem para o documento — limpe-os antes de gerar para incluir tudo.';
+}
+
+function abrirRelatorio(html, paisagem){
+  relAlvo.innerHTML = html +
+    '<p class="rel-rodape">'+esc(META.organizacao)+' · Painel de Acompanhamento DEA · '+
+    'retrato de '+esc(META.data_ref)+' · documento gerado em '+esc(META.gerado_em)+'</p>';
+  relAlvo.classList.toggle('paisagem', !!paisagem);
+  relAlvo.hidden = false;
+  relBarra.hidden = false;
+  document.body.classList.add('modo-relatorio');
+  window.scrollTo(0, 0);
+  setTimeout(function(){ try{ window.print(); }catch(e){} }, 400);
+}
+
+document.getElementById('rel-imprimir').addEventListener('click', function(){
+  try{ window.print(); }catch(e){}
+});
+document.getElementById('rel-voltar').addEventListener('click', function(){
+  document.body.classList.remove('modo-relatorio');
+  relAlvo.hidden = true; relBarra.hidden = true; relAlvo.innerHTML = '';
+  window.scrollTo(0, 0);
+});
+
+/* ---- 1. Prec-cp repetido ---- */
+document.getElementById('g-pdf').addEventListener('click', function(){
+  var lista = gruposFiltrados(), risco = riscoDe(V.G);
+  abrirRelatorio(
+    relCapa('Prec-cp repetido no mesmo ano',
+      'Protocolos do mesmo Prec-cp, no mesmo ano, cujos valores não diferem entre si mais que '+
+      brl(META.tolerancia_valor)+' — o padrão de um processo rejeitado, corrigido e relançado. '+
+      'Em risco: nenhum protocolo do grupo foi pago e ainda há processo vivo, de modo que o '+
+      'crédito pode seguir pendente.',
+      [['Grupos no relatório', num(lista.length)],
+       ['Protocolos', num(lista.reduce(function(a,g){ return a+g.qtd; }, 0))],
+       ['Em risco no recorte', num(risco.length)],
+       ['Valor em risco', brl(valorVivo(risco))]],
+      relFiltros(gEstado, true))+
+    relLegenda('ano')+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">Grupos</h2>'+
+    relLista(lista, 'ano', 'Nenhum grupo corresponde aos filtros.')+'</section>');
+});
+
+/* ---- 2. Entre anos ---- */
+document.getElementById('e-pdf').addEventListener('click', function(){
+  var lista = eaFiltrados(), risco = riscoDe(V.EA);
+  abrirRelatorio(
+    relCapa('Prec-cp repetido atravessando a virada do ano',
+      'O ciclo rejeição → correção → relançamento não respeita o calendário: um processo '+
+      'rejeitado em outubro costuma voltar corrigido em janeiro. Aqui vale o mesmo critério de '+
+      'valor ('+brl(META.tolerancia_valor)+') sem a trava do ano, e constam apenas os grupos que '+
+      'atravessam a virada — os de ano único estão no relatório da tela principal.',
+      [['Grupos no relatório', num(lista.length)],
+       ['Protocolos', num(lista.reduce(function(a,g){ return a+g.qtd; }, 0))],
+       ['Em risco no recorte', num(risco.length)],
+       ['Valor em risco', brl(valorVivo(risco))]],
+      relFiltros(eEstado, false))+
+    relLegenda('ea')+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">Grupos</h2>'+
+    relLista(lista, 'ea', 'Nenhum grupo corresponde aos filtros.')+'</section>');
+});
+
+/* ---- 3. Pago em outro ano ---- */
+document.getElementById('pf-pdf').addEventListener('click', function(){
+  var lista = pfFiltrados();
+  var post = V.PF.filter(function(g){ return g.pago_fora.sentido === 'posterior'; });
+  var ant  = V.PF.filter(function(g){ return g.pago_fora.sentido !== 'posterior'; });
+  var mom = [];
+  if(pfEstado.posterior) mom.push('ano posterior');
+  if(pfEstado.anterior)  mom.push('ano anterior');
+  abrirRelatorio(
+    relCapa('Rejeitados num ano, pagos em outro',
+      'Grupos que não tiveram pagamento no próprio ano, mas cujo Prec-cp registra pagamento de '+
+      'valor equivalente (até '+brl(META.tolerancia_valor)+') em outro ano. Pagamento em ano '+
+      'posterior significa que o crédito saiu depois da rejeição e o grupo deixa de ser '+
+      'pendência. Pagamento em ano anterior não comprova quitação: costuma se referir a outra '+
+      'dívida, de outro período, com valor por acaso parecido — esses continuam no risco.',
+      [['Grupos no relatório', num(lista.length)],
+       ['Pagos em ano posterior', num(post.length)],
+       ['Pagos em ano anterior', num(ant.length)],
+       ['Protocolos envolvidos', num(lista.reduce(function(a,g){ return a+g.qtd; }, 0))]],
+      'Recorte deste relatório: segmento <b>'+esc(segTexto())+'</b> · momento do pagamento <b>'+
+      (mom.length ? esc(mom.join(' e ')) : 'nenhum')+'</b>'+
+      (pfEstado.busca ? ' · busca <b>'+esc(pfEstado.busca)+'</b>' : '')+'.')+
+    relLegenda('pf')+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">Grupos</h2>'+
+    relLista(lista, 'pf', 'Nenhum grupo corresponde aos filtros.')+'</section>');
+});
+
+/* ---- 4. Homologados para lançamento ---- */
+document.getElementById('hl-pdf').addEventListener('click', function(){
+  var lista = V.HL;
+  var corpo = lista.length
+    ? '<table class="rel-tab"><thead><tr><th>Protocolo</th><th>Data</th><th>Ano</th>'+
+      '<th>Prec-cp</th><th>Segmento</th><th>Nome</th><th class="num">Valor</th>'+
+      '<th>Situação (DEA)</th><th>Situação (Acomp.)</th><th>CODOM</th></tr></thead><tbody>'+
+      lista.map(function(p){
+        return '<tr><td class="mono">'+esc(p.protocolo)+'</td>'+
+          '<td class="mono">'+esc(p.data)+'</td><td class="mono">'+esc(p.ano)+'</td>'+
+          '<td class="mono">'+esc(p.prec_cp)+'</td><td>'+esc(p.segmento)+'</td>'+
+          '<td>'+esc(p.nome)+'</td><td class="num">'+esc(p.valor_fmt)+'</td>'+
+          '<td>'+selo('andamento', p.sit_dea)+'</td>'+
+          '<td>'+(p.tem_acomp ? selo(p.sit_acomp_classe, p.sit_acomp)
+                              : '<span class="selo ausente">aguardando CPEx</span>')+'</td>'+
+          '<td class="mono">'+esc(p.codom)+'</td></tr>';
+      }).join('')+'</tbody></table>'
+    : '<p class="rel-vazio">Nenhum protocolo pronto para lançamento neste recorte.</p>';
+  abrirRelatorio(
+    relCapa('Homologados para lançamento',
+      'Processos das abas DEA com situação "Pagamento autorizado (CPEx). Aguardando lançamento da '+
+      'OM no SIPPES" ou "Homologado pelo OD do CPEx. Efetuar lançamento no SIPPES até o final da 2ª '+
+      'corrida / SIAPPES Automático" que ainda não foram pagos — no Acompanhamento constam como '+
+      '"Processado o Pagamento". O CPEx processou; cabe à OM lançar no SIPPES/SIAPPES. Os que já '+
+      'constam como "Pago" não entram nesta relação.',
+      [['Protocolos', num(lista.length)],
+       ['Valor a lançar', lista.length ? brl(somaValor(lista)) : '—'],
+       ['Excluídos por já constarem "Pago"', num(A.hl_ja_pagos)],
+       ['Segmento', segTexto()]],
+      'Recorte deste relatório: segmento <b>'+esc(segTexto())+'</b>.')+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">Prontos para lançamento no SIPPES/SIAPPES</h2>'+
+    corpo+'</section>', true);
+});
+
+/* ---- 5. Histórico ---- */
+document.getElementById('hs-pdf').addEventListener('click', function(){
+  var lista = histPorDia();
+  function tabDia(arr, tipo){
+    if(!arr.length) return '';
+    var cab = tipo === 'mud'
+      ? '<tr><th>Protocolo</th><th>Nome</th><th>Prec-cp</th><th>Ano</th><th class="num">Valor</th>'+
+        '<th>Situação anterior</th><th>Situação atual</th><th>Sentido</th></tr>'
+      : '<tr><th>Protocolo</th><th>Nome</th><th>Ano</th><th class="num">Valor</th><th>Situação</th></tr>';
+    var linhas = arr.map(function(m){
+      return tipo === 'mud'
+        ? '<tr><td class="mono">'+esc(m.protocolo)+'</td><td>'+esc(m.nome||'(sem nome)')+'</td>'+
+          '<td class="mono">'+esc(m.prec_cp)+'</td><td class="mono">'+esc(m.ano)+'</td>'+
+          '<td class="num">'+esc(m.valor_fmt)+'</td><td>'+esc(m.de)+'</td>'+
+          '<td><b>'+esc(m.para)+'</b></td><td>'+esc(SENTIDO[m.sentido]||m.sentido)+'</td></tr>'
+        : '<tr><td class="mono">'+esc(m.protocolo)+'</td><td>'+esc(m.nome||'(sem nome)')+'</td>'+
+          '<td class="mono">'+esc(m.ano)+'</td><td class="num">'+esc(m.valor_fmt)+'</td>'+
+          '<td>'+esc(m.sit||'—')+'</td></tr>';
+    }).join('');
+    return '<table class="rel-tab"><thead>'+cab+'</thead><tbody>'+linhas+'</tbody></table>';
+  }
+  var corpo = lista.length ? lista.map(function(d){
+    var blocos = '';
+    if(d.acomp.length)   blocos += '<p class="rel-sublegenda">Aba Acompanhamento</p>'+tabDia(d.acomp,'mud');
+    if(d.dea2026.length) blocos += '<p class="rel-sublegenda">Aba DEA 2026</p>'+tabDia(d.dea2026,'mud');
+    if(d.novos.length)   blocos += '<p class="rel-sublegenda">Novos protocolos</p>'+tabDia(d.novos,'novo');
+    if(!blocos) blocos = '<p class="rel-vazio">Sem alterações neste dia.</p>';
+    var t = (d.execs[0]||{}).totais || {};
+    return '<section class="rel-secao"><h2 class="rel-secao-tit">'+esc(dataBR(d.data))+
+      ' — '+(d.total?num(d.total)+' alteração(ões)':'sem alteração')+'</h2>'+
+      '<p class="rel-expl">'+d.execs.length+' atualização(ões) neste dia. Ao fim do dia: '+
+      num(t.processos||0)+' processos, '+num(t.risco||0)+' grupos em risco, '+
+      num(t.homologados||0)+' prontos para lançamento, '+num(t.divergentes||0)+' divergências.</p>'+
+      blocos+'</section>';
+  }).join('') : '<section class="rel-secao"><p class="rel-vazio">Nenhum dia corresponde aos filtros.</p></section>';
+
+  abrirRelatorio(
+    relCapa('Histórico de atualizações',
+      'Registro das atualizações do painel, dia a dia: mudanças de situação nas abas DEA e no '+
+      'Acompanhamento, protocolos que entraram ou saíram, e como os indicadores ficaram ao fim de '+
+      'cada dia. O painel é regenerado automaticamente às 09:00 nos dias úteis.',
+      [['Dias no relatório', num(lista.length)],
+       ['Alterações', num(lista.reduce(function(a,d){ return a+d.total; },0))],
+       ['Período', lista.length ? dataBR(lista[lista.length-1].data)+' a '+dataBR(lista[0].data) : '—'],
+       ['Segmento', segTexto()]],
+      'Recorte deste relatório: segmento <b>'+esc(segTexto())+'</b>'+
+      (hsEstado.busca ? ' · busca <b>'+esc(hsEstado.busca)+'</b>' : '')+'.')+
+    corpo, true);
+});
+
+/* ---- 6. Alterações do dia ---- */
+document.getElementById('d-pdf').addEventListener('click', function(){
+  var DF = V.DIFF;
+  function tabMud(arr){
+    if(!arr.length) return '<p class="rel-vazio">Nenhuma alteração.</p>';
+    return '<table class="rel-tab"><thead><tr><th>Protocolo</th><th>Nome</th><th>Prec-cp</th>'+
+      '<th>Ano</th><th class="num">Valor</th><th>Situação anterior</th>'+
+      '<th>Situação atual</th><th>Sentido</th></tr></thead><tbody>'+
+      arr.map(function(m){
+        return '<tr><td class="mono">'+esc(m.protocolo)+'</td>'+
+          '<td>'+esc(m.nome || '(sem nome)')+'</td>'+
+          '<td class="mono">'+esc(m.prec_cp)+'</td>'+
+          '<td class="mono">'+esc(m.ano)+'</td>'+
+          '<td class="num">'+esc(m.valor_fmt)+'</td>'+
+          '<td>'+esc(m.de)+'</td><td><b>'+esc(m.para)+'</b></td>'+
+          '<td>'+esc(SENTIDO[m.sentido] || m.sentido)+'</td></tr>';
+      }).join('')+'</tbody></table>';
+  }
+
+  if(!DF.disponivel){
+    abrirRelatorio(
+      relCapa('Alterações em relação ao dia anterior', DF.motivo,
+        [['Alterações', '—']], '')+
+      '<section class="rel-secao"><p class="rel-vazio">Sem base de comparação.</p></section>', true);
+    return;
+  }
+
+  var corpo =
+    '<section class="rel-secao"><h2 class="rel-secao-tit">Mudanças de situação — aba Acompanhamento</h2>'+
+      tabMud(DF.acomp)+'</section>'+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">Mudanças de situação — aba DEA 2026</h2>'+
+      tabMud(DF.dea2026)+'</section>';
+
+  if(DF.novos.length){
+    corpo += '<section class="rel-secao"><h2 class="rel-secao-tit">Novos protocolos</h2>'+
+      '<table class="rel-tab"><thead><tr><th>Protocolo</th><th>Nome</th><th>Ano</th>'+
+      '<th class="num">Valor</th><th>Situação</th></tr></thead><tbody>'+
+      DF.novos.map(function(n){
+        return '<tr><td class="mono">'+esc(n.protocolo)+'</td>'+
+          '<td>'+esc(n.nome || '(sem nome)')+'</td><td class="mono">'+esc(n.ano)+'</td>'+
+          '<td class="num">'+esc(n.valor_fmt)+'</td><td>'+esc(n.sit)+'</td></tr>';
+      }).join('')+'</tbody></table></section>';
+  }
+  if(DF.removidos.length){
+    corpo += '<section class="rel-secao"><h2 class="rel-secao-tit">Protocolos removidos</h2>'+
+      '<table class="rel-tab"><thead><tr><th>Protocolo</th><th>Observação</th></tr></thead><tbody>'+
+      DF.removidos.map(function(n){
+        return '<tr><td class="mono">'+esc(n.protocolo)+'</td>'+
+          '<td>deixou de constar na planilha</td></tr>';
+      }).join('')+'</tbody></table></section>';
+  }
+
+  abrirRelatorio(
+    relCapa('Alterações em relação ao dia anterior',
+      'Comparação entre o retrato de '+META.data_ref+' e o de '+DF.base+'. O sentido indica se '+
+      'a mudança avançou ou retrocedeu no fluxo do processo; "lateral" marca troca de redação ou '+
+      'situação fora da linha de progressão.',
+      [['Alterações', num(DF.total)],
+       ['Acompanhamento', num(DF.acomp.length)],
+       ['DEA 2026', num(DF.dea2026.length)],
+       ['Novos protocolos', num(DF.novos.length)]],
+      'Recorte deste relatório: segmento <b>'+esc(segTexto())+'</b> · base de comparação: retrato de <b>'+esc(DF.base)+'</b>.')+
+    '<section class="rel-legenda"><p class="rel-sublegenda">Como ler este relatório</p><dl>'+
+      '<dt>Avanço</dt><dd>A situação progrediu na linha do fluxo do processo.</dd>'+
+      '<dt>Retrocesso</dt><dd>A situação voltou a uma etapa anterior — inclui rejeição e exclusão.</dd>'+
+      '<dt>Lateral</dt><dd>Mudança fora da linha de progressão: troca de redação da mesma etapa ou situação sem posição definida no fluxo.</dd>'+
+    '</dl></section>'+
+    corpo, true);
+});
+
+/* =======================================================================
+   7. FILA DE HOMOLOGAÇÃO
+   A aba "Protocolos para homologação" da planilha NÃO traz data. O tempo de
+   espera é medido pelo próprio painel: a cada atualização o pipeline guarda
+   quem estava na fila e desde quando, e a diferença vira "dias na fila".
+   O "protocolado há" vem da Data Implantação das abas DEA e serve de contexto —
+   por ele a fila inteira já nasce com meses de idade, então ele não alerta nada.
+   ======================================================================= */
+var flEstado = {alerta:false, novos:false, busca:''};
+
+function diasSelo(d, lim){
+  if(d == null) return '<span class="dias-selo nd">—</span>';
+  var cls = d >= (lim + 3) ? 'grave' : d >= lim ? 'atencao' : 'ok';
+  return '<span class="dias-selo '+cls+'">'+d+(d === 1 ? ' dia' : ' dias')+'</span>';
+}
+
+function flFiltrados(){
+  var b = semAcento(flEstado.busca).trim();
+  var lim = V.FILA.limite_alerta || 2;
+  return (V.FILA.itens || []).filter(function(i){
+    if(flEstado.alerta && !(i.dias_fila != null && i.dias_fila >= lim)) return false;
+    if(flEstado.novos && !i.novo) return false;
+    if(b && String(i.protocolo).indexOf(b) === -1 &&
+            String(i.prec_cp||'').indexOf(b) === -1 &&
+            semAcento(i.nome||'').indexOf(b) === -1) return false;
+    return true;
+  });
+}
+
+function renderFila(){
+  var F = V.FILA;
+  var nota = document.getElementById('notaFila');
+  var alertas = document.getElementById('fl-alertas');
+  var area = document.getElementById('fl-area');
+
+  if(!F.disponivel){
+    nota.className = 'nota vazio';
+    nota.textContent = F.motivo || 'Fila de homologação indisponível.';
+    alertas.innerHTML = ''; area.innerHTML = '';
+    document.getElementById('fl-cont').textContent = '0';
+    document.getElementById('fl-tot').textContent = '0';
+    return;
+  }
+
+  var lim = F.limite_alerta || 2;
+  nota.className = 'nota';
+  nota.innerHTML =
+    'Protocolos que já foram registrados pelo operador e <b>ainda não chegaram ao '+
+    'homologador</b> — a aba <b>Protocolos para homologação</b> da planilha. '+
+    'Como essa aba não traz data, o <b>tempo na fila</b> é medido pelo próprio painel, '+
+    'a partir do dia em que cada protocolo apareceu ali. O <b>protocolado há</b> vem da '+
+    'Data Implantação das abas DEA e serve de contexto: mede desde a protocolização, '+
+    'não desde a entrada nesta fila. Dias corridos.';
+
+  /* ---- as duas faixas de alerta ---- */
+  var h = '';
+  if(F.primeira_vez){
+    h += '<div class="alerta-faixa calmo">'+
+      '<span class="alerta-num">—</span>'+
+      '<span><span class="alerta-tit">Primeira leitura desta fila</span>'+
+      '<span class="alerta-txt">O relógio de dias na fila começa hoje: os '+num(F.total)+
+      ' protocolos abaixo foram registrados como ponto de partida. A partir da próxima '+
+      'atualização o painel passa a apontar quem entrou e quem ficou parado.</span></span>'+
+      '<span></span></div>';
+  } else {
+    var nv = F.novos;
+    h += '<div class="alerta-faixa '+(nv.length ? 'novo' : 'calmo')+'">'+
+      '<span class="alerta-num">'+num(nv.length)+'</span>'+
+      '<span><span class="alerta-tit">'+(nv.length ? 'Novos na fila' : 'Nenhum protocolo novo')+'</span>'+
+      '<span class="alerta-txt">'+(nv.length
+        ? 'Entraram nesta fila desde a atualização de '+esc(dataBR(F.base))+'.'
+        : 'Nada entrou na fila desde a atualização de '+esc(dataBR(F.base))+'.')+'</span></span>'+
+      '<span class="alerta-lista">'+nv.slice(0,8).map(function(i){
+        return '<span class="selo andamento">'+esc(i.protocolo)+'</span>';
+      }).join('')+(nv.length > 8 ? '<span class="selo excluido">+'+(nv.length-8)+'</span>' : '')+
+      '</span></div>';
+
+    var al = F.alerta;
+    h += '<div class="alerta-faixa '+(al.length ? 'critico' : 'calmo')+'">'+
+      '<span class="alerta-num">'+num(al.length)+'</span>'+
+      '<span><span class="alerta-tit">'+(al.length
+        ? 'Parados há '+lim+' dias ou mais'
+        : 'Nenhum protocolo parado')+'</span>'+
+      '<span class="alerta-txt">'+(al.length
+        ? 'Continuam nesta fila há '+lim+' dias ou mais sem chegar ao homologador — '+
+          'podem estar parados com o operador do sistema. Somam '+
+          esc(brl(somaValor(al)))+'.'
+        : 'Nenhum protocolo passou de '+lim+' dias nesta fila.')+'</span></span>'+
+      '<span class="alerta-lista">'+al.slice(0,8).map(function(i){
+        return '<span class="selo rejeitado">'+esc(i.protocolo)+' · '+i.dias_fila+'d</span>';
+      }).join('')+(al.length > 8 ? '<span class="selo excluido">+'+(al.length-8)+'</span>' : '')+
+      '</span></div>';
+  }
+  if(F.saidos && F.saidos.length){
+    h += '<div class="alerta-faixa calmo">'+
+      '<span class="alerta-num">'+num(F.saidos.length)+'</span>'+
+      '<span><span class="alerta-tit">Saíram da fila</span>'+
+      '<span class="alerta-txt">Estavam aqui na atualização de '+esc(dataBR(F.base))+
+      ' e não estão mais — seguiram para homologação ou foram excluídos.</span></span>'+
+      '<span class="alerta-lista">'+F.saidos.slice(0,8).map(function(i){
+        return '<span class="selo pago">'+esc(i.protocolo)+'</span>';
+      }).join('')+(F.saidos.length > 8 ? '<span class="selo excluido">+'+(F.saidos.length-8)+'</span>' : '')+
+      '</span></div>';
+  }
+  alertas.innerHTML = h;
+
+  /* ---- tabela ---- */
+  var lista = flFiltrados();
+  document.getElementById('fl-cont').textContent = num(lista.length);
+  document.getElementById('fl-tot').textContent = num(F.total);
+  document.getElementById('fl-soma').textContent = lista.length
+    ? 'Soma dos valores: ' + brl(somaValor(lista)) : '';
+
+  if(!lista.length){
+    area.innerHTML = '<div class="cartao"><p class="vazio-msg">'+
+      (F.total ? 'Nenhum protocolo corresponde aos filtros.'
+               : 'Nenhum protocolo na fila de homologação neste recorte.')+'</p></div>';
+    return;
+  }
+
+  area.innerHTML = '<div class="rolagem"><table><thead><tr>'+
+      '<th scope="col">Protocolo</th><th scope="col">Tipo</th><th scope="col">Nome</th>'+
+      '<th scope="col">Prec-cp</th><th scope="col">Segmento</th><th scope="col">Valor</th>'+
+      '<th scope="col">Na fila há</th><th scope="col">Protocolado em</th>'+
+      '<th scope="col">Protocolado há</th><th scope="col">Codom</th>'+
+    '</tr></thead><tbody>'+
+    lista.map(function(i){
+      return '<tr>'+
+        '<td class="mono">'+esc(i.protocolo)+
+          (i.novo ? ' <span class="selo andamento">novo</span>' : '')+'</td>'+
+        '<td class="mono">'+esc(i.tipo)+'</td>'+
+        '<td>'+esc(i.nome)+'</td>'+
+        '<td class="mono">'+esc(i.prec_cp || '—')+'</td>'+
+        '<td>'+esc(i.segmento)+'</td>'+
+        '<td class="num">'+esc(i.valor_fmt)+'</td>'+
+        '<td>'+diasSelo(i.dias_fila, lim)+'</td>'+
+        '<td class="mono">'+esc(i.data || '—')+'</td>'+
+        '<td class="num">'+(i.dias_protocolo == null ? '—' : num(i.dias_protocolo)+' dias')+'</td>'+
+        '<td class="mono">'+esc(i.sigla || i.codom_vinc)+'</td>'+
+      '</tr>';
+    }).join('')+'</tbody></table></div>'+
+    (F.sem_dea ? '<p class="nota vazio" style="margin-top:var(--s3)">'+num(F.sem_dea)+
+      ' protocolo(s) desta fila não foram encontrados nas abas DEA — para eles não há '+
+      'Data Implantação nem Prec-cp.</p>' : '');
+}
+
+[['fl-alerta','alerta'],['fl-novos','novos']].forEach(function(t){
+  var b = document.getElementById(t[0]);
+  b.addEventListener('click', function(){
+    flEstado[t[1]] = !flEstado[t[1]];
+    b.setAttribute('aria-pressed', flEstado[t[1]] ? 'true' : 'false');
+    renderFila();
+  });
+});
+document.getElementById('fl-busca').addEventListener('input', function(){
+  flEstado.busca = this.value; renderFila();
+});
+document.getElementById('fl-limpar').addEventListener('click', function(){
+  flEstado = {alerta:false, novos:false, busca:''};
+  ['fl-alerta','fl-novos'].forEach(function(id){
+    document.getElementById(id).setAttribute('aria-pressed','false');
+  });
+  document.getElementById('fl-busca').value = '';
+  renderFila();
+});
+document.getElementById('fl-pdf').addEventListener('click', function(){
+  var F = V.FILA, lista = flFiltrados(), lim = F.limite_alerta || 2;
+  var corpo = lista.length
+    ? '<table class="rel-tab"><thead><tr><th>Protocolo</th><th>Tipo</th><th>Nome</th>'+
+      '<th>Prec-cp</th><th>Segmento</th><th class="num">Valor</th><th class="num">Na fila há</th>'+
+      '<th>Protocolado em</th><th class="num">Protocolado há</th><th>Codom</th></tr></thead><tbody>'+
+      lista.map(function(i){
+        return '<tr><td class="mono">'+esc(i.protocolo)+'</td><td class="mono">'+esc(i.tipo)+'</td>'+
+          '<td>'+esc(i.nome)+'</td><td class="mono">'+esc(i.prec_cp||'—')+'</td>'+
+          '<td>'+esc(i.segmento)+'</td><td class="num">'+esc(i.valor_fmt)+'</td>'+
+          '<td class="num">'+(i.dias_fila==null?'—':i.dias_fila+' dias')+'</td>'+
+          '<td class="mono">'+esc(i.data||'—')+'</td>'+
+          '<td class="num">'+(i.dias_protocolo==null?'—':i.dias_protocolo+' dias')+'</td>'+
+          '<td class="mono">'+esc(i.sigla||i.codom_vinc)+'</td></tr>';
+      }).join('')+'</tbody></table>'
+    : '<p class="rel-vazio">Nenhum protocolo corresponde aos filtros.</p>';
+  abrirRelatorio(
+    relCapa('Fila de homologação',
+      'Protocolos registrados pelo operador que ainda não chegaram ao homologador, conforme a '+
+      'aba "Protocolos para homologação" da planilha. Essa aba não traz data: o tempo na fila '+
+      'é medido pelo painel a partir do dia em que o protocolo apareceu ali. A coluna '+
+      '"protocolado há" vem da Data Implantação das abas DEA e mede desde a protocolização. '+
+      'Dias corridos.',
+      [['Na fila', num(F.total)],
+       ['Parados há '+lim+'+ dias', F.primeira_vez ? '—' : num(F.alerta.length)],
+       ['Novos', F.primeira_vez ? '—' : num(F.novos.length)],
+       ['Valor na fila', lista.length ? brl(somaValor(lista)) : '—']],
+      'Recorte deste relatório: segmento <b>'+esc(segTexto())+'</b>'+
+      (flEstado.alerta ? ' · só os parados' : '')+
+      (flEstado.novos ? ' · só os novos' : '')+
+      (flEstado.busca ? ' · busca <b>'+esc(flEstado.busca)+'</b>' : '')+'.')+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">Protocolos na fila</h2>'+
+    corpo+'</section>', true);
+});
+
+/* ---------- filtro de segmento: recalcula tudo ---------- */
+function aplicarSegmento(){
+  recortar();
+  renderBadges();
+  pintaGrupos();
+  pintaEA();
+  pintaPF();
+  renderDiff();
+  pintaHist();
+  renderHL();
+  renderFila();
+  fEstado.pag = 1;
+  pintaTabela();
+  renderGeral();
+  var on = ['Veteranos','Pensionistas','Ativa'].filter(function(k){ return SEG[k]; });
+  document.getElementById('seg-resumo').textContent =
+    on.length === 0 ? 'Nenhum segmento selecionado'
+    : (on.length === 3 ? 'Todos os segmentos' : on.join(' + ')) + ' · ' + num(V.P.length) + ' processos';
+}
+['Veteranos','Pensionistas','Ativa'].forEach(function(k){
+  var b = document.getElementById('seg-'+k);
+  b.addEventListener('click', function(){
+    SEG[k] = !SEG[k];
+    b.setAttribute('aria-pressed', SEG[k] ? 'true' : 'false');
+    aplicarSegmento();
+  });
+});
+aplicarSegmento();
+
+/* ---------- aba lembrada ---------- */
+try{
+  var salva = localStorage.getItem('dea_aba');
+  if(salva && ABAS.indexOf(salva) !== -1) mostrarAba(salva);
+}catch(e){}
+
+})();
+</script>
+
+</body></html>

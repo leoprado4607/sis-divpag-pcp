@@ -2,6 +2,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { runGemini, isRequestAllowed, checkRateLimit, getClientIp } from './api/_gemini'
+import { handleDea } from './api/_dea'
 
 // Plugin SÓ de desenvolvimento: replica o endpoint serverless /api/gemini (mesma
 // lógica de origem + rate limit + chamada) para que `npm run dev` funcione sem
@@ -17,6 +18,17 @@ function geminiDevApi(apiKey: string, allowedOrigins: string, rateMax: number, r
         res.statusCode = 503;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ error: 'Admin indisponível em dev (use Vercel ou vercel dev). Operando em modo local.' }));
+      });
+
+      // Painel DEA: mesma função da Vercel (login, sessão, painel e dados.js
+      // protegidos). Sem mount path para preservar req.url completo.
+      server.middlewares.use((req: any, res: any, next: any) => {
+        const path = (req.url || '').split('?')[0];
+        if (path === '/api/dea' || path === '/dea/painel' || path === '/dea/dados.js') {
+          handleDea(req, res);
+          return;
+        }
+        next();
       });
 
       server.middlewares.use('/api/gemini', (req: any, res: any) => {
@@ -69,6 +81,10 @@ function geminiDevApi(apiKey: string, allowedOrigins: string, rateMax: number, r
 export default defineConfig(({ mode }) => {
   // Fix: Cast process to any to avoid "Property 'cwd' does not exist on type 'Process'" error in some environments
   const env = loadEnv(mode, (process as any).cwd(), '');
+  // O handler do Painel DEA (api/_dea.ts) lê process.env, como na Vercel.
+  for (const k of ['DEA_PASSWORD', 'DEA_SESSION_SECRET', 'DEA_DADOS_LOCAL', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']) {
+    if (env[k] && !process.env[k]) process.env[k] = env[k];
+  }
   return {
     // A chave do Gemini (API_KEY) é INTENCIONALMENTE deixada de fora do `define`:
     // ela só existe no servidor (função /api/gemini e plugin de dev acima).

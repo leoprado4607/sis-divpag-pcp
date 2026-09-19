@@ -1,0 +1,3 @@
+# Pacote do Painel DEA: manter byte a byte igual ao original (sem conversão CRLF).
+dea/app/** -text
+dea/testes/** -text

@@ -26,15 +26,17 @@ SPA React + Tailwind hospedada na Vercel. Não há Next.js nem roteador de URL �
 |---|---|---|
 | `home` | `App.tsx` | Portal com cards de acesso |
 | `andrecito-app` | `components/andrecito/AndrecitoApp.tsx` | RAG de legislação militar com Gemini |
-| `dea-dashboard` | `components/dashboard/DeaDashboard.tsx` | Dashboard de Despesas de Exercícios Anteriores |
+| `dea-dashboard` | `components/dashboard/DeaDashboard.tsx` | Login + iframe do Painel DEA (ver seção abaixo) |
 | `comparison-app` | `components/comparison/ComparisonApp.tsx` | Comparação CPEx × SiCaPEx |
 
 ### Funções serverless (`api/`)
 
-Dois endpoints Vercel (Node.js):
+Três endpoints Vercel (Node.js):
 
 - **`/api/gemini`** — Proxy seguro para Google Gemini. Mantém `API_KEY` no servidor. Tem rate-limit por IP (Upstash Redis ou em memória) e cache de respostas em memória (1h, max 200 entradas). Loga cada consulta na tabela `andrecito_logs` do Supabase.
 - **`/api/admin`** — Operações de escrita do Andrecito (CRUD de categorias/docs, upload com Signed URL, analytics). Requer header `x-admin-token` validado contra `ADMIN_PASSWORD` com `timingSafeEqual`.
+
+- **`/api/dea`** — Login do Painel DEA (senhas em `DEA_PASSWORD`, validadas no servidor) e cookie de sessão HMAC. Também atende `/dea/painel` e `/dea/dados.js` (rewrites no `vercel.json`), que só respondem com sessão válida.
 
 Helpers internos (prefixo `_`): `_gemini.ts`, `_ratelimit.ts`, `_http.ts`, `_supabaseAdmin.ts`.
 
@@ -46,12 +48,19 @@ Helpers internos (prefixo `_`): `_gemini.ts`, `_ratelimit.ts`, `_http.ts`, `_sup
 - **`geminiClient.ts`** — `callGemini()`: faz POST para `/api/gemini`.
 - **`adminClient.ts`** — `adminRequest()`: faz POST para `/api/admin` com o token. Lança `AdminUnavailableError` em 404/503 para ativar fallback local.
 - **`supabaseClient.ts`** — Cria o cliente anon do Supabase (leitura pública, RLS).
-- **`deaService.ts`** — Busca dados DEA de uma planilha Google Sheets publicada como CSV.
 - **`csvUtils.ts`** — Parse de CSV com números no formato BR (1.000,00).
 
 ### Modo offline/demo
 
 `andrecitoService.ts` tem seeds hardcoded (`INITIAL_CATEGORIES`, `INITIAL_DOCUMENTS`, `INITIAL_TEXT_CACHE`). Se o Supabase não estiver configurado ou o backend admin retornar 404/503, todas as operações usam localStorage como banco local. Isso permite rodar o sistema sem nenhuma variável de ambiente configurada.
+
+## Painel DEA ("Exercícios Anteriores")
+
+Pacote portado em [dea/](dea/) — leia [dea/LEIA-PRIMEIRO.md](dea/LEIA-PRIMEIRO.md) e [dea/docs/NOTAS-DOMINIO.md](dea/docs/NOTAS-DOMINIO.md). **`dea/app/build_data.py` e `dea/app/painel.html` não podem ser alterados** (testados contra os dados reais).
+
+- `dados.js` (nome, Prec-cp e valor de milhares de pessoas) e o estado (`snapshot-anterior.json`, `historico.json`, insubstituíveis) vivem **só** no bucket privado `dea-privado` do Supabase — nunca no repositório, em `public/` ou em bucket público.
+- Atualização: GitHub Action [dea-atualizar.yml](.github/workflows/dea-atualizar.yml), 09:00 BRT em dias úteis → `supabase_sync.py baixar` → `atualizar.py` (intocado) → `supabase_sync.py enviar`.
+- Em dev, `DEA_DADOS_LOCAL` aponta para um `dados.js` fora do repositório.
 
 ## Banco de dados (Supabase)
 
