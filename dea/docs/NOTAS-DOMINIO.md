@@ -100,7 +100,10 @@ não protocolo que ainda possa ser aprovado:
 
 O critério usa a classe já produzida pelo `build_data.py` (`MAPA_SITUACAO`),
 sem mudança no pipeline: o filtro está no painel (`emCurso()` em `recortar()`).
-A aba "Entre anos" não foi dividida.
+A aba "Entre anos" recebeu a mesma divisão (pedido do usuário, 21/09/2026):
+**Entre anos — encerrado sem pagamento** (`V.EA`, vereditos risco/atenção) e
+**Entre anos — pendente de análise CPEx** (`V.EC`, veredito "Em análise"),
+pelo mesmo `emCurso()`. Cada uma tem filtros e relatório PDF próprios.
 
 Não há mais referência de valor em nenhuma aba de grupos: `TOLERANCIA_VALOR` (R$ 50)
 foi removida em 21/09/2026 (ver "Pago em outro ano").

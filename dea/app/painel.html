@@ -480,7 +480,8 @@ body.modo-relatorio .rodape{display:none !important}
   <div class="abas" role="tablist" aria-label="Seções do painel">
     <button class="aba urgente" role="tab" id="t-grupos" aria-controls="p-grupos" aria-selected="true" type="button">DEA encerrado sem pagamento<span class="cnt" id="c-grupos">0</span></button>
     <button class="aba" role="tab" id="t-cpex" aria-controls="p-cpex" aria-selected="false" type="button">DEA pendente de análise CPEx<span class="cnt" id="c-cpex">0</span></button>
-    <button class="aba urgente" role="tab" id="t-entreanos" aria-controls="p-entreanos" aria-selected="false" type="button">Entre anos<span class="cnt" id="c-entreanos">0</span></button>
+    <button class="aba urgente" role="tab" id="t-entreanos" aria-controls="p-entreanos" aria-selected="false" type="button">Entre anos — encerrado sem pagamento<span class="cnt" id="c-entreanos">0</span></button>
+    <button class="aba" role="tab" id="t-eacpex" aria-controls="p-eacpex" aria-selected="false" type="button">Entre anos — pendente de análise CPEx<span class="cnt" id="c-eacpex">0</span></button>
     <button class="aba" role="tab" id="t-pagofora" aria-controls="p-pagofora" aria-selected="false" type="button">Pago em outro ano<span class="cnt" id="c-pagofora">0</span></button>
     <button class="aba" role="tab" id="t-diff" aria-controls="p-diff" aria-selected="false" type="button">Alterações do dia<span class="cnt" id="c-diff">0</span></button>
     <button class="aba" role="tab" id="t-fila" aria-controls="p-fila" aria-selected="false" type="button">Fila de homologação<span class="cnt" id="c-fila">0</span></button>
@@ -572,6 +573,34 @@ body.modo-relatorio .rodape{display:none !important}
 
     <p class="resumo-filtro"><span><b id="e-cont">0</b> grupo(s) · <b id="e-proto">0</b> protocolo(s)</span></p>
     <div class="grupos" id="e-lista"></div>
+  </section>
+
+  <!-- ============ ENTRE ANOS — PENDENTE DE ANÁLISE CPEx ============ -->
+  <section class="painel" id="p-eacpex" role="tabpanel" aria-labelledby="t-eacpex" hidden>
+    <div class="secao-cab">
+      <h2 class="secao-tit">Mesmo nome, Prec-cp e Nr BI atravessando a virada do ano, com processo ainda em curso</h2>
+    </div>
+    <p class="nota" id="notaEC"></p>
+
+    <div class="controles" style="margin-top:var(--s4)">
+      <div class="campo">
+        <label for="ec-ano">Ano</label>
+        <select id="ec-ano"><option value="">Todos</option></select>
+      </div>
+      <div class="campo" style="flex:1 1 220px">
+        <label for="ec-busca">Nome ou Prec-cp</label>
+        <input id="ec-busca" type="search" placeholder="ex.: 359172131" autocomplete="off">
+      </div>
+      <div class="campo" style="flex:0 1 180px">
+        <label for="ec-protocolo">Protocolo</label>
+        <input id="ec-protocolo" type="search" inputmode="numeric" placeholder="ex.: 454407" autocomplete="off">
+      </div>
+      <button class="btn secundario" id="ec-limpar" type="button">Limpar</button>
+      <button class="btn" id="ec-pdf" type="button">Relatório PDF</button>
+    </div>
+
+    <p class="resumo-filtro"><span><b id="ec-cont">0</b> grupo(s) · <b id="ec-proto">0</b> protocolo(s)</span></p>
+    <div class="grupos" id="ec-lista"></div>
   </section>
 
   <!-- ============ PAGO EM OUTRO ANO ============ -->
@@ -842,7 +871,9 @@ function recortar(){
   // pagamento" (V.G) e "pendente de análise CPEx" (V.GC).
   V.G  = GRUPOS.filter(function(g){ return porSeg(g) && naoPago(g) && !emCurso(g); });
   V.GC = GRUPOS.filter(function(g){ return porSeg(g) && naoPago(g) && emCurso(g); });
-  V.EA = GRUPOS_EA.filter(function(g){ return porSeg(g) && naoPago(g); });
+  // "Entre anos" segue a mesma divisão (21/09/2026): V.EA encerrados, V.EC em curso.
+  V.EA = GRUPOS_EA.filter(function(g){ return porSeg(g) && naoPago(g) && !emCurso(g); });
+  V.EC = GRUPOS_EA.filter(function(g){ return porSeg(g) && naoPago(g) && emCurso(g); });
   V.PF = GRUPOS_PF.filter(porSeg);
   V.HL = HOMOL.filter(porSeg);
   V.HIST = HIST.map(function(h){
@@ -910,7 +941,7 @@ document.getElementById('rod-fonte').textContent = META.fonte + ' · retrato de 
 document.getElementById('rod-org').textContent = META.organizacao;
 
 /* ---------- abas ---------- */
-var ABAS = ['grupos','cpex','entreanos','pagofora','diff','fila','historico','homologados','consulta','geral'];
+var ABAS = ['grupos','cpex','entreanos','eacpex','pagofora','diff','fila','historico','homologados','consulta','geral'];
 function mostrarAba(id){
   ABAS.forEach(function(a){
     var t = document.getElementById('t-'+a), p = document.getElementById('p-'+a);
@@ -926,8 +957,8 @@ ABAS.forEach(function(a){
 function renderBadges(){
   document.getElementById('c-grupos').textContent = num(V.G.length);
   document.getElementById('c-cpex').textContent = num(V.GC.length);
-  document.getElementById('c-entreanos').textContent =
-    num(V.EA.filter(function(g){return g.status==='risco';}).length);
+  document.getElementById('c-entreanos').textContent = num(V.EA.length);
+  document.getElementById('c-eacpex').textContent = num(V.EC.length);
   document.getElementById('c-pagofora').textContent =
     num(V.PF.length);
   document.getElementById('c-diff').textContent = V.DIFF.disponivel ? num(V.DIFF.total) : '—';
@@ -969,7 +1000,7 @@ var gEstado = {ano:'', busca:'', protocolo:''};
 
 (function(){
   var anos = A.anos.slice().sort(function(a,b){ return b-a; });
-  ['g-ano', 'gc-ano', 'e-ano', 'pf-ano'].forEach(function(id){
+  ['g-ano', 'gc-ano', 'e-ano', 'ec-ano', 'pf-ano'].forEach(function(id){
     var sel = document.getElementById(id);
     anos.forEach(function(a){
       var o = document.createElement('option'); o.value = a; o.textContent = a; sel.appendChild(o);
@@ -1022,7 +1053,7 @@ function desenharGrupos(lista, pref, modo){
     if(modo === 'pf'){
       cls  = post ? 'resolvido' : 'atencao';
       verd = (post || (g.origem === 'entre_anos' && pf.sentido === 'misto')) ?'Pago em '+esc(pf.anos_txt) : 'Pagamento anterior';
-    } else if(modo === 'cpex'){
+    } else if(modo === 'cpex' || modo === 'eacpex'){
       cls = 'atencao'; verd = 'Em análise';
     } else if(g.resolvido_por === 'ano_posterior'){
       // saiu do risco porque o crédito foi pago num ano seguinte
@@ -1073,12 +1104,14 @@ function desenharGrupos(lista, pref, modo){
 function explicacaoGrupo(g, modo){
   var expl = modo === 'cpex'
     ? 'Nenhum protocolo deste grupo consta como pago, mas ao menos um ainda está em curso no fluxo do CPEx — o crédito ainda pode sair. Acompanhe até o pagamento; se o protocolo em curso for rejeitado ou excluído, o grupo passa para "DEA encerrado sem pagamento".'
+    : modo === 'eacpex'
+    ? 'Nenhum protocolo deste grupo consta como pago, mas ao menos um ainda está em curso no fluxo do CPEx — o crédito ainda pode sair. O ciclo atravessa a virada do ano ('+g.intervalo+'). Se o protocolo em curso for rejeitado ou excluído, o grupo passa para "Entre anos — encerrado sem pagamento".'
     : modo === 'ano' && g.status === 'risco'
     ? 'Nenhum protocolo deste grupo consta como pago e nenhum segue em curso: as tentativas foram rejeitadas/restituídas (ou excluídas) e a correção não gerou pagamento. É o caso que exige conferência: o crédito segue pendente.'
+    : modo === 'ea' && g.status === 'risco'
+    ? 'Nenhum protocolo deste grupo consta como pago e nenhum segue em curso: as tentativas foram rejeitadas/restituídas (ou excluídas) e a correção não gerou pagamento — e o ciclo atravessa a virada do ano ('+g.intervalo+'), por isso ele não aparece em "DEA encerrado sem pagamento", que agrupa apenas dentro do mesmo ano.'
     : g.status === 'risco'
-    ? (modo === 'ea'
-        ? 'Nenhum protocolo deste grupo consta como pago e ainda há processo em aberto — e o ciclo atravessa a virada do ano ('+g.intervalo+'), por isso ele não aparece na tela principal, que agrupa apenas dentro do mesmo ano.'
-        : 'Nenhum protocolo deste grupo consta como pago e ainda há processo em aberto. É o caso que exige conferência: se as tentativas foram rejeitadas e a correção não gerou pagamento, o crédito segue pendente.')
+    ? 'Nenhum protocolo deste grupo consta como pago e ainda há processo em aberto. É o caso que exige conferência: se as tentativas foram rejeitadas e a correção não gerou pagamento, o crédito segue pendente.'
     : g.status === 'atencao'
     ? 'Nenhum protocolo consta como pago e todos foram excluídos pelo operador. Não há pagamento pendente em curso, mas também não houve pagamento — confira se o direito foi abandonado por engano.'
     : 'Um dos protocolos do grupo foi pago. Os demais correspondem às tentativas rejeitadas e corrigidas ao longo do processo.';
@@ -1184,11 +1217,19 @@ pintaCP();
 document.getElementById('notaEA').innerHTML =
   'O ciclo rejeição → correção → relançamento não respeita o calendário: um processo rejeitado em '+
   'outubro costuma voltar corrigido em janeiro. Esta tela aplica o mesmo critério da aba '+
-  '<b>DEA encerrado sem pagamento</b> e <b>DEA pendente de análise CPEx</b> (mesmo nome, Prec-cp e Nr BI) '+
-  '<b>sem a trava do ano</b>, e mostra apenas os grupos que '+
-  '<b>atravessam a virada</b> — os de ano único já estão naquelas abas. Os grupos em que algum '+
-  'protocolo foi pago ficam na aba <b>Pago em outro ano</b>. '+
+  '<b>DEA encerrado sem pagamento</b> (mesmo nome, Prec-cp e Nr BI) <b>sem a trava do ano</b>, e mostra '+
+  'apenas os grupos que <b>atravessam a virada</b> — os de ano único já estão naquela aba. Aqui ficam só os '+
+  'grupos <b>encerrados sem pagamento</b>: nenhum protocolo pago e nenhum em curso. Se algum protocolo do grupo '+
+  'ainda pode ser aprovado, o grupo está em <b>Entre anos — pendente de análise CPEx</b>; se algum foi pago, '+
+  'em <b>Pago em outro ano</b>. '+
   '<span id="ea-numeros"></span>';
+
+document.getElementById('notaEC').innerHTML =
+  'Mesmo critério de <b>Entre anos — encerrado sem pagamento</b> (mesmo nome, Prec-cp e Nr BI, sem a trava do ano, '+
+  'só os grupos que atravessam a virada), mas aqui ficam os grupos sem pagamento em que <b>ao menos um protocolo '+
+  'ainda está em curso</b> — protocolado e aguardando análise ou documentação, analisado aguardando envio pela DAP '+
+  'ou homologação, homologado, aprovado aguardando pagamento, pagamento autorizado ou processado. Ainda há chance '+
+  'de o crédito sair: acompanhe até o pagamento. Os de ano único estão em <b>DEA pendente de análise CPEx</b>.';
 
 function notaEANumeros(){
   var r = V.EA.filter(function(g){ return g.status === 'risco'; });
@@ -1197,7 +1238,7 @@ function notaEANumeros(){
     ? 'Neste recorte há <b>'+num(r.length)+'</b> grupo(s) em risco, somando <b>'+
       num(r.reduce(function(t,g){return t+g.qtd;},0))+'</b> protocolos de <b>'+
       num(Object.keys(precs).length)+'</b> Prec-cp e <b>'+esc(brl(valorVivo(r)))+'</b> sem pagamento.'
-    : 'Neste recorte não há grupo em risco atravessando a virada do ano.';
+    : 'Neste recorte não há grupo em risco encerrado sem pagamento atravessando a virada do ano.';
 }
 
 var eEstado = {ano:'', busca:'', protocolo:''};
@@ -1216,6 +1257,23 @@ document.getElementById('e-limpar').addEventListener('click', function(){
   pintaEA();
 });
 pintaEA();
+
+/* ---- 1b'. Entre anos — pendente de análise CPEx ---- */
+var ecEstado = {ano:'', busca:'', protocolo:''};
+function ecFiltrados(){ return filtrarGrupos(V.EC, ecEstado); }
+function pintaEC(){ desenharGrupos(ecFiltrados(), 'ec', 'eacpex'); }
+
+document.getElementById('ec-ano').addEventListener('change', function(){ ecEstado.ano = this.value; pintaEC(); });
+document.getElementById('ec-busca').addEventListener('input', function(){ ecEstado.busca = this.value; pintaEC(); });
+document.getElementById('ec-protocolo').addEventListener('input', function(){ ecEstado.protocolo = this.value; pintaEC(); });
+document.getElementById('ec-limpar').addEventListener('click', function(){
+  ecEstado = {ano:'', busca:'', protocolo:''};
+  document.getElementById('ec-ano').value = '';
+  document.getElementById('ec-busca').value = '';
+  document.getElementById('ec-protocolo').value = '';
+  pintaEC();
+});
+pintaEC();
 
 /* =======================================================================
    1c. PAGO EM OUTRO ANO
@@ -1807,9 +1865,9 @@ function relLegenda(modo){
   var itens = modo === 'pf'
     ? [['resolvido','Pagamento posterior','O pagamento veio depois de todas as tentativas não pagas do grupo: o crédito saiu e o grupo deixa de ser pendência.'],
        ['atencao','Pagamento anterior ou misto','O pagamento veio antes de alguma tentativa não paga do grupo. Não comprova a quitação dessas tentativas: confira a competência de cada processo.']]
-    : modo === 'cpex'
+    : (modo === 'cpex' || modo === 'eacpex')
     ? [['atencao','Em análise','Nenhum protocolo do grupo consta como pago, mas ao menos um ainda está em curso no fluxo do CPEx (aguardando análise, envio pela DAP ou homologação, homologado, aprovado aguardando pagamento etc.). O crédito ainda pode sair.']]
-    : modo === 'ano'
+    : (modo === 'ano' || modo === 'ea')
     ? [['risco','Em risco','Nenhum protocolo do grupo consta como pago e nenhum segue em curso: as tentativas foram rejeitadas/restituídas e a correção não gerou pagamento. O crédito segue pendente.'],
        ['atencao','Atenção','Nenhum pago e todos excluídos pelo operador. Não houve pagamento — confira se o direito foi abandonado por engano.']]
     : [['risco','Em risco','Nenhum protocolo do grupo consta como pago e ainda há processo em aberto. É o caso que exige conferência: se as tentativas foram rejeitadas e a correção não gerou pagamento, o crédito segue pendente.'],
@@ -1888,7 +1946,7 @@ function relGrupo(g, modo){
   if(modo === 'pf'){
     cls  = post ? 'resolvido' : 'atencao';
     verd = (post || (g.origem === 'entre_anos' && pf.sentido === 'misto')) ? 'Pago em '+pf.anos_txt : 'Pagamento anterior';
-  } else if(modo === 'cpex'){
+  } else if(modo === 'cpex' || modo === 'eacpex'){
     cls = 'atencao'; verd = 'Em análise';
   } else if(g.resolvido_por === 'ano_posterior'){
     verd = 'Pago em '+pf.anos_txt;
@@ -1999,12 +2057,11 @@ document.getElementById('gc-pdf').addEventListener('click', function(){
 document.getElementById('e-pdf').addEventListener('click', function(){
   var lista = eaFiltrados(), risco = riscoDe(V.EA);
   abrirRelatorio(
-    relCapa('DEA pendente atravessando a virada do ano',
+    relCapa('DEA encerrado sem pagamento atravessando a virada do ano',
       'O ciclo rejeição → correção → relançamento não respeita o calendário: um processo '+
       'rejeitado em outubro costuma voltar corrigido em janeiro. Aqui vale o mesmo critério da '+
-      'abas DEA encerrado sem pagamento e DEA pendente de análise CPEx (mesmo nome, Prec-cp e Nr BI) '+
-      'sem a trava do ano, e constam apenas os grupos que atravessam a virada — os de ano único estão '+
-      'nos relatórios daquelas abas.',
+      'aba DEA encerrado sem pagamento (mesmo nome, Prec-cp e Nr BI) sem a trava do ano, e constam '+
+      'apenas os grupos que atravessam a virada, sem protocolo pago nem em curso.',
       [['Grupos no relatório', num(lista.length)],
        ['Protocolos', num(lista.reduce(function(a,g){ return a+g.qtd; }, 0))],
        ['Em risco no recorte', num(risco.length)],
@@ -2013,6 +2070,24 @@ document.getElementById('e-pdf').addEventListener('click', function(){
     relLegenda('ea')+
     '<section class="rel-secao"><h2 class="rel-secao-tit">Grupos</h2>'+
     relLista(lista, 'ea', 'Nenhum grupo corresponde aos filtros.')+'</section>');
+});
+
+/* ---- 2b. Entre anos — pendente de análise CPEx ---- */
+document.getElementById('ec-pdf').addEventListener('click', function(){
+  var lista = ecFiltrados();
+  abrirRelatorio(
+    relCapa('DEA pendente de análise CPEx atravessando a virada do ano',
+      'Protocolos do mesmo nome, Prec-cp e Nr BI que atravessam a virada do ano, qualquer que seja o '+
+      'valor, sem pagamento e com ao menos um protocolo ainda em curso no fluxo do CPEx — o crédito '+
+      'ainda pode sair.',
+      [['Grupos no relatório', num(lista.length)],
+       ['Protocolos', num(lista.reduce(function(a,g){ return a+g.qtd; }, 0))],
+       ['Grupos no recorte', num(V.EC.length)],
+       ['Valor sem pagamento', brl(valorVivo(lista))]],
+      relFiltros(ecEstado, true))+
+    relLegenda('eacpex')+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">Grupos</h2>'+
+    relLista(lista, 'eacpex', 'Nenhum grupo corresponde aos filtros.')+'</section>');
 });
 
 /* ---- 3. Pago em outro ano ---- */
@@ -2328,6 +2403,7 @@ function aplicarSegmento(){
   pintaGrupos();
   pintaCP();
   pintaEA();
+  pintaEC();
   pintaPF();
   renderDiff();
   pintaHist();
