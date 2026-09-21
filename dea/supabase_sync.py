@@ -30,6 +30,7 @@ import datetime
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -60,7 +61,10 @@ def req(metodo, caminho, corpo=None, tipo="application/octet-stream", extra=None
 
 
 def baixar_obj(nome):
-    st, corpo = req("GET", "/storage/v1/object/%s/%s" % (BUCKET, nome))
+    # Parâmetro único + no-cache: o CDN do Storage já entregou cópia antiga de
+    # objeto sobrescrito (21/09/2026). Estado velho aqui bifurcaria o histórico.
+    st, corpo = req("GET", "/storage/v1/object/%s/%s?v=%d" % (BUCKET, nome, time.time_ns()),
+                    extra={"Cache-Control": "no-cache"})
     if st == 200:
         return corpo
     # O Storage responde 400/404 com "not_found" para objeto inexistente.

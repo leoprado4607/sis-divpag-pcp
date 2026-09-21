@@ -193,8 +193,12 @@ async function lerDadosJs(): Promise<Buffer | null> {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
 
-  const r = await fetch(`${url}/storage/v1/object/${DEA_BUCKET}/${DEA_DADOS_PATH}`, {
-    headers: { Authorization: `Bearer ${key}`, apikey: key },
+  // O CDN do Storage chegou a entregar à Vercel o dados.js anterior por mais de
+  // uma hora depois de sobrescrito (21/09/2026), enquanto a Action já lia o novo.
+  // O parâmetro único na URL fura esse cache a cada leitura.
+  const r = await fetch(`${url}/storage/v1/object/${DEA_BUCKET}/${DEA_DADOS_PATH}?v=${Date.now()}`, {
+    headers: { Authorization: `Bearer ${key}`, apikey: key, 'Cache-Control': 'no-cache' },
+    cache: 'no-store',
   });
   if (!r.ok) {
     console.error('[dea] falha ao ler dados.js do bucket:', r.status);
