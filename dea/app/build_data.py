@@ -43,7 +43,13 @@ ABAS_DEA = ["DEA 2019", "DEA 2020", "DEA 2021", "DEA 2022",
 ABA_ACOMP = "Acompanhamento"
 ABA_HOMOLOG = "Protocolos para homologação"
 
-TOLERANCIA_VALOR = 50.00   # R$ - diferença máxima dentro de um grupo Prec-cp/ano
+# R$ - usada só para localizar pagamento de valor equivalente em outro ano (aba
+# "Pago em outro ano"). Desde 21/09/2026 NÃO agrupa mais os protocolos: o
+# agrupamento é por nome + Prec-cp + Nr BI (ver chave_grupo).
+TOLERANCIA_VALOR = 50.00
+
+# Nr BI exibido no grupo quando os protocolos não trazem BI na planilha
+BI_AUSENTE = "???"
 
 # --------------------------------------------------------------------------
 # Normalização de situações
@@ -427,98 +433,120 @@ def analisar_homologacao(linhas, processos, anterior, data_ref):
 
 
 # --------------------------------------------------------------------------
-# Análise principal: mesmo Prec-cp, mesmo ano, 2+ protocolos, valores ~R$50
+# Análise principal "DEA pendente": mesmo nome + Prec-cp + Nr BI, 2+ protocolos
 # --------------------------------------------------------------------------
 
-def agrupar_por_valor(itens, tolerancia=TOLERANCIA_VALOR):
+def norm_bi(s):
     """
-    Varredura ordenada: abre um grupo e vai acrescentando enquanto o valor
-    continuar a no máximo `tolerancia` do MENOR valor do grupo.
-    Assim todo par dentro de um grupo respeita a diferença máxima — não há
-    encadeamento (0 -> 40 -> 80) que juntaria extremos distantes.
+    Nr BI comparável: sem espaços, maiúsculo e sem zero à esquerda em cada
+    número ("045/2026" == "45/2026", "BI 007" == "BI7").
     """
-    com_valor = sorted([i for i in itens if i["valor"] is not None],
-                       key=lambda i: i["valor"])
-    grupos, atual = [], []
-    for it in com_valor:
-        if not atual or (it["valor"] - atual[0]["valor"]) <= tolerancia + 1e-9:
-            atual.append(it)
-        else:
-            grupos.append(atual)
-            atual = [it]
-    if atual:
-        grupos.append(atual)
-    return [g for g in grupos if len(g) >= 2]
+    s = re.sub(r"\s+", "", str(s or "")).upper()
+    return re.sub(r"\d+", lambda m: str(int(m.group())), s)
+
+
+def chave_grupo(p):
+    """
+    Regra do usuário (21/09/2026): agrupa protocolos de MESMO nome, MESMO
+    Prec-cp e MESMO Nr BI, independentemente do valor. Sem Prec-cp ou sem
+    nome fica fora (None). Sem Nr BI, agrupa pelo nome + Prec-cp entre os que
+    também não têm BI (chave com BI vazio); o painel mostra o BI como "???".
+    """
+    nome, bi = _slug(p["nome"]), norm_bi(p["nr_bi"])
+    if not p["prec_cp"] or not nome:
+        return None
+    return (nome, p["prec_cp"], bi)
+
+
+def agrupar_repetidos(processos):
+    """
+    Devolve (mesmo_ano, entre_anos): listas de grupos (listas de processos)
+    com 2+ protocolos na mesma chave. A chave que atravessa a virada do ano vai
+    INTEIRA para "Entre anos" e não aparece na tela principal.
+    """
+    por_chave = defaultdict(list)
+    for p in processos:
+        k = chave_grupo(p)
+        if k:
+            por_chave[k].append(p)
+    mesmo_ano, entre_anos = [], []
+    for itens in por_chave.values():
+        if len(itens) < 2:
+            continue
+        (entre_anos if len({i["ano"] for i in itens}) > 1 else mesmo_ano).append(itens)
+    return mesmo_ano, entre_anos
+
+
+def _faixa_valores(g):
+    valores = [i["valor"] for i in g if i["valor"] is not None] or [0.0]
+    return valores, round(sum(valores), 2)
 
 
 def analisar_grupos(processos):
     """
     Regra do usuário:
-      mesmo Prec-cp + mesmo ano + 2 ou mais protocolos + valores dentro de R$50.
+      mesmo nome + mesmo Prec-cp + mesmo Nr BI + mesmo ano + 2 ou mais protocolos
+      (qualquer valor).
       - se NENHUM do grupo está Pago  -> RISCO (rejeitado e ainda pendente)
       - se ALGUM está Pago            -> RESOLVIDO (corrigido e pago)
     A situação considerada é a da aba Acompanhamento; quando o protocolo não
     existe lá, usa-se a da aba DEA e o grupo é marcado como incerto.
     """
-    por_chave = defaultdict(list)
-    for p in processos:
-        if p["prec_cp"]:
-            por_chave[(p["prec_cp"], p["ano"])].append(p)
-
     grupos = []
-    for (prec, ano), itens in por_chave.items():
-        if len(itens) < 2:
-            continue
-        for g in agrupar_por_valor(itens):
-            valores = [i["valor"] for i in g]
-            pagos = [i for i in g if i["sit_efetiva_classe"] == "pago"]
-            rejeitados = [i for i in g if i["sit_efetiva_classe"] == "rejeitado"]
-            andamento = [i for i in g if i["sit_efetiva_classe"] == "andamento"]
-            excluidos = [i for i in g if i["sit_efetiva_classe"] == "excluido"]
-            sem_ac = [i for i in g if not i["tem_acomp"]]
+    for g in agrupar_repetidos(processos)[0]:
+        prec, ano = g[0]["prec_cp"], g[0]["ano"]
+        valores, total = _faixa_valores(g)
+        pagos = [i for i in g if i["sit_efetiva_classe"] == "pago"]
+        rejeitados = [i for i in g if i["sit_efetiva_classe"] == "rejeitado"]
+        andamento = [i for i in g if i["sit_efetiva_classe"] == "andamento"]
+        excluidos = [i for i in g if i["sit_efetiva_classe"] == "excluido"]
+        sem_ac = [i for i in g if not i["tem_acomp"]]
 
-            if pagos:
-                status, prioridade = "resolvido", 3
-            elif rejeitados or andamento:
-                # nenhum pago e há processo vivo -> é o caso que o painel existe para pegar
-                status, prioridade = "risco", 1
-            else:
-                # só excluídos: não há pagamento pendente, mas também não houve pagamento
-                status, prioridade = "atencao", 2
+        if pagos:
+            status, prioridade = "resolvido", 3
+        elif rejeitados or andamento:
+            # nenhum pago e há processo vivo -> é o caso que o painel existe para pegar
+            status, prioridade = "risco", 1
+        else:
+            # só excluídos: não há pagamento pendente, mas também não houve pagamento
+            status, prioridade = "atencao", 2
 
-            grupos.append({
-                "id": hashlib.md5(("|".join(sorted(i["protocolo"] for i in g))).encode()).hexdigest()[:10],
-                "prec_cp": prec,
-                "segmento": segmento_de(prec),
-                "ano": ano,
-                "nome": g[0]["nome"],
-                "nomes": sorted({i["nome"] for i in g if i["nome"]}),
-                "qtd": len(g),
-                "protocolos": [i["protocolo"] for i in g],
-                "valor_min": min(valores),
-                "valor_max": max(valores),
-                "amplitude": round(max(valores) - min(valores), 2),
-                "amplitude_fmt": fmt_brl(round(max(valores) - min(valores), 2)),
-                "valor_ref_fmt": fmt_brl(valores[0]),
-                "status": status,
-                "prioridade": prioridade,
-                "qtd_pago": len(pagos),
-                "qtd_rejeitado": len(rejeitados),
-                "qtd_andamento": len(andamento),
-                "qtd_excluido": len(excluidos),
-                "sem_acomp": len(sem_ac),
-                "incerto": bool(sem_ac),
-                "itens": [{
-                    "protocolo": i["protocolo"], "data": i["data"],
-                    "valor_fmt": i["valor_fmt"], "valor": i["valor"],
-                    "nome": i["nome"], "nr_bi": i["nr_bi"], "codom": i["codom"],
-                    "sit_dea": i["sit_dea"], "sit_acomp": i["sit_acomp"],
-                    "sit_efetiva": i["sit_efetiva"],
-                    "classe": i["sit_efetiva_classe"],
-                    "tem_acomp": i["tem_acomp"],
-                    "parecer": i["parecer"],
-                } for i in sorted(g, key=lambda x: x["protocolo"])],
-            })
+        grupos.append({
+            "id": hashlib.md5(("|".join(sorted(i["protocolo"] for i in g))).encode()).hexdigest()[:10],
+            "prec_cp": prec,
+            "segmento": segmento_de(prec),
+            "ano": ano,
+            "nome": g[0]["nome"],
+            "nomes": sorted({i["nome"] for i in g if i["nome"]}),
+            "qtd": len(g),
+            "protocolos": [i["protocolo"] for i in g],
+            "valor_min": min(valores),
+            "valor_max": max(valores),
+            "amplitude": round(max(valores) - min(valores), 2),
+            "amplitude_fmt": fmt_brl(round(max(valores) - min(valores), 2)),
+            "valor_ref_fmt": fmt_brl(valores[0]),
+            "valor_total": total,
+            "valor_total_fmt": fmt_brl(total),
+            "nr_bi": g[0]["nr_bi"] or BI_AUSENTE,
+            "status": status,
+            "prioridade": prioridade,
+            "qtd_pago": len(pagos),
+            "qtd_rejeitado": len(rejeitados),
+            "qtd_andamento": len(andamento),
+            "qtd_excluido": len(excluidos),
+            "sem_acomp": len(sem_ac),
+            "incerto": bool(sem_ac),
+            "itens": [{
+                "protocolo": i["protocolo"], "data": i["data"],
+                "valor_fmt": i["valor_fmt"], "valor": i["valor"],
+                "nome": i["nome"], "nr_bi": i["nr_bi"], "codom": i["codom"],
+                "sit_dea": i["sit_dea"], "sit_acomp": i["sit_acomp"],
+                "sit_efetiva": i["sit_efetiva"],
+                "classe": i["sit_efetiva_classe"],
+                "tem_acomp": i["tem_acomp"],
+                "parecer": i["parecer"],
+            } for i in sorted(g, key=lambda x: x["protocolo"])],
+        })
 
     grupos.sort(key=lambda g: (g["prioridade"], -g["ano"], -g["qtd"], g["prec_cp"]))
     return grupos
@@ -526,7 +554,7 @@ def analisar_grupos(processos):
 
 def marcar_pagamento_outro_ano(processos, grupos):
     """
-    Para cada grupo Prec-cp/ano, procura um pagamento do MESMO Prec-cp em ANO
+    Para cada grupo da tela "DEA pendente", procura um pagamento do MESMO Prec-cp em ANO
     DIFERENTE, com valor a no máximo R$50 de algum protocolo do grupo.
 
     A direção importa e não pode ser colapsada:
@@ -602,71 +630,65 @@ def analisar_grupos_entre_anos(processos):
     """
     O ciclo rejeição -> correção -> relançamento não respeita o ano civil:
     um processo rejeitado em outubro volta corrigido em janeiro seguinte.
-    Aqui o mesmo critério de valor (R$50) é aplicado sem a trava do ano,
-    e ficam apenas os grupos que ATRAVESSAM a virada — os de ano único já
-    aparecem na tela principal.
+    Aqui vale a mesma chave da tela "DEA pendente" (nome + Prec-cp + Nr BI)
+    sem a trava do ano, e ficam apenas os grupos que ATRAVESSAM a virada —
+    os de ano único aparecem na tela principal.
     """
-    por_prec = defaultdict(list)
-    for p in processos:
-        if p["prec_cp"]:
-            por_prec[p["prec_cp"]].append(p)
-
     grupos = []
-    for prec, itens in por_prec.items():
-        if len(itens) < 2:
-            continue
-        for g in agrupar_por_valor(itens):
-            anos = sorted({i["ano"] for i in g})
-            if len(anos) < 2:
-                continue  # ano único -> é da tela principal
-            valores = [i["valor"] for i in g]
-            pagos = [i for i in g if i["sit_efetiva_classe"] == "pago"]
-            rejeitados = [i for i in g if i["sit_efetiva_classe"] == "rejeitado"]
-            andamento = [i for i in g if i["sit_efetiva_classe"] == "andamento"]
-            excluidos = [i for i in g if i["sit_efetiva_classe"] == "excluido"]
-            sem_ac = [i for i in g if not i["tem_acomp"]]
+    for g in agrupar_repetidos(processos)[1]:
+        prec = g[0]["prec_cp"]
+        anos = sorted({i["ano"] for i in g})
+        valores, total = _faixa_valores(g)
+        pagos = [i for i in g if i["sit_efetiva_classe"] == "pago"]
+        rejeitados = [i for i in g if i["sit_efetiva_classe"] == "rejeitado"]
+        andamento = [i for i in g if i["sit_efetiva_classe"] == "andamento"]
+        excluidos = [i for i in g if i["sit_efetiva_classe"] == "excluido"]
+        sem_ac = [i for i in g if not i["tem_acomp"]]
 
-            if pagos:
-                status, prioridade = "resolvido", 3
-            elif rejeitados or andamento:
-                status, prioridade = "risco", 1
-            else:
-                status, prioridade = "atencao", 2
+        if pagos:
+            status, prioridade = "resolvido", 3
+        elif rejeitados or andamento:
+            status, prioridade = "risco", 1
+        else:
+            status, prioridade = "atencao", 2
 
-            ordenados = sorted(g, key=lambda x: (x["data_iso"] or "", x["protocolo"]))
-            ini, fim = ordenados[0]["data_iso"], ordenados[-1]["data_iso"]
-            meses = 0
-            if ini and fim:
-                meses = (int(fim[0:4]) - int(ini[0:4])) * 12 + (int(fim[5:7]) - int(ini[5:7]))
+        ordenados = sorted(g, key=lambda x: (x["data_iso"] or "", x["protocolo"]))
+        ini, fim = ordenados[0]["data_iso"], ordenados[-1]["data_iso"]
+        meses = 0
+        if ini and fim:
+            meses = (int(fim[0:4]) - int(ini[0:4])) * 12 + (int(fim[5:7]) - int(ini[5:7]))
 
-            grupos.append({
-                "id": hashlib.md5(("X|" + "|".join(sorted(i["protocolo"] for i in g))).encode()).hexdigest()[:10],
-                "prec_cp": prec,
-                "segmento": segmento_de(prec),
-                "ano": anos[-1],
-                "anos": anos,
-                "anos_txt": " → ".join(str(a) for a in anos),
-                "intervalo": "%s → %s" % (_rotulo_mes(ini), _rotulo_mes(fim)),
-                "meses": meses,
-                "nome": g[0]["nome"],
-                "nomes": sorted({i["nome"] for i in g if i["nome"]}),
-                "qtd": len(g),
-                "protocolos": [i["protocolo"] for i in g],
-                "valor_min": min(valores),
-                "valor_max": max(valores),
-                "amplitude": round(max(valores) - min(valores), 2),
-                "amplitude_fmt": fmt_brl(round(max(valores) - min(valores), 2)),
-                "valor_ref_fmt": fmt_brl(valores[0]),
-                "status": status,
-                "prioridade": prioridade,
-                "qtd_pago": len(pagos),
-                "qtd_rejeitado": len(rejeitados),
-                "qtd_andamento": len(andamento),
-                "qtd_excluido": len(excluidos),
-                "sem_acomp": len(sem_ac),
-                "incerto": bool(sem_ac),
-                "itens": ordenados,
-            })
+        grupos.append({
+            "id": hashlib.md5(("X|" + "|".join(sorted(i["protocolo"] for i in g))).encode()).hexdigest()[:10],
+            "prec_cp": prec,
+            "segmento": segmento_de(prec),
+            "ano": anos[-1],
+            "anos": anos,
+            "anos_txt": " → ".join(str(a) for a in anos),
+            "intervalo": "%s → %s" % (_rotulo_mes(ini), _rotulo_mes(fim)),
+            "meses": meses,
+            "nome": g[0]["nome"],
+            "nomes": sorted({i["nome"] for i in g if i["nome"]}),
+            "qtd": len(g),
+            "protocolos": [i["protocolo"] for i in g],
+            "valor_min": min(valores),
+            "valor_max": max(valores),
+            "amplitude": round(max(valores) - min(valores), 2),
+            "amplitude_fmt": fmt_brl(round(max(valores) - min(valores), 2)),
+            "valor_ref_fmt": fmt_brl(valores[0]),
+            "valor_total": total,
+            "valor_total_fmt": fmt_brl(total),
+            "nr_bi": g[0]["nr_bi"] or BI_AUSENTE,
+            "status": status,
+            "prioridade": prioridade,
+            "qtd_pago": len(pagos),
+            "qtd_rejeitado": len(rejeitados),
+            "qtd_andamento": len(andamento),
+            "qtd_excluido": len(excluidos),
+            "sem_acomp": len(sem_ac),
+            "incerto": bool(sem_ac),
+            "itens": ordenados,
+        })
 
     grupos.sort(key=lambda g: (g["prioridade"], -g["ano"], -g["qtd"], g["prec_cp"]))
     return grupos
@@ -1049,7 +1071,7 @@ def main():
         json.dump(historico, f, ensure_ascii=False, separators=(",", ":"))
 
     print("processos ............. %d" % len(processos))
-    print("grupos (Prec-cp/ano) .. %d  | risco: %d  resolvido: %d  atenção: %d"
+    print("grupos DEA pendente ... %d  | risco: %d  resolvido: %d  atenção: %d"
           % (len(grupos), agregados["grupos_risco"],
              agregados["grupos_resolvido"], agregados["grupos_atencao"]))
     print("homologados p/ lançar . %d  (excluídos por já constarem \"Pago\": %d)"

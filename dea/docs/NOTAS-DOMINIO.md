@@ -54,7 +54,40 @@ no indicador de risco, que seguiu em 78. **Se um dia esse texto passar a aparece
 dentro de grupos, refaça essa medição** — ali ele decide se um grupo é
 "resolvido" ou "em risco".
 
-## A análise principal: Prec-cp repetido
+## A análise principal: DEA pendente (antes "Prec-cp repetido")
+
+**Regra vigente desde 21/09/2026, por pedido do usuário:** mesmo **nome** +
+mesmo **Prec-cp** + mesmo **Nr BI** + mesmo ano + 2 ou mais protocolos,
+**qualquer que seja o valor** (a referência de R$ 50,00 deixou de agrupar).
+
+- **Nr BI** comparado sem espaços, em maiúsculas e **sem zero à esquerda** em
+  cada número (`norm_bi`): "045/2026" = "45/2026", "BI 007" = "BI7".
+- **Nome** comparado sem acento, caixa e pontuação (`_slug`).
+- Protocolo **sem Prec-cp ou sem nome não entra** em grupo.
+- Protocolo **sem Nr BI** agrupa com os do mesmo nome + Prec-cp que **também não
+  têm BI** (não se mistura com os que têm BI, pois não há como saber a qual
+  deles pertenceria). O painel mostra o Nr BI desses como **"???"**
+  (`BI_AUSENTE`), no cabeçalho do grupo e nas tabelas.
+- Chave cujos protocolos caem em **anos diferentes** vai **inteira** para a aba
+  "Entre anos" e **não** aparece nesta tela (`agrupar_repetidos`).
+
+Na tela, a aba perdeu os três filtros de situação do grupo (risco, atenção,
+resolvido) — todos os grupos aparecem — e ganhou o filtro por **protocolo**. Os
+selos de contagem no cabeçalho do grupo contam **só a situação da aba
+Acompanhamento**; protocolos sem linha lá seguem no selo "aguardando CPEx". A
+classificação risco/atenção/resolvido (veredito e contador da aba) não mudou.
+
+`TOLERANCIA_VALOR` (R$ 50) continua existindo, mas só para localizar pagamento
+de valor equivalente em outro ano (aba "Pago em outro ano").
+
+A primeira execução sob a regra nova **não foi medida contra os dados reais**
+(o ambiente onde foi feita não tinha a planilha). Na próxima atualização,
+compare o total de grupos, de risco e de "Entre anos" com a rodada anterior no
+Histórico e confira alguns grupos à mão.
+
+O texto a seguir descreve a regra anterior, mantido como histórico.
+
+### Regra anterior (até 20/09/2026)
 
 Mesmo Prec-cp + mesmo ano + 2 ou mais protocolos + valores a no máximo
 **R$ 50,00** entre si. Classificação inicial (campo `status_ano`):
@@ -91,9 +124,10 @@ ano), 181 protocolos, R$ 1.091.598,72.
 
 O ciclo rejeição → correção → relançamento não respeita o ano civil: rejeição em
 outubro volta corrigida em janeiro. A regra "mesmo ano" deixava esses casos
-invisíveis. A aba "Entre anos" aplica o mesmo critério de valor **sem a trava do
-ano** e mostra só os grupos que atravessam a virada (os de ano único ficam na
-tela principal). Retrato de 16/09/2026: 7 grupos em risco, 23 protocolos,
+invisíveis. A aba "Entre anos" aplica o mesmo critério da tela principal **sem a
+trava do ano** e mostra só os grupos que atravessam a virada (os de ano único ficam na
+tela principal). Desde 21/09/2026 o critério é nome + Prec-cp + Nr BI (ver acima);
+antes era o de valor (R$ 50). Esta aba manteve os filtros de situação do grupo. Retrato de 16/09/2026: 7 grupos em risco, 23 protocolos,
 7 Prec-cp, R$ 56.642,52 sem pagamento.
 
 ## Aba "Pago em outro ano"

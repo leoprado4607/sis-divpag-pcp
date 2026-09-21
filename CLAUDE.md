@@ -56,7 +56,7 @@ Helpers internos (prefixo `_`): `_gemini.ts`, `_ratelimit.ts`, `_http.ts`, `_sup
 
 ## Painel DEA ("Exercícios Anteriores")
 
-Pacote portado em [dea/](dea/) — leia [dea/LEIA-PRIMEIRO.md](dea/LEIA-PRIMEIRO.md) e [dea/docs/NOTAS-DOMINIO.md](dea/docs/NOTAS-DOMINIO.md). **`dea/app/build_data.py` e `dea/app/painel.html` não podem ser alterados** (testados contra os dados reais).
+Pacote portado em [dea/](dea/) — leia [dea/LEIA-PRIMEIRO.md](dea/LEIA-PRIMEIRO.md) e [dea/docs/NOTAS-DOMINIO.md](dea/docs/NOTAS-DOMINIO.md). **`dea/app/build_data.py` e `dea/app/painel.html` só mudam a pedido explícito do usuário** (testados contra os dados reais); toda mudança de regra vai registrada no `NOTAS-DOMINIO.md`.
 
 - `dados.js` (nome, Prec-cp e valor de milhares de pessoas) e o estado (`snapshot-anterior.json`, `historico.json`, insubstituíveis) vivem **só** no bucket privado `dea-privado` do Supabase — nunca no repositório, em `public/` ou em bucket público.
 - Atualização **só manual** (sem agendamento): o admin (login com `DEA_ADMIN_PASSWORD`) clica em "Atualizar" → `/api/dea` dispara a GitHub Action [dea-atualizar.yml](.github/workflows/dea-atualizar.yml) via `workflow_dispatch` (token `DEA_GITHUB_TOKEN`) → `supabase_sync.py baixar` → `atualizar.py` (intocado) → `supabase_sync.py enviar`. A barra acompanha o status e recarrega o iframe ao terminar.

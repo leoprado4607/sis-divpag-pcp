@@ -478,7 +478,7 @@ body.modo-relatorio .rodape{display:none !important}
   </div>
 
   <div class="abas" role="tablist" aria-label="Seções do painel">
-    <button class="aba urgente" role="tab" id="t-grupos" aria-controls="p-grupos" aria-selected="true" type="button">Prec-cp repetido<span class="cnt" id="c-grupos">0</span></button>
+    <button class="aba urgente" role="tab" id="t-grupos" aria-controls="p-grupos" aria-selected="true" type="button">DEA pendente<span class="cnt" id="c-grupos">0</span></button>
     <button class="aba urgente" role="tab" id="t-entreanos" aria-controls="p-entreanos" aria-selected="false" type="button">Entre anos<span class="cnt" id="c-entreanos">0</span></button>
     <button class="aba" role="tab" id="t-pagofora" aria-controls="p-pagofora" aria-selected="false" type="button">Pago em outro ano<span class="cnt" id="c-pagofora">0</span></button>
     <button class="aba" role="tab" id="t-diff" aria-controls="p-diff" aria-selected="false" type="button">Alterações do dia<span class="cnt" id="c-diff">0</span></button>
@@ -492,19 +492,11 @@ body.modo-relatorio .rodape{display:none !important}
   <!-- ============ GRUPOS ============ -->
   <section class="painel" id="p-grupos" role="tabpanel" aria-labelledby="t-grupos">
     <div class="secao-cab">
-      <h2 class="secao-tit">Mesmo Prec-cp, mesmo ano, valores próximos</h2>
+      <h2 class="secao-tit">Mesmo nome, Prec-cp e Nr BI no mesmo ano</h2>
     </div>
     <p class="nota" id="notaRegra"></p>
 
     <div class="controles" style="margin-top:var(--s4)">
-      <div class="campo">
-        <span class="rotulo" id="lbl-gstatus">Situação do grupo</span>
-        <div class="chips" role="group" aria-labelledby="lbl-gstatus">
-          <button class="chip" id="g-risco" data-st="risco" aria-pressed="true" type="button">Em risco</button>
-          <button class="chip" id="g-atencao" data-st="atencao" aria-pressed="true" type="button">Atenção</button>
-          <button class="chip" id="g-resolvido" data-st="resolvido" aria-pressed="false" type="button">Resolvidos</button>
-        </div>
-      </div>
       <div class="campo">
         <label for="g-ano">Ano</label>
         <select id="g-ano"><option value="">Todos</option></select>
@@ -512,6 +504,10 @@ body.modo-relatorio .rodape{display:none !important}
       <div class="campo" style="flex:1 1 220px">
         <label for="g-busca">Nome ou Prec-cp</label>
         <input id="g-busca" type="search" placeholder="ex.: MARCIO ou 411648310" autocomplete="off">
+      </div>
+      <div class="campo" style="flex:0 1 180px">
+        <label for="g-protocolo">Protocolo</label>
+        <input id="g-protocolo" type="search" inputmode="numeric" placeholder="ex.: 454407" autocomplete="off">
       </div>
       <button class="btn secundario" id="g-limpar" type="button">Limpar</button>
       <button class="btn" id="g-pdf" type="button">Relatório PDF</button>
@@ -524,7 +520,7 @@ body.modo-relatorio .rodape{display:none !important}
   <!-- ============ ENTRE ANOS ============ -->
   <section class="painel" id="p-entreanos" role="tabpanel" aria-labelledby="t-entreanos" hidden>
     <div class="secao-cab">
-      <h2 class="secao-tit">Mesmo Prec-cp atravessando a virada do ano</h2>
+      <h2 class="secao-tit">Mesmo nome, Prec-cp e Nr BI atravessando a virada do ano</h2>
     </div>
     <p class="nota" id="notaEA"></p>
 
@@ -798,6 +794,10 @@ function hidratarGrupos(lista){
     g.itens = g.idx.map(function(i){ return P[i]; });
     if(g.pago_fora) g.pago_fora.itens = g.pago_fora.idx.map(function(i){ return P[i]; });
     g._busca = semAcento((g.nomes||[]).join(' ')) + ' ' + g.prec_cp;
+    g._protos = g.itens.map(function(p){ return String(p.protocolo); });
+    // Nr BI e total: o dados.js anterior a 21/09/2026 não traz esses campos
+    if(g.nr_bi == null) g.nr_bi = (g.itens[0] && g.itens[0].nr_bi) || '???';
+    if(g.valor_total == null) g.valor_total = g.itens.reduce(function(t,p){ return t+(p.valor||0); }, 0);
     return g;
   });
 }
@@ -916,16 +916,17 @@ function renderBadges(){
    1. GRUPOS Prec-cp
    ======================================================================= */
 document.getElementById('notaRegra').innerHTML =
-  'Reúne protocolos do <b>mesmo Prec-cp</b>, no <b>mesmo ano</b>, cujos valores não diferem '+
-  'entre si mais que <b>'+brl(META.tolerancia_valor)+'</b> — o padrão de um processo rejeitado, '+
-  'corrigido e relançado. <b>Em risco</b>: nenhum protocolo do grupo foi pago e ainda há processo vivo. '+
+  'Reúne protocolos do <b>mesmo nome</b>, <b>mesmo Prec-cp</b> e <b>mesmo Nr BI</b> (desconsiderados os '+
+  'zeros à esquerda), no <b>mesmo ano</b>, qualquer que seja o valor — o padrão de um processo rejeitado, '+
+  'corrigido e relançado. Os que atravessam a virada do ano estão na aba <b>Entre anos</b>. '+
+  '<b>Em risco</b>: nenhum protocolo do grupo foi pago e ainda há processo vivo. '+
   '<b>Atenção</b>: nenhum pago, todos excluídos pelo operador. '+
   '<b>Resolvido</b>: um dos protocolos foi pago, os demais foram as tentativas corrigidas — '+
   'inclui os grupos cujo crédito saiu em <b>ano posterior</b> (esses deixam de contar como risco; '+
   'veja a aba "Pago em outro ano"). '+
   'A situação considerada é a da aba Acompanhamento; para os processos que ainda aguardam avaliação do CPEx, vale a da aba DEA.';
 
-var gEstado = {status:{risco:true, atencao:true, resolvido:false}, ano:'', busca:''};
+var gEstado = {ano:'', busca:'', protocolo:''};
 
 (function(){
   var anos = A.anos.slice().sort(function(a,b){ return b-a; });
@@ -937,12 +938,23 @@ var gEstado = {status:{risco:true, atencao:true, resolvido:false}, ano:'', busca
 
 function gruposFiltrados(){
   var b = semAcento(gEstado.busca).trim();
+  var pr = gEstado.protocolo.replace(/\s+/g, '');
   return V.G.filter(function(g){
-    if(!gEstado.status[g.status]) return false;
     if(gEstado.ano && String(g.ano) !== gEstado.ano) return false;
     if(b && g._busca.indexOf(b) === -1) return false;
+    if(pr && !g._protos.some(function(p){ return p.indexOf(pr) !== -1; })) return false;
     return true;
   });
+}
+
+// Contagem por situação da aba ACOMPANHAMENTO (não a efetiva, que mistura DEA e
+// Acompanhamento). Os protocolos sem linha lá vão no selo "aguardando CPEx".
+function contagensAcomp(g, mk){
+  var n = {}, ordem = [['pago','pago'], ['rejeitado','rejeitado'],
+                       ['andamento','em andamento'], ['excluido','excluído']];
+  g.itens.forEach(function(p){ if(p.tem_acomp) n[p.sit_acomp_classe] = (n[p.sit_acomp_classe]||0) + 1; });
+  return ordem.filter(function(o){ return n[o[0]]; })
+              .map(function(o){ return mk(o[0], n[o[0]]+' '+o[1]); });
 }
 
 function desenharGrupos(lista, pref, modo){
@@ -957,11 +969,9 @@ function desenharGrupos(lista, pref, modo){
 
   var VER = {risco:'Em risco', atencao:'Atenção', resolvido:'Resolvido'};
   alvo.innerHTML = lista.slice(0,400).map(function(g,i){
-    var cont = [];
-    if(g.qtd_pago)      cont.push('<span class="selo pago">'+g.qtd_pago+' pago</span>');
-    if(g.qtd_rejeitado) cont.push('<span class="selo rejeitado">'+g.qtd_rejeitado+' rejeitado</span>');
-    if(g.qtd_andamento) cont.push('<span class="selo andamento">'+g.qtd_andamento+' em andamento</span>');
-    if(g.qtd_excluido)  cont.push('<span class="selo excluido">'+g.qtd_excluido+' excluído</span>');
+    var cont = contagensAcomp(g, function(cls, txt){
+      return '<span class="selo '+cls+'">'+esc(txt)+'</span>';
+    });
 
     var pf = g.pago_fora, post = pf && pf.sentido === 'posterior';
     var cls = g.status, verd = VER[g.status];
@@ -983,8 +993,8 @@ function desenharGrupos(lista, pref, modo){
             (modo==='ea'
               ? esc(g.anos_txt)+' &middot; '+esc(g.intervalo)+' ('+g.meses+' meses)'
               : g.ano)+
-            ' &middot; '+g.qtd+' protocolos &middot; valores em torno de '+esc(g.valor_ref_fmt)+
-            ' (amplitude '+esc(g.amplitude_fmt)+')</span>'+
+            ' &middot; Nr BI '+esc(g.nr_bi || '???')+' &middot; '+g.qtd+' protocolos &middot; total '+
+            esc(brl(g.valor_total))+'</span>'+
         '</span>'+
         '<span class="grupo-dir">'+
           (g.incerto?'<span class="selo-incerto">'+g.sem_acomp+' aguardando CPEx</span>':'')+
@@ -1040,7 +1050,7 @@ function corpoGrupo(g, modo){
       '<td class="mono">'+esc(p.data)+'</td>'+
       (modo==='ea' ? '<td class="mono">'+esc(p.ano)+'</td>' : '')+
       '<td class="num">'+esc(p.valor_fmt)+'</td>'+
-      '<td>'+esc(p.nr_bi)+'</td>'+
+      '<td>'+esc(p.nr_bi || '???')+'</td>'+
       '<td><span class="selo '+esc(p.sit_dea_classe)+'">'+esc(p.sit_dea)+'</span></td>'+
       '<td>'+(p.tem_acomp
           ? '<span class="selo '+esc(p.sit_acomp_classe)+'">'+esc(p.sit_acomp)+'</span>'
@@ -1079,23 +1089,14 @@ function corpoGrupo(g, modo){
 
 function pintaGrupos(){ desenharGrupos(gruposFiltrados(), 'g', 'ano'); }
 
-['risco','atencao','resolvido'].forEach(function(st){
-  var b = document.getElementById('g-'+st);
-  b.addEventListener('click', function(){
-    gEstado.status[st] = !gEstado.status[st];
-    b.setAttribute('aria-pressed', gEstado.status[st]?'true':'false');
-    pintaGrupos();
-  });
-});
 document.getElementById('g-ano').addEventListener('change', function(){ gEstado.ano = this.value; pintaGrupos(); });
 document.getElementById('g-busca').addEventListener('input', function(){ gEstado.busca = this.value; pintaGrupos(); });
+document.getElementById('g-protocolo').addEventListener('input', function(){ gEstado.protocolo = this.value; pintaGrupos(); });
 document.getElementById('g-limpar').addEventListener('click', function(){
-  gEstado = {status:{risco:true, atencao:true, resolvido:false}, ano:'', busca:''};
-  ['risco','atencao','resolvido'].forEach(function(st){
-    document.getElementById('g-'+st).setAttribute('aria-pressed', gEstado.status[st]?'true':'false');
-  });
+  gEstado = {ano:'', busca:'', protocolo:''};
   document.getElementById('g-ano').value = '';
   document.getElementById('g-busca').value = '';
+  document.getElementById('g-protocolo').value = '';
   pintaGrupos();
 });
 pintaGrupos();
@@ -1105,8 +1106,8 @@ pintaGrupos();
    ======================================================================= */
 document.getElementById('notaEA').innerHTML =
   'O ciclo rejeição → correção → relançamento não respeita o calendário: um processo rejeitado em '+
-  'outubro costuma voltar corrigido em janeiro. Esta tela aplica o mesmo critério de valor '+
-  '(<b>'+brl(META.tolerancia_valor)+'</b>) <b>sem a trava do ano</b>, e mostra apenas os grupos que '+
+  'outubro costuma voltar corrigido em janeiro. Esta tela aplica o mesmo critério da aba '+
+  '<b>DEA pendente</b> (mesmo nome, Prec-cp e Nr BI) <b>sem a trava do ano</b>, e mostra apenas os grupos que '+
   '<b>atravessam a virada</b> — os de ano único já estão na tela principal. '+
   '<span id="ea-numeros"></span>';
 
@@ -1155,7 +1156,7 @@ pintaEA();
    1c. PAGO EM OUTRO ANO
    ======================================================================= */
 document.getElementById('notaPF').innerHTML =
-  'Grupos da tela <b>Prec-cp repetido</b> que não tiveram pagamento no próprio ano, '+
+  'Grupos da tela <b>DEA pendente</b> que não tiveram pagamento no próprio ano, '+
   'mas cujo Prec-cp registra pagamento de valor equivalente (até <b>'+brl(META.tolerancia_valor)+
   '</b>) em <b>outro ano</b>. '+
   '<span id="pf-numeros"></span>';
@@ -1725,7 +1726,7 @@ function renderGeral(){
     ['Aguardando o CPEx (só nas abas DEA)', num(semAc.length)],
     ['Situação divergente entre as abas', num(V.P.filter(function(x){return x.divergente;}).length)],
     ['Só no Acompanhamento (outras OM / anos anteriores)', num(A.so_no_acompanhamento)],
-    ['Grupos Prec-cp/ano analisados', num(V.G.length)]
+    ['Grupos DEA pendente analisados', num(V.G.length)]
   ];
   var extra = Object.keys(cse).sort(function(a,b){return cse[b]-cse[a];}).map(function(k){
     var s = {rotulo:k, qtd:cse[k]};
@@ -1825,7 +1826,7 @@ function relTabela(g, modo){
       '<td class="mono">'+esc(p.data)+'</td>'+
       (modo==='ea' ? '<td class="mono">'+esc(p.ano)+'</td>' : '')+
       '<td class="num">'+esc(p.valor_fmt)+'</td>'+
-      '<td>'+esc(p.nr_bi)+'</td>'+
+      '<td>'+esc(p.nr_bi || '???')+'</td>'+
       '<td>'+selo(p.sit_dea_classe, p.sit_dea)+'</td>'+
       '<td>'+(p.tem_acomp
           ? selo(p.sit_acomp_classe, p.sit_acomp)
@@ -1862,19 +1863,15 @@ function relGrupo(g, modo){
   } else if(g.resolvido_por === 'ano_posterior'){
     verd = 'Pago em '+pf.anos_txt;
   }
-  var cont = [];
-  if(g.qtd_pago)      cont.push(selo('pago', g.qtd_pago+' pago'));
-  if(g.qtd_rejeitado) cont.push(selo('rejeitado', g.qtd_rejeitado+' rejeitado'));
-  if(g.qtd_andamento) cont.push(selo('andamento', g.qtd_andamento+' em andamento'));
-  if(g.qtd_excluido)  cont.push(selo('excluido', g.qtd_excluido+' excluído'));
+  var cont = contagensAcomp(g, selo);
   if(g.incerto)       cont.push('<span class="selo-incerto">'+g.sem_acomp+' aguardando CPEx</span>');
 
   var meta = 'Prec-cp '+esc(g.prec_cp)+' · '+
     (modo === 'ea'
       ? esc(g.anos_txt)+' · '+esc(g.intervalo)+' ('+g.meses+' meses)'
       : esc(g.ano))+
-    ' · '+esc(g.segmento||'')+' · '+g.qtd+' protocolos · valores em torno de '+esc(g.valor_ref_fmt)+
-    ' (amplitude '+esc(g.amplitude_fmt)+')';
+    ' · '+esc(g.segmento||'')+' · Nr BI '+esc(g.nr_bi || '???')+' · '+g.qtd+' protocolos · total '+
+    esc(brl(g.valor_total));
 
   return '<article class="rel-grupo '+cls+'">'+
     '<div class="rel-grupo-cab">'+
@@ -1896,13 +1893,16 @@ function relLista(lista, modo, vazio){
 }
 
 function relFiltros(est, comAno){
-  var rot = {risco:'Em risco', atencao:'Atenção', resolvido:'Resolvidos'};
-  var st = ['risco','atencao','resolvido'].filter(function(k){ return est.status[k]; })
-             .map(function(k){ return rot[k]; });
-  var t = ['segmento <b>'+esc(segTexto())+'</b>',
-           'situação do grupo <b>'+(st.length ? esc(st.join(', ')) : 'nenhuma')+'</b>'];
+  var t = ['segmento <b>'+esc(segTexto())+'</b>'];
+  if(est.status){
+    var rot = {risco:'Em risco', atencao:'Atenção', resolvido:'Resolvidos'};
+    var st = ['risco','atencao','resolvido'].filter(function(k){ return est.status[k]; })
+               .map(function(k){ return rot[k]; });
+    t.push('situação do grupo <b>'+(st.length ? esc(st.join(', ')) : 'nenhuma')+'</b>');
+  }
   if(comAno && est.ano) t.push('ano <b>'+esc(est.ano)+'</b>');
   if(est.busca)         t.push('busca <b>'+esc(est.busca)+'</b>');
+  if(est.protocolo)     t.push('protocolo <b>'+esc(est.protocolo)+'</b>');
   return 'Recorte deste relatório: '+t.join(' · ')+'. '+
     'Os filtros da tela valem para o documento — limpe-os antes de gerar para incluir tudo.';
 }
@@ -1928,13 +1928,13 @@ document.getElementById('rel-voltar').addEventListener('click', function(){
   window.scrollTo(0, 0);
 });
 
-/* ---- 1. Prec-cp repetido ---- */
+/* ---- 1. DEA pendente ---- */
 document.getElementById('g-pdf').addEventListener('click', function(){
   var lista = gruposFiltrados(), risco = riscoDe(V.G);
   abrirRelatorio(
-    relCapa('Prec-cp repetido no mesmo ano',
-      'Protocolos do mesmo Prec-cp, no mesmo ano, cujos valores não diferem entre si mais que '+
-      brl(META.tolerancia_valor)+' — o padrão de um processo rejeitado, corrigido e relançado. '+
+    relCapa('DEA pendente',
+      'Protocolos do mesmo nome, Prec-cp e Nr BI, no mesmo ano, qualquer que seja o valor '+
+      '— o padrão de um processo rejeitado, corrigido e relançado. '+
       'Em risco: nenhum protocolo do grupo foi pago e ainda há processo vivo, de modo que o '+
       'crédito pode seguir pendente.',
       [['Grupos no relatório', num(lista.length)],
@@ -1951,10 +1951,10 @@ document.getElementById('g-pdf').addEventListener('click', function(){
 document.getElementById('e-pdf').addEventListener('click', function(){
   var lista = eaFiltrados(), risco = riscoDe(V.EA);
   abrirRelatorio(
-    relCapa('Prec-cp repetido atravessando a virada do ano',
+    relCapa('DEA pendente atravessando a virada do ano',
       'O ciclo rejeição → correção → relançamento não respeita o calendário: um processo '+
-      'rejeitado em outubro costuma voltar corrigido em janeiro. Aqui vale o mesmo critério de '+
-      'valor ('+brl(META.tolerancia_valor)+') sem a trava do ano, e constam apenas os grupos que '+
+      'rejeitado em outubro costuma voltar corrigido em janeiro. Aqui vale o mesmo critério da '+
+      'aba DEA pendente (mesmo nome, Prec-cp e Nr BI) sem a trava do ano, e constam apenas os grupos que '+
       'atravessam a virada — os de ano único estão no relatório da tela principal.',
       [['Grupos no relatório', num(lista.length)],
        ['Protocolos', num(lista.reduce(function(a,g){ return a+g.qtd; }, 0))],
