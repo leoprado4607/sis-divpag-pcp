@@ -83,6 +83,25 @@ selos de contagem no cabeçalho do grupo contam **só a situação da aba
 Acompanhamento**; protocolos sem linha lá seguem no selo "aguardando CPEx". A
 classificação risco/atenção/resolvido (veredito e contador da aba) não mudou.
 
+**Divisão em duas abas (pedido do usuário, 21/09/2026).** Os grupos sem
+pagamento de ano único passaram a ser exibidos em duas abas, conforme haja ou
+não protocolo que ainda possa ser aprovado:
+
+- **DEA encerrado sem pagamento** — nenhum protocolo do grupo tem situação
+  efetiva de classe `andamento`: todos são `rejeitado` (Analisado e Rejeitado /
+  Restituído, Rejeitado no Processamento) ou `excluido` (Excluído pelo
+  Operador). Vereditos: risco (há rejeitado) e atenção (só excluídos).
+- **DEA pendente de análise CPEx** — ao menos um protocolo do grupo tem
+  situação efetiva de classe `andamento` (Protocolado e aguardando análise ou
+  documentação, Aguardando envio pela DAP / Homologação, Homologado, Aprovado
+  aguardando pagamento, Pagamento autorizado, Processado o Pagamento, "Sem
+  informação" e textos novos não mapeados que caem na reserva `andamento`).
+  Veredito único "Em análise".
+
+O critério usa a classe já produzida pelo `build_data.py` (`MAPA_SITUACAO`),
+sem mudança no pipeline: o filtro está no painel (`emCurso()` em `recortar()`).
+A aba "Entre anos" não foi dividida.
+
 Não há mais referência de valor em nenhuma aba de grupos: `TOLERANCIA_VALOR` (R$ 50)
 foi removida em 21/09/2026 (ver "Pago em outro ano").
 
