@@ -596,13 +596,6 @@ body.modo-relatorio .rodape{display:none !important}
     <div id="fl-alertas" style="margin-top:var(--s4)"></div>
 
     <div class="controles">
-      <div class="campo">
-        <span class="rotulo" id="lbl-fl">Mostrar</span>
-        <div class="chips" role="group" aria-labelledby="lbl-fl">
-          <button class="chip" id="fl-alerta" aria-pressed="false" type="button">Só os parados</button>
-          <button class="chip" id="fl-novos" aria-pressed="false" type="button">Só os novos</button>
-        </div>
-      </div>
       <div class="campo" style="flex:1 1 220px">
         <label for="fl-busca">Protocolo, nome ou Prec-cp</label>
         <input id="fl-busca" type="search" placeholder="ex.: 529224 ou MARCIO" autocomplete="off">
@@ -686,13 +679,6 @@ body.modo-relatorio .rodape{display:none !important}
         <label for="f-sit">Situação vigente</label>
         <select id="f-sit"><option value="">Todas</option></select>
         <span style="font-size:.68rem;color:var(--ink-3)">Acompanhamento; para os que aguardam o CPEx, a aba DEA</span>
-      </div>
-      <div class="campo">
-        <span class="rotulo" id="lbl-atalhos">Atalhos</span>
-        <div class="chips" role="group" aria-labelledby="lbl-atalhos">
-          <button class="chip" id="f-div" aria-pressed="false" type="button">Só divergentes</button>
-          <button class="chip" id="f-sem" aria-pressed="false" type="button">Aguardando CPEx</button>
-        </div>
       </div>
       <button class="btn secundario" id="f-limpar" type="button">Limpar</button>
     </div>
@@ -841,11 +827,14 @@ function recortar(){
       saidos: (FILA.saidos || []).filter(porSeg)
     };
   })();
+  // "Alterações do dia": só a aba DEA do ano corrente (regra de 21/09/2026).
+  // Acompanhamento e novos protocolos ficam de fora mesmo num dados.js antigo.
   V.DIFF = {
     disponivel: DIFF.disponivel, base: DIFF.base, motivo: DIFF.motivo,
-    acomp:   (DIFF.acomp   || []).filter(porSeg),
+    ano: DIFF.ano || 2026,
+    acomp:   [],
     dea2026: (DIFF.dea2026 || []).filter(porSeg),
-    novos:   (DIFF.novos   || []).filter(porSeg),
+    novos:   [],
     removidos: DIFF.removidos || []
   };
   V.DIFF.total = V.DIFF.acomp.length + V.DIFF.dea2026.length +
@@ -1381,9 +1370,9 @@ function renderHL(){
 
   area.innerHTML = '<div class="rolagem"><table><thead><tr>'+
       '<th scope="col">Protocolo</th><th scope="col">Data</th><th scope="col">Ano</th>'+
-      '<th scope="col">Prec-cp</th><th scope="col">Segmento</th><th scope="col">Nome</th>'+
+      '<th scope="col">Prec-cp</th><th scope="col">Nome</th>'+
       '<th scope="col">Valor</th><th scope="col">Situação — aba DEA</th>'+
-      '<th scope="col">Situação — Acompanhamento</th><th scope="col">CODOM</th>'+
+      '<th scope="col">CODOM</th>'+
     '</tr></thead><tbody>'+
     lista.map(function(p){
       return '<tr>'+
@@ -1391,13 +1380,9 @@ function renderHL(){
         '<td class="mono">'+esc(p.data)+'</td>'+
         '<td class="mono">'+esc(p.ano)+'</td>'+
         '<td class="mono">'+esc(p.prec_cp)+'</td>'+
-        '<td>'+esc(p.segmento)+'</td>'+
         '<td>'+esc(p.nome)+'</td>'+
         '<td class="num">'+esc(p.valor_fmt)+'</td>'+
         '<td><span class="selo andamento">'+esc(p.sit_dea)+'</span></td>'+
-        '<td>'+(p.tem_acomp
-            ? '<span class="selo '+esc(p.sit_acomp_classe)+'">'+esc(p.sit_acomp)+'</span>'
-            : '<span class="selo ausente" title="Ainda não avaliado, aprovado/rejeitado ou homologado pelo CPEx">aguardando CPEx</span>')+'</td>'+
         '<td class="mono">'+esc(p.codom)+'</td>'+
       '</tr>';
     }).join('')+'</tbody></table></div>'+
@@ -1420,7 +1405,10 @@ function renderDiff(){
     grid.innerHTML = '';
     return;
   }
-  nota.innerHTML = 'Comparação entre o retrato de <b>'+esc(META.data_ref)+'</b> e o de <b>'+esc(DIFF.base)+'</b>. '+
+  nota.className = 'nota';
+  nota.innerHTML = 'Mudanças de situação na aba <b>DEA '+esc(DIFF.ano)+'</b> da planilha, entre o retrato de <b>'+
+    esc(META.data_ref)+'</b> e o último retrato de <b>'+esc(DIFF.base)+'</b>. Várias atualizações no mesmo dia '+
+    'saem compiladas: todas comparam com o dia anterior. '+
     'Setas indicam o sentido da mudança no fluxo do processo.';
 
   function bloco(tit, sub, arr){
@@ -1445,21 +1433,8 @@ function renderDiff(){
       '</div>'+corpo+'</section>';
   }
 
-  var html = bloco('Mudanças de situação', 'Aba Acompanhamento', DIFF.acomp) +
-             bloco('Mudanças de situação', 'Aba DEA 2026', DIFF.dea2026);
+  var html = bloco('Mudanças de situação', 'Aba DEA '+DIFF.ano, DIFF.dea2026);
 
-  if(DIFF.novos.length){
-    html += '<section class="cartao"><div style="padding:var(--s4) var(--s4) var(--s3)">'+
-      '<p class="rotulo">Entradas</p>'+
-      '<h3 style="font-family:var(--serif);font-weight:600;font-size:1.1rem;margin-top:4px">Novos protocolos '+
-      '<span style="font-variant-numeric:tabular-nums;color:var(--ink-3)">'+DIFF.novos.length+'</span></h3></div>'+
-      DIFF.novos.map(function(n){
-        return '<div class="mud"><span class="mud-seta lateral" aria-hidden="true">+</span><span>'+
-          '<span class="mud-nome">'+esc(n.nome||'(sem nome)')+'</span>'+
-          '<span class="mud-meta">Protocolo '+esc(n.protocolo)+' &middot; '+esc(n.ano)+' &middot; '+esc(n.valor_fmt)+'</span>'+
-          '<span class="mud-tr"><b>'+esc(n.sit)+'</b></span></span></div>';
-      }).join('')+'</section>';
-  }
   if(DIFF.removidos.length){
     html += '<section class="cartao"><div style="padding:var(--s4) var(--s4) var(--s3)">'+
       '<p class="rotulo">Saídas</p>'+
@@ -1468,7 +1443,7 @@ function renderDiff(){
       DIFF.removidos.map(function(n){
         return '<div class="mud"><span class="mud-seta retrocesso" aria-hidden="true">&minus;</span>'+
           '<span><span class="mud-nome">Protocolo '+esc(n.protocolo)+'</span>'+
-          '<span class="mud-meta">deixou de constar na planilha</span></span></div>';
+          '<span class="mud-meta">deixou de constar na aba DEA '+esc(DIFF.ano)+'</span></span></div>';
       }).join('')+'</section>';
   }
   grid.innerHTML = html;
@@ -1477,7 +1452,7 @@ function renderDiff(){
 /* =======================================================================
    3. CONSULTA
    ======================================================================= */
-var fEstado = {ano:'', proto:'', prec:'', nome:'', sit:'', div:false, sem:false,
+var fEstado = {ano:'', proto:'', prec:'', nome:'', sit:'',
                ord:'data_ord', dir:-1, pag:1};
 var POR_PAG = 100;
 
@@ -1503,8 +1478,6 @@ function filtrados(){
     if(fEstado.prec && String(p.prec_cp).indexOf(fEstado.prec.trim()) === -1) return false;
     if(nome && p._busca.indexOf(nome) === -1) return false;
     if(fEstado.sit && p.sit_efetiva !== fEstado.sit) return false;
-    if(fEstado.div && !p.divergente) return false;
-    if(fEstado.sem && p.tem_acomp) return false;
     return true;
   }).sort(function(a,b){
     var x = a[fEstado.ord], y = b[fEstado.ord];
@@ -1606,19 +1579,10 @@ document.querySelectorAll('#tabela thead th.ord').forEach(function(th){
     fEstado[t[1]] = this.value; fEstado.pag = 1; pintaTabela();
   });
 });
-['div','sem'].forEach(function(k){
-  var b = document.getElementById('f-'+k);
-  b.addEventListener('click', function(){
-    fEstado[k] = !fEstado[k];
-    b.setAttribute('aria-pressed', fEstado[k]?'true':'false');
-    fEstado.pag = 1; pintaTabela();
-  });
-});
 document.getElementById('f-limpar').addEventListener('click', function(){
-  fEstado = {ano:'', proto:'', prec:'', nome:'', sit:'', div:false, sem:false,
+  fEstado = {ano:'', proto:'', prec:'', nome:'', sit:'',
              ord:'data_ord', dir:-1, pag:1};
   ['f-ano','f-proto','f-prec','f-nome','f-sit'].forEach(function(id){ document.getElementById(id).value = ''; });
-  ['f-div','f-sem'].forEach(function(id){ document.getElementById(id).setAttribute('aria-pressed','false'); });
   pintaTabela();
 });
 pintaTabela();
@@ -1976,16 +1940,14 @@ document.getElementById('hl-pdf').addEventListener('click', function(){
   var lista = V.HL;
   var corpo = lista.length
     ? '<table class="rel-tab"><thead><tr><th>Protocolo</th><th>Data</th><th>Ano</th>'+
-      '<th>Prec-cp</th><th>Segmento</th><th>Nome</th><th class="num">Valor</th>'+
-      '<th>Situação (DEA)</th><th>Situação (Acomp.)</th><th>CODOM</th></tr></thead><tbody>'+
+      '<th>Prec-cp</th><th>Nome</th><th class="num">Valor</th>'+
+      '<th>Situação (DEA)</th><th>CODOM</th></tr></thead><tbody>'+
       lista.map(function(p){
         return '<tr><td class="mono">'+esc(p.protocolo)+'</td>'+
           '<td class="mono">'+esc(p.data)+'</td><td class="mono">'+esc(p.ano)+'</td>'+
-          '<td class="mono">'+esc(p.prec_cp)+'</td><td>'+esc(p.segmento)+'</td>'+
+          '<td class="mono">'+esc(p.prec_cp)+'</td>'+
           '<td>'+esc(p.nome)+'</td><td class="num">'+esc(p.valor_fmt)+'</td>'+
           '<td>'+selo('andamento', p.sit_dea)+'</td>'+
-          '<td>'+(p.tem_acomp ? selo(p.sit_acomp_classe, p.sit_acomp)
-                              : '<span class="selo ausente">aguardando CPEx</span>')+'</td>'+
           '<td class="mono">'+esc(p.codom)+'</td></tr>';
       }).join('')+'</tbody></table>'
     : '<p class="rel-vazio">Nenhum protocolo pronto para lançamento neste recorte.</p>';
@@ -2083,39 +2045,27 @@ document.getElementById('d-pdf').addEventListener('click', function(){
   }
 
   var corpo =
-    '<section class="rel-secao"><h2 class="rel-secao-tit">Mudanças de situação — aba Acompanhamento</h2>'+
-      tabMud(DF.acomp)+'</section>'+
-    '<section class="rel-secao"><h2 class="rel-secao-tit">Mudanças de situação — aba DEA 2026</h2>'+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">Mudanças de situação — aba DEA '+esc(DF.ano)+'</h2>'+
       tabMud(DF.dea2026)+'</section>';
 
-  if(DF.novos.length){
-    corpo += '<section class="rel-secao"><h2 class="rel-secao-tit">Novos protocolos</h2>'+
-      '<table class="rel-tab"><thead><tr><th>Protocolo</th><th>Nome</th><th>Ano</th>'+
-      '<th class="num">Valor</th><th>Situação</th></tr></thead><tbody>'+
-      DF.novos.map(function(n){
-        return '<tr><td class="mono">'+esc(n.protocolo)+'</td>'+
-          '<td>'+esc(n.nome || '(sem nome)')+'</td><td class="mono">'+esc(n.ano)+'</td>'+
-          '<td class="num">'+esc(n.valor_fmt)+'</td><td>'+esc(n.sit)+'</td></tr>';
-      }).join('')+'</tbody></table></section>';
-  }
   if(DF.removidos.length){
     corpo += '<section class="rel-secao"><h2 class="rel-secao-tit">Protocolos removidos</h2>'+
       '<table class="rel-tab"><thead><tr><th>Protocolo</th><th>Observação</th></tr></thead><tbody>'+
       DF.removidos.map(function(n){
         return '<tr><td class="mono">'+esc(n.protocolo)+'</td>'+
-          '<td>deixou de constar na planilha</td></tr>';
+          '<td>deixou de constar na aba DEA '+esc(DF.ano)+'</td></tr>';
       }).join('')+'</tbody></table></section>';
   }
 
   abrirRelatorio(
     relCapa('Alterações em relação ao dia anterior',
-      'Comparação entre o retrato de '+META.data_ref+' e o de '+DF.base+'. O sentido indica se '+
+      'Mudanças de situação na aba DEA '+DF.ano+' da planilha, entre o retrato de '+META.data_ref+' e o '+
+      'último retrato de '+DF.base+' (atualizações do mesmo dia saem compiladas). O sentido indica se '+
       'a mudança avançou ou retrocedeu no fluxo do processo; "lateral" marca troca de redação ou '+
       'situação fora da linha de progressão.',
       [['Alterações', num(DF.total)],
-       ['Acompanhamento', num(DF.acomp.length)],
-       ['DEA 2026', num(DF.dea2026.length)],
-       ['Novos protocolos', num(DF.novos.length)]],
+       ['Mudanças de situação', num(DF.dea2026.length)],
+       ['Saíram da aba', num(DF.removidos.length)]],
       'Recorte deste relatório: segmento <b>'+esc(segTexto())+'</b> · base de comparação: retrato de <b>'+esc(DF.base)+'</b>.')+
     '<section class="rel-legenda"><p class="rel-sublegenda">Como ler este relatório</p><dl>'+
       '<dt>Avanço</dt><dd>A situação progrediu na linha do fluxo do processo.</dd>'+
@@ -2133,7 +2083,7 @@ document.getElementById('d-pdf').addEventListener('click', function(){
    O "protocolado há" vem da Data Implantação das abas DEA e serve de contexto —
    por ele a fila inteira já nasce com meses de idade, então ele não alerta nada.
    ======================================================================= */
-var flEstado = {alerta:false, novos:false, busca:''};
+var flEstado = {busca:''};
 
 function diasSelo(d, lim){
   if(d == null) return '<span class="dias-selo nd">—</span>';
@@ -2143,10 +2093,7 @@ function diasSelo(d, lim){
 
 function flFiltrados(){
   var b = semAcento(flEstado.busca).trim();
-  var lim = V.FILA.limite_alerta || 2;
   return (V.FILA.itens || []).filter(function(i){
-    if(flEstado.alerta && !(i.dias_fila != null && i.dias_fila >= lim)) return false;
-    if(flEstado.novos && !i.novo) return false;
     if(b && String(i.protocolo).indexOf(b) === -1 &&
             String(i.prec_cp||'').indexOf(b) === -1 &&
             semAcento(i.nome||'').indexOf(b) === -1) return false;
@@ -2179,7 +2126,8 @@ function renderFila(){
     'Data Implantação das abas DEA e serve de contexto: mede desde a protocolização, '+
     'não desde a entrada nesta fila. Dias corridos.';
 
-  /* ---- as duas faixas de alerta ---- */
+  /* ---- faixa da primeira leitura (os cards Novos / Parados / Saíram foram
+     removidos a pedido do usuário em 21/09/2026) ---- */
   var h = '';
   if(F.primeira_vez){
     h += '<div class="alerta-faixa calmo">'+
@@ -2189,45 +2137,6 @@ function renderFila(){
       ' protocolos abaixo foram registrados como ponto de partida. A partir da próxima '+
       'atualização o painel passa a apontar quem entrou e quem ficou parado.</span></span>'+
       '<span></span></div>';
-  } else {
-    var nv = F.novos;
-    h += '<div class="alerta-faixa '+(nv.length ? 'novo' : 'calmo')+'">'+
-      '<span class="alerta-num">'+num(nv.length)+'</span>'+
-      '<span><span class="alerta-tit">'+(nv.length ? 'Novos na fila' : 'Nenhum protocolo novo')+'</span>'+
-      '<span class="alerta-txt">'+(nv.length
-        ? 'Entraram nesta fila desde a atualização de '+esc(dataBR(F.base))+'.'
-        : 'Nada entrou na fila desde a atualização de '+esc(dataBR(F.base))+'.')+'</span></span>'+
-      '<span class="alerta-lista">'+nv.slice(0,8).map(function(i){
-        return '<span class="selo andamento">'+esc(i.protocolo)+'</span>';
-      }).join('')+(nv.length > 8 ? '<span class="selo excluido">+'+(nv.length-8)+'</span>' : '')+
-      '</span></div>';
-
-    var al = F.alerta;
-    h += '<div class="alerta-faixa '+(al.length ? 'critico' : 'calmo')+'">'+
-      '<span class="alerta-num">'+num(al.length)+'</span>'+
-      '<span><span class="alerta-tit">'+(al.length
-        ? 'Parados há '+lim+' dias ou mais'
-        : 'Nenhum protocolo parado')+'</span>'+
-      '<span class="alerta-txt">'+(al.length
-        ? 'Continuam nesta fila há '+lim+' dias ou mais sem chegar ao homologador — '+
-          'podem estar parados com o operador do sistema. Somam '+
-          esc(brl(somaValor(al)))+'.'
-        : 'Nenhum protocolo passou de '+lim+' dias nesta fila.')+'</span></span>'+
-      '<span class="alerta-lista">'+al.slice(0,8).map(function(i){
-        return '<span class="selo rejeitado">'+esc(i.protocolo)+' · '+i.dias_fila+'d</span>';
-      }).join('')+(al.length > 8 ? '<span class="selo excluido">+'+(al.length-8)+'</span>' : '')+
-      '</span></div>';
-  }
-  if(F.saidos && F.saidos.length){
-    h += '<div class="alerta-faixa calmo">'+
-      '<span class="alerta-num">'+num(F.saidos.length)+'</span>'+
-      '<span><span class="alerta-tit">Saíram da fila</span>'+
-      '<span class="alerta-txt">Estavam aqui na atualização de '+esc(dataBR(F.base))+
-      ' e não estão mais — seguiram para homologação ou foram excluídos.</span></span>'+
-      '<span class="alerta-lista">'+F.saidos.slice(0,8).map(function(i){
-        return '<span class="selo pago">'+esc(i.protocolo)+'</span>';
-      }).join('')+(F.saidos.length > 8 ? '<span class="selo excluido">+'+(F.saidos.length-8)+'</span>' : '')+
-      '</span></div>';
   }
   alertas.innerHTML = h;
 
@@ -2247,7 +2156,7 @@ function renderFila(){
 
   area.innerHTML = '<div class="rolagem"><table><thead><tr>'+
       '<th scope="col">Protocolo</th><th scope="col">Tipo</th><th scope="col">Nome</th>'+
-      '<th scope="col">Prec-cp</th><th scope="col">Segmento</th><th scope="col">Valor</th>'+
+      '<th scope="col">Prec-cp</th><th scope="col">Valor</th>'+
       '<th scope="col">Na fila há</th><th scope="col">Protocolado em</th>'+
       '<th scope="col">Protocolado há</th><th scope="col">Codom</th>'+
     '</tr></thead><tbody>'+
@@ -2258,7 +2167,6 @@ function renderFila(){
         '<td class="mono">'+esc(i.tipo)+'</td>'+
         '<td>'+esc(i.nome)+'</td>'+
         '<td class="mono">'+esc(i.prec_cp || '—')+'</td>'+
-        '<td>'+esc(i.segmento)+'</td>'+
         '<td class="num">'+esc(i.valor_fmt)+'</td>'+
         '<td>'+diasSelo(i.dias_fila, lim)+'</td>'+
         '<td class="mono">'+esc(i.data || '—')+'</td>'+
@@ -2271,22 +2179,11 @@ function renderFila(){
       'Data Implantação nem Prec-cp.</p>' : '');
 }
 
-[['fl-alerta','alerta'],['fl-novos','novos']].forEach(function(t){
-  var b = document.getElementById(t[0]);
-  b.addEventListener('click', function(){
-    flEstado[t[1]] = !flEstado[t[1]];
-    b.setAttribute('aria-pressed', flEstado[t[1]] ? 'true' : 'false');
-    renderFila();
-  });
-});
 document.getElementById('fl-busca').addEventListener('input', function(){
   flEstado.busca = this.value; renderFila();
 });
 document.getElementById('fl-limpar').addEventListener('click', function(){
-  flEstado = {alerta:false, novos:false, busca:''};
-  ['fl-alerta','fl-novos'].forEach(function(id){
-    document.getElementById(id).setAttribute('aria-pressed','false');
-  });
+  flEstado = {busca:''};
   document.getElementById('fl-busca').value = '';
   renderFila();
 });
@@ -2294,12 +2191,12 @@ document.getElementById('fl-pdf').addEventListener('click', function(){
   var F = V.FILA, lista = flFiltrados(), lim = F.limite_alerta || 2;
   var corpo = lista.length
     ? '<table class="rel-tab"><thead><tr><th>Protocolo</th><th>Tipo</th><th>Nome</th>'+
-      '<th>Prec-cp</th><th>Segmento</th><th class="num">Valor</th><th class="num">Na fila há</th>'+
+      '<th>Prec-cp</th><th class="num">Valor</th><th class="num">Na fila há</th>'+
       '<th>Protocolado em</th><th class="num">Protocolado há</th><th>Codom</th></tr></thead><tbody>'+
       lista.map(function(i){
         return '<tr><td class="mono">'+esc(i.protocolo)+'</td><td class="mono">'+esc(i.tipo)+'</td>'+
           '<td>'+esc(i.nome)+'</td><td class="mono">'+esc(i.prec_cp||'—')+'</td>'+
-          '<td>'+esc(i.segmento)+'</td><td class="num">'+esc(i.valor_fmt)+'</td>'+
+          '<td class="num">'+esc(i.valor_fmt)+'</td>'+
           '<td class="num">'+(i.dias_fila==null?'—':i.dias_fila+' dias')+'</td>'+
           '<td class="mono">'+esc(i.data||'—')+'</td>'+
           '<td class="num">'+(i.dias_protocolo==null?'—':i.dias_protocolo+' dias')+'</td>'+
@@ -2318,8 +2215,6 @@ document.getElementById('fl-pdf').addEventListener('click', function(){
        ['Novos', F.primeira_vez ? '—' : num(F.novos.length)],
        ['Valor na fila', lista.length ? brl(somaValor(lista)) : '—']],
       'Recorte deste relatório: segmento <b>'+esc(segTexto())+'</b>'+
-      (flEstado.alerta ? ' · só os parados' : '')+
-      (flEstado.novos ? ' · só os novos' : '')+
       (flEstado.busca ? ' · busca <b>'+esc(flEstado.busca)+'</b>' : '')+'.')+
     '<section class="rel-secao"><h2 class="rel-secao-tit">Protocolos na fila</h2>'+
     corpo+'</section>', true);

@@ -210,10 +210,44 @@ Retrato de 16/09/2026: **15 prontos, R$ 6.664,00**; 100 excluídos por já
 constarem "Pago". Os 15 são um lote recente (protocolos de 04 a 10/09/2026,
 valores de R$ 45,21 a R$ 1.109,66).
 
+Desde 21/09/2026, por pedido do usuário, a tabela (tela e PDF) **não tem mais as
+colunas Segmento e Situação — Acompanhamento**; fica só a situação da aba DEA. O
+filtro de segmento da barra do topo continua valendo, e a regra que tira da lista
+os já "Pago" no Acompanhamento não mudou.
+
 **Premissa que não se confirmou:** chegou-se a supor que "não pago ⇒ não está no
 Acompanhamento". Falso — os 115 liberados pelo CPEx têm linha lá. O que ocorre é
 que **a coluna de situação das abas DEA não é atualizada depois do pagamento**,
 e esses 115 são a maior fatia das divergências entre as duas abas.
+
+## Aba "Alterações do dia" (regra de 21/09/2026)
+
+Por pedido do usuário, a aba mostra **só as mudanças de situação na aba DEA do
+ano corrente** da planilha (o ano da data do sistema; hoje "DEA 2026"), mais os
+protocolos que **saíram** dessa aba. Ficaram de fora as mudanças da aba
+Acompanhamento e o quadro "Entrada" (novos protocolos).
+
+- A aba é identificada pelo **nome da aba** da planilha (`p["aba"] == "DEA <ano>"`),
+  não pela Data Implantação. Na virada para 2027 é preciso acrescentar
+  "DEA 2027" em `ABAS_DEA`; sem isso a comparação fica vazia.
+- **Compilação por dia do sistema:** a comparação é sempre contra o **último
+  retrato de um dia anterior** (`base_do_dia`). Várias atualizações no mesmo dia
+  comparam todas com essa mesma base, e as mudanças se acumulam; no dia seguinte
+  a base passa a ser o último retrato de hoje. O snapshot leva essa base adiante
+  no campo `base_dia` (só `data`, `ano_corrente`, `dea_corrente` e `dea2026`).
+- No **primeiro dia** (sem retrato de dia anterior), a 2ª rodada compara com a 1ª
+  do mesmo dia. Snapshot gravado antes desta regra não tem `dea_corrente` nem
+  `base_dia`: para 2026 o diff usa o `dea2026` antigo como reserva.
+- `calcular_diff_dia()` gera o `diff` do `dados.js`, com as mudanças na chave
+  `dea2026` (compatibilidade com o painel) e o ano em `ano`.
+- A aba **Histórico não mudou**: continua com uma entrada por execução, comparada
+  com a execução anterior, com Acompanhamento, DEA 2026 e novos
+  (`calcular_diff()`).
+
+Testado em 21/09/2026 simulando cinco rodadas em dois dias: as duas rodadas
+extras do 1º dia acumularam as mudanças; a 1ª do dia seguinte comparou com o
+último retrato da véspera; mudança em DEA 2025, no Acompanhamento e protocolo
+novo não apareceram.
 
 ## Aba "Histórico" (16/09/2026)
 
@@ -373,19 +407,20 @@ pela protocolização) e **dias corridos**, não dias úteis.
 
 ### O que a tela mostra
 
-Três faixas no topo, e só as duas primeiras foram pedidas:
+**Desde 21/09/2026, por pedido do usuário**, saíram as três faixas do topo
+("Novos na fila", "Parados há 2 dias ou mais", "Saíram da fila"), os filtros
+"Mostrar" ("Só os parados" / "Só os novos") e a coluna **Segmento** da tabela
+(tela e PDF). O filtro de segmento da barra do topo continua valendo para a aba.
+Só a faixa "Primeira leitura desta fila" ficou, porque aparece apenas quando o
+relógio da fila ainda não tem base.
 
-1. **Novos na fila** — entraram desde a atualização anterior.
-2. **Parados há 2 dias ou mais** — continuam na fila sem chegar ao homologador;
-   é o alerta de processo possivelmente parado com o operador. Traz a soma dos valores.
-3. **Saíram da fila** — estavam no retrato anterior e não estão mais (seguiram para
-   homologação ou foram excluídos). Acrescentada por ser o complemento natural e
-   mostrar que a fila anda; se incomodar, é só remover o bloco `F.saidos` de `renderFila()`.
+O pipeline não mudou: `novos`, `alerta` e `saidos` continuam no `dados.js`. Na
+tela, o alerta segue visível pelo selo colorido de "Na fila há", pelo selo "novo"
+ao lado do protocolo e pela aba, que fica vermelha quando há alguém parado; a
+capa do PDF mantém os totais de parados e novos.
 
-Abaixo, a tabela completa ordenada **do que espera há mais tempo para o mais
-recente**, com filtros "Só os parados" / "Só os novos", busca e
-Relatório PDF (paisagem). O selo da aba mostra quantos estão na fila e fica
-vermelho quando há alguém parado.
+A tabela é ordenada **do que espera há mais tempo para o mais recente**, com
+busca e Relatório PDF (paisagem). O selo da aba mostra quantos estão na fila.
 
 ### Cuidados
 
@@ -400,6 +435,13 @@ vermelho quando há alguém parado.
   frente, com um protocolo removido e um fantasma no retrato anterior): o novo
   entrou com 0 dias e **ficou de fora do alerta**, o fantasma apareceu em "Saíram",
   e os 37 restantes dispararam o alerta. Repita essa simulação se mexer na regra.
+
+## Filtro "Atalhos" da Consulta de processos — removido (21/09/2026)
+
+O usuário pediu a exclusão do filtro **Atalhos** ("Só divergentes" e "Aguardando
+CPEx") da aba Consulta de processos. Saíram os dois chips, os campos `div`/`sem`
+de `fEstado` e as linhas correspondentes do filtro e do "Limpar". Os dados
+(`divergente`, `tem_acomp`) continuam no `dados.js` e na Visão geral.
 
 ## Botões "Copiar CSV" — removidos (19/09/2026)
 
@@ -452,8 +494,9 @@ no GitHub.
 Consequências de depender do clique:
 
 - **Dia sem clique = painel parado**, e o carimbo "Atualizado em" mostra isso.
-  Na rodada seguinte, "Alterações do dia" compara com o último retrato, então
-  junta as mudanças de todos os dias sem atualização.
+  Na rodada seguinte, "Alterações do dia" compara com o último retrato do
+  último dia com atualização, então junta as mudanças de todos os dias sem
+  atualização.
 - **"Dias na fila" subestima** um protocolo que entrou na homologação num dia
   sem atualização: ele conta a partir da primeira rodada que o viu.
 - **Dois cliques no mesmo dia** geram duas entradas no histórico. O painel agrupa

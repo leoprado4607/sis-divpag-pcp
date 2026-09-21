@@ -687,12 +687,44 @@ def separar_pagos_entre_anos(grupos_ea):
 # Snapshot e diff do dia anterior
 # --------------------------------------------------------------------------
 
-def montar_snapshot(processos, data_ref, homolog=None):
+def ano_corrente(data_ref):
+    """Ano da aba DEA acompanhada em "Alterações do dia": o da data do sistema."""
+    return int(data_ref[:4])
+
+
+def base_do_dia(anterior, data_ref):
+    """
+    Retrato com que "Alterações do dia" compara (regra do usuário, 21/09/2026):
+    o ÚLTIMO retrato de um dia ANTERIOR. Várias atualizações no mesmo dia
+    comparam todas com essa mesma base, e as mudanças do dia se acumulam; no
+    dia seguinte a base passa a ser o último retrato de hoje.
+    O snapshot leva a base adiante em "base_dia", para a 2ª rodada do dia.
+    """
+    if not anterior:
+        return None
+    if anterior.get("data") == data_ref:
+        # snapshot gravado antes desta regra não tem base_dia: cai no anterior
+        return anterior.get("base_dia") or _base_de(anterior)
+    return _base_de(anterior)
+
+
+def _base_de(snap):
+    """Só o necessário para o diff do dia (sem base_dia aninhada)."""
+    return {k: snap.get(k) for k in ("data", "ano_corrente", "dea_corrente", "dea2026")}
+
+
+def montar_snapshot(processos, data_ref, homolog=None, base_dia=None):
+    ano = ano_corrente(data_ref)
+    aba = "DEA %d" % ano
     snap = {
         "data": data_ref,
         "acomp": {p["protocolo"]: p["sit_acomp_cod"] for p in processos if p["tem_acomp"]},
         "dea2026": {p["protocolo"]: p["sit_dea_cod"] for p in processos if p["ano"] == 2026},
         "protocolos": sorted(p["protocolo"] for p in processos),
+        # aba DEA do ano corrente (pela aba da planilha), para "Alterações do dia"
+        "ano_corrente": ano,
+        "dea_corrente": {p["protocolo"]: p["sit_dea_cod"] for p in processos if p["aba"] == aba},
+        "base_dia": base_dia,
     }
     # fila de homologação: a lista de hoje e a data em que cada protocolo foi
     # visto ali pela primeira vez. São esses dois campos que fazem o "dias na
@@ -704,14 +736,76 @@ def montar_snapshot(processos, data_ref, homolog=None):
     return snap
 
 
-def calcular_diff(atual, anterior, processos):
-    idx = {p["protocolo"]: p for p in processos}
+def _rotulo_cod(cod):
+    for _k, (c, r, _cl) in MAPA_SITUACAO.items():
+        if c == cod:
+            return r
+    return cod or "Sem informação"
 
-    def rotulo(cod):
-        for k, (c, r, _cl) in MAPA_SITUACAO.items():
-            if c == cod:
-                return r
-        return cod or "Sem informação"
+
+def _mudancas(ant, at, idx):
+    """Protocolos presentes nos dois retratos cuja situação mudou."""
+    lista = []
+    for proto, cod_at in at.items():
+        cod_ant = ant.get(proto)
+        if cod_ant is None or cod_ant == cod_at:
+            continue
+        p = idx.get(proto, {})
+        de, para = ORDEM_FLUXO.get(cod_ant), ORDEM_FLUXO.get(cod_at)
+        lista.append({
+            "protocolo": proto,
+            "nome": p.get("nome", ""),
+            "prec_cp": p.get("prec_cp", ""),
+            "segmento": p.get("segmento", "Ativa"),
+            "ano": p.get("ano"),
+            "valor_fmt": p.get("valor_fmt", ""),
+            "de": _rotulo_cod(cod_ant), "para": _rotulo_cod(cod_at),
+            "de_cod": cod_ant, "para_cod": cod_at,
+            "sentido": ("avanco" if (de is not None and para is not None and para > de)
+                        else "retrocesso" if (de is not None and para is not None and para < de)
+                        else "lateral"),
+        })
+    lista.sort(key=lambda m: (m["sentido"] != "retrocesso", m["protocolo"]))
+    return lista
+
+
+def calcular_diff_dia(atual, base, processos):
+    """
+    "Alterações do dia" (regra do usuário, 21/09/2026): só as mudanças de
+    situação na aba DEA do ano corrente, contra a base do dia (base_do_dia) —
+    as atualizações do mesmo dia saem compiladas. Sem Acompanhamento e sem
+    novos protocolos; ficam os que saíram da aba. As mudanças vão na chave
+    "dea2026" por compatibilidade com o painel; "ano" diz qual aba é.
+    """
+    ano = atual["ano_corrente"]
+    vazio = {"disponivel": False, "base": None, "ano": ano, "acomp": [], "dea2026": [],
+             "novos": [], "removidos": [], "total": 0}
+    if not base:
+        vazio["motivo"] = ("Primeira execução: não há retrato de um dia anterior para comparar. "
+                           "O retrato de hoje foi gravado e servirá de base a partir do próximo dia.")
+        return vazio
+    if base.get("ano_corrente") == ano and base.get("dea_corrente") is not None:
+        ant = base["dea_corrente"]
+    elif ano == 2026 and base.get("dea2026") is not None:
+        ant = base["dea2026"]   # retrato gravado antes desta regra
+    else:
+        vazio["base"] = base.get("data")
+        vazio["motivo"] = ("A base de comparação (%s) não traz a aba DEA %d. As alterações "
+                           "passam a aparecer a partir do próximo dia." % (base.get("data"), ano))
+        return vazio
+
+    idx = {p["protocolo"]: p for p in processos}
+    at = atual["dea_corrente"]
+    mud = _mudancas(ant, at, idx)
+    removidos = [{"protocolo": p} for p in sorted(set(ant) - set(at))]
+    return {"disponivel": True, "base": base.get("data"), "motivo": "", "ano": ano,
+            "acomp": [], "dea2026": mud, "novos": [], "removidos": removidos,
+            "total": len(mud) + len(removidos)}
+
+
+def calcular_diff(atual, anterior, processos):
+    """Diff completo contra a execução anterior — alimenta o Histórico."""
+    idx = {p["protocolo"]: p for p in processos}
 
     if not anterior:
         return {"disponivel": False, "base": None,
@@ -720,29 +814,8 @@ def calcular_diff(atual, anterior, processos):
                 "acomp": [], "dea2026": [], "novos": [], "removidos": [],
                 "total": 0}
 
-    mudancas = {"acomp": [], "dea2026": []}
-    for campo in ("acomp", "dea2026"):
-        ant, at = anterior.get(campo, {}), atual.get(campo, {})
-        for proto, cod_at in at.items():
-            cod_ant = ant.get(proto)
-            if cod_ant is None or cod_ant == cod_at:
-                continue
-            p = idx.get(proto, {})
-            de, para = ORDEM_FLUXO.get(cod_ant), ORDEM_FLUXO.get(cod_at)
-            mudancas[campo].append({
-                "protocolo": proto,
-                "nome": p.get("nome", ""),
-                "prec_cp": p.get("prec_cp", ""),
-                "segmento": p.get("segmento", "Ativa"),
-                "ano": p.get("ano"),
-                "valor_fmt": p.get("valor_fmt", ""),
-                "de": rotulo(cod_ant), "para": rotulo(cod_at),
-                "de_cod": cod_ant, "para_cod": cod_at,
-                "sentido": ("avanco" if (de is not None and para is not None and para > de)
-                            else "retrocesso" if (de is not None and para is not None and para < de)
-                            else "lateral"),
-            })
-        mudancas[campo].sort(key=lambda m: (m["sentido"] != "retrocesso", m["protocolo"]))
+    mudancas = {campo: _mudancas(anterior.get(campo, {}), atual.get(campo, {}), idx)
+                for campo in ("acomp", "dea2026")}
 
     ant_p = set(anterior.get("protocolos", []))
     at_p = set(atual.get("protocolos", []))
@@ -942,8 +1015,10 @@ def main():
                   file=sys.stderr)
 
     homolog = analisar_homologacao(linhas_hl, processos, anterior, data_ref)
-    snapshot = montar_snapshot(processos, data_ref, homolog)
-    diff = calcular_diff(snapshot, anterior, processos)
+    base_dia = base_do_dia(anterior, data_ref)
+    snapshot = montar_snapshot(processos, data_ref, homolog, base_dia)
+    diff = calcular_diff(snapshot, anterior, processos)          # Histórico: por execução
+    diff_dia = calcular_diff_dia(snapshot, base_dia, processos)  # "Alterações do dia"
     agregados = montar_agregados(processos, grupos, so_acomp)
 
     agregados["hl_total"] = len(homologados)
@@ -1016,7 +1091,7 @@ def main():
         "grupos_entre_anos": grupos_ea,
         "grupos_pagos_fora": pagos_fora,
         "homologados_idx": [],
-        "diff": diff,
+        "diff": diff_dia,
         "homolog": homolog,
         "historico": historico,
     }
@@ -1075,6 +1150,8 @@ def main():
     print("sem Acompanhamento .... %d" % agregados["sem_acompanhamento"])
     print("divergentes ........... %d" % agregados["divergentes"])
     print("alterações vs anterior. %s" % (diff["total"] if diff["disponivel"] else "n/d (1ª execução)"))
+    print("alterações do dia ..... %s  (aba DEA %d, base %s)" % (
+        diff_dia["total"] if diff_dia["disponivel"] else "n/d", diff_dia["ano"], diff_dia["base"] or "—"))
     if homolog["disponivel"]:
         print("fila de homologação ... %d na fila | novos: %s  alerta >=%dd: %s  saíram: %d"
               % (homolog["total"],
