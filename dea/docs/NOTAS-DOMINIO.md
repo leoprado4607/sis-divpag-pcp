@@ -360,7 +360,29 @@ com a realidade: a execução agendada de 17/09 passou a marcar **09:07**, coere
 com o agendamento das 09:00. Se aparecer alguma entrada com hora adiantada em
 ~3h, é resquício anterior à correção.
 
-## Atualização — automática às 09:00 (restabelecida em 16/09/2026)
+## Atualização — MANUAL pelo administrador (desde 21/09/2026)
+
+No site (sispagpesbadm.com) **não há mais agendamento**. O administrador entra
+no painel com a senha de admin (`DEA_ADMIN_PASSWORD`) e clica em **"Atualizar"**
+uma vez por dia útil. O botão dispara o workflow `dea-atualizar.yml` no GitHub
+Actions, que roda o `atualizar.py` intocado. Diferente do botão antigo (citado
+abaixo), este traz dado novo de verdade: quem lê a planilha é a conta de serviço,
+no GitHub.
+
+Consequências de depender do clique:
+
+- **Dia sem clique = painel parado**, e o carimbo "Atualizado em" mostra isso.
+  Na rodada seguinte, "Alterações do dia" compara com o último retrato, então
+  junta as mudanças de todos os dias sem atualização.
+- **"Dias na fila" subestima** um protocolo que entrou na homologação num dia
+  sem atualização: ele conta a partir da primeira rodada que o viu.
+- **Dois cliques no mesmo dia** geram duas entradas no histórico. O painel agrupa
+  por data (é o comportamento previsto). O servidor recusa um disparo enquanto
+  outro estiver em andamento.
+
+O texto abaixo descreve o regime anterior e fica como histórico.
+
+### Regime anterior — automática às 09:00 (16/09/2026 a 21/09/2026)
 
 Tarefa agendada **`trig_01Az1jw4RwQWx4mgb9WA2huz`**, 09:00 em dias úteis
 (cron `0 12 * * 1-5`, em UTC). Substitui a `trig_01MLfwiB65JFXNgKUqsQ2vdL`, que

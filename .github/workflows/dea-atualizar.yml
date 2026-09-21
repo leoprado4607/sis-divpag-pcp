@@ -1,7 +1,12 @@
-# Atualização diária do Painel DEA ("Exercícios Anteriores").
+# Atualização do Painel DEA ("Exercícios Anteriores") — SÓ MANUAL.
+#
+# Não há agendamento: o administrador dispara pelo botão "Atualizar" do painel
+# (POST /api/dea {acao:'atualizar'} → API workflow_dispatch, com o token
+# DEA_GITHUB_TOKEN configurado na Vercel) ou, em último caso, pelo "Run workflow"
+# desta página no GitHub.
 #
 # Substitui o cron do servidor previsto no pacote (dea/LEIA-PRIMEIRO.md): o site
-# roda na Vercel, sem disco nem cron em Python. O atualizar.py e o build_data.py
+# roda na Vercel, sem disco nem Python. O atualizar.py e o build_data.py
 # rodam SEM alteração; o estado e o dados.js vivem no bucket PRIVADO do Supabase
 # (dea/supabase_sync.py faz a ponte).
 #
@@ -11,15 +16,11 @@
 #   SUPABASE_SERVICE_ROLE_KEY    service_role (secreta)
 #
 # NUNCA rode dois pipelines ao mesmo tempo (histórico bifurca): o `concurrency`
-# abaixo enfileira execuções manuais com a agendada, e a tarefa agendada antiga
-# da Claude deve ser desligada no dia da virada.
-name: Painel DEA — atualização diária
+# abaixo enfileira disparos simultâneos, e o /api/dea recusa um novo disparo
+# enquanto houver execução em andamento.
+name: Painel DEA — atualização
 
 on:
-  schedule:
-    # 09:00 em Brasília (UTC-3, sem horário de verão desde 2019), dias úteis.
-    # O GitHub pode atrasar alguns minutos em horários de pico.
-    - cron: '0 12 * * 1-5'
   workflow_dispatch:
     inputs:
       permitir_sem_estado:

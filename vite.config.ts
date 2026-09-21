@@ -82,7 +82,7 @@ export default defineConfig(({ mode }) => {
   // Fix: Cast process to any to avoid "Property 'cwd' does not exist on type 'Process'" error in some environments
   const env = loadEnv(mode, (process as any).cwd(), '');
   // O handler do Painel DEA (api/_dea.ts) lê process.env, como na Vercel.
-  for (const k of ['DEA_PASSWORD', 'DEA_SESSION_SECRET', 'DEA_DADOS_LOCAL', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']) {
+  for (const k of ['DEA_PASSWORD', 'DEA_ADMIN_PASSWORD', 'DEA_SESSION_SECRET', 'DEA_DADOS_LOCAL', 'DEA_GITHUB_TOKEN', 'DEA_GITHUB_REPO', 'DEA_GITHUB_WORKFLOW', 'DEA_GITHUB_REF', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']) {
     if (env[k] && !process.env[k]) process.env[k] = env[k];
   }
   return {

@@ -36,7 +36,7 @@ Três endpoints Vercel (Node.js):
 - **`/api/gemini`** — Proxy seguro para Google Gemini. Mantém `API_KEY` no servidor. Tem rate-limit por IP (Upstash Redis ou em memória) e cache de respostas em memória (1h, max 200 entradas). Loga cada consulta na tabela `andrecito_logs` do Supabase.
 - **`/api/admin`** — Operações de escrita do Andrecito (CRUD de categorias/docs, upload com Signed URL, analytics). Requer header `x-admin-token` validado contra `ADMIN_PASSWORD` com `timingSafeEqual`.
 
-- **`/api/dea`** — Login do Painel DEA (senhas em `DEA_PASSWORD`, validadas no servidor) e cookie de sessão HMAC. Também atende `/dea/painel` e `/dea/dados.js` (rewrites no `vercel.json`), que só respondem com sessão válida.
+- **`/api/dea`** — Login do Painel DEA (senhas em `DEA_PASSWORD`/`DEA_ADMIN_PASSWORD`, validadas no servidor) e cookie de sessão HMAC com o papel (leitor/admin) assinado. Admin pode disparar e acompanhar a atualização. Também atende `/dea/painel` e `/dea/dados.js` (rewrites no `vercel.json`), que só respondem com sessão válida.
 
 Helpers internos (prefixo `_`): `_gemini.ts`, `_ratelimit.ts`, `_http.ts`, `_supabaseAdmin.ts`.
 
@@ -59,7 +59,7 @@ Helpers internos (prefixo `_`): `_gemini.ts`, `_ratelimit.ts`, `_http.ts`, `_sup
 Pacote portado em [dea/](dea/) — leia [dea/LEIA-PRIMEIRO.md](dea/LEIA-PRIMEIRO.md) e [dea/docs/NOTAS-DOMINIO.md](dea/docs/NOTAS-DOMINIO.md). **`dea/app/build_data.py` e `dea/app/painel.html` não podem ser alterados** (testados contra os dados reais).
 
 - `dados.js` (nome, Prec-cp e valor de milhares de pessoas) e o estado (`snapshot-anterior.json`, `historico.json`, insubstituíveis) vivem **só** no bucket privado `dea-privado` do Supabase — nunca no repositório, em `public/` ou em bucket público.
-- Atualização: GitHub Action [dea-atualizar.yml](.github/workflows/dea-atualizar.yml), 09:00 BRT em dias úteis → `supabase_sync.py baixar` → `atualizar.py` (intocado) → `supabase_sync.py enviar`.
+- Atualização **só manual** (sem agendamento): o admin (login com `DEA_ADMIN_PASSWORD`) clica em "Atualizar" → `/api/dea` dispara a GitHub Action [dea-atualizar.yml](.github/workflows/dea-atualizar.yml) via `workflow_dispatch` (token `DEA_GITHUB_TOKEN`) → `supabase_sync.py baixar` → `atualizar.py` (intocado) → `supabase_sync.py enviar`. A barra acompanha o status e recarrega o iframe ao terminar.
 - Em dev, `DEA_DADOS_LOCAL` aponta para um `dados.js` fora do repositório.
 
 ## Banco de dados (Supabase)

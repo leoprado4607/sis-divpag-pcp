@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Lock, LogOut, Loader2 } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, Lock, LogOut, Loader2, RefreshCw } from 'lucide-react';
 
 // "Exercícios Anteriores" — casca do Painel DEA.
 //
@@ -11,6 +11,11 @@ import { ArrowLeft, Lock, LogOut, Loader2 } from 'lucide-react';
 //
 // O iframe isola o CSS do painel (classes curtas como .aba/.chip/.btn), que
 // colidiria com o Tailwind do site se fosse embutido.
+//
+// Atualização: SÓ MANUAL. A sessão de administrador (DEA_ADMIN_PASSWORD) vê o
+// botão "Atualizar", que pede ao /api/dea para disparar o workflow
+// dea-atualizar.yml no GitHub Actions (a rodada leva ~1-2 min). Enquanto ela
+// corre, a barra consulta o status; ao terminar com sucesso, recarrega o iframe.
 
 interface DeaDashboardProps {
   onBack: () => void;
@@ -25,18 +30,46 @@ async function postDea(body: Record<string, unknown>): Promise<Response> {
   });
 }
 
+interface StatusAtualizacao {
+  configurado: boolean;
+  emAndamento?: boolean;
+  ultima?: { status: string; conclusao: string | null; criadaEm: string | null; atualizadaEm: string | null; url: string | null } | null;
+  ultimoSucesso?: string | null;
+}
+
+const POLL_MS = 10_000;
+// O GitHub leva alguns segundos para listar a execução recém-disparada.
+const JANELA_INICIO_MS = 90_000;
+
+function formatarData(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  });
+}
+
 const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
   const [status, setStatus] = useState<'verificando' | 'login' | 'dentro'>('verificando');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [admin, setAdmin] = useState(false);
+  const [atual, setAtual] = useState<StatusAtualizacao | null>(null);
+  const [disparadoEm, setDisparadoEm] = useState<number | null>(null);
+  const [msgAtualizacao, setMsgAtualizacao] = useState('');
+  const [versaoPainel, setVersaoPainel] = useState(0);
+  const acompanhando = useRef(false);
 
   // Sessão ainda válida (cookie de até 8h) entra direto, sem pedir a senha de novo.
   useEffect(() => {
     let ativo = true;
     fetch('/api/dea?r=sessao', { credentials: 'same-origin' })
       .then((r) => (r.ok ? r.json() : { autenticado: false }))
-      .then((d) => { if (ativo) setStatus(d?.autenticado ? 'dentro' : 'login'); })
+      .then((d) => {
+        if (!ativo) return;
+        setAdmin(Boolean(d?.admin));
+        setStatus(d?.autenticado ? 'dentro' : 'login');
+      })
       .catch(() => { if (ativo) setStatus('login'); });
     return () => { ativo = false; };
   }, []);
@@ -48,7 +81,9 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
     try {
       const r = await postDea({ acao: 'entrar', senha });
       if (r.ok) {
+        const d = await r.json().catch(() => ({}));
         setSenha('');
+        setAdmin(Boolean(d?.admin));
         setStatus('dentro');
       } else {
         const d = await r.json().catch(() => ({}));
@@ -63,8 +98,73 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
 
   const sair = async () => {
     try { await postDea({ acao: 'sair' }); } catch { /* o cookie expira sozinho */ }
+    setAdmin(false);
+    setAtual(null);
     setStatus('login');
   };
+
+  const carregarStatus = useCallback(async () => {
+    try {
+      const r = await fetch('/api/dea?r=atualizacao', { credentials: 'same-origin' });
+      if (r.ok) setAtual(await r.json());
+      else setMsgAtualizacao((await r.json().catch(() => ({})))?.error || 'Não foi possível consultar o status no GitHub.');
+    } catch { /* tenta de novo no próximo ciclo */ }
+  }, []);
+
+  useEffect(() => {
+    if (status === 'dentro' && admin) carregarStatus();
+  }, [status, admin, carregarStatus]);
+
+  // A execução que disparamos já aparece na lista do GitHub?
+  const execucaoApareceu = disparadoEm !== null
+    && Boolean(atual?.ultima?.criadaEm && Date.parse(atual.ultima.criadaEm) >= disparadoEm - 5_000);
+  // "Rodando" = o GitHub lista uma execução em andamento, OU acabamos de
+  // disparar e ela ainda não apareceu.
+  const aguardandoInicio = disparadoEm !== null && !execucaoApareceu && Date.now() - disparadoEm < JANELA_INICIO_MS;
+  const rodando = Boolean(atual?.emAndamento) || aguardandoInicio;
+
+  useEffect(() => {
+    if (rodando) {
+      acompanhando.current = true;
+      const t = setTimeout(carregarStatus, POLL_MS);
+      return () => clearTimeout(t);
+    }
+    // Terminou uma rodada que estávamos acompanhando.
+    if (!acompanhando.current) return;
+    acompanhando.current = false;
+    setDisparadoEm(null);
+    if (disparadoEm !== null && !execucaoApareceu) {
+      setMsgAtualizacao('A execução não apareceu no GitHub. Tente de novo em instantes.');
+    } else if (atual?.ultima?.conclusao === 'success') {
+      setVersaoPainel((v) => v + 1); // recarrega o iframe com o dados.js novo
+      setMsgAtualizacao(`Atualizado em ${formatarData(atual.ultima.atualizadaEm)}.`);
+    } else {
+      setMsgAtualizacao('');
+    }
+  }, [rodando, atual, disparadoEm, execucaoApareceu, carregarStatus]);
+
+  const atualizar = async () => {
+    if (rodando) return;
+    if (!window.confirm('Baixar a planilha e atualizar o Painel DEA agora?\n\nA rodada leva cerca de 1 a 2 minutos.')) return;
+    setMsgAtualizacao('');
+    try {
+      const r = await postDea({ acao: 'atualizar' });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) setDisparadoEm(Date.parse(d?.disparadoEm) || Date.now());
+      else setMsgAtualizacao(d?.error || 'Não foi possível iniciar a atualização.');
+    } catch {
+      setMsgAtualizacao('Falha de conexão. Tente novamente.');
+    }
+    carregarStatus();
+  };
+
+  const falhou = !rodando && atual?.ultima?.status === 'completed' && atual.ultima.conclusao !== 'success';
+  const textoStatus = atual && !atual.configurado
+    ? 'Atualização não configurada no servidor.'
+    : rodando
+      ? 'Atualizando… (1 a 2 min)'
+      : msgAtualizacao
+        || (falhou ? 'A última atualização falhou.' : `Última atualização: ${formatarData(atual?.ultimoSucesso)}`);
 
   if (status === 'verificando') {
     return (
@@ -102,11 +202,32 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
         <button onClick={onBack} className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors text-sm font-semibold">
           <ArrowLeft className="w-4 h-4 text-army-gold" /> Início
         </button>
-        <button onClick={sair} className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors text-sm font-semibold">
-          <LogOut className="w-4 h-4 text-army-gold" /> Sair
-        </button>
+        <div className="flex items-center gap-2">
+          {admin && (
+            <>
+              <span className="hidden sm:inline text-xs text-white/80" aria-live="polite">
+                {textoStatus}
+                {falhou && !msgAtualizacao && atual?.ultima?.url && (
+                  <> <a href={atual.ultima.url} target="_blank" rel="noopener noreferrer" className="underline text-army-gold">ver log</a></>
+                )}
+              </span>
+              <button
+                onClick={atualizar}
+                disabled={rodando || atual?.configurado === false}
+                title="Baixa a planilha e regera o painel (apenas administrador)"
+                className="flex items-center gap-2 px-3 py-1 rounded-lg bg-army-gold text-army-green hover:brightness-110 transition text-sm font-bold disabled:opacity-60"
+              >
+                <RefreshCw className={`w-4 h-4 ${rodando ? 'animate-spin' : ''}`} /> {rodando ? 'Atualizando' : 'Atualizar'}
+              </button>
+            </>
+          )}
+          <button onClick={sair} className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors text-sm font-semibold">
+            <LogOut className="w-4 h-4 text-army-gold" /> Sair
+          </button>
+        </div>
       </div>
       <iframe
+        key={versaoPainel}
         src="/dea/painel"
         title="Painel DEA — Exercícios Anteriores"
         className="flex-1 w-full border-0"
