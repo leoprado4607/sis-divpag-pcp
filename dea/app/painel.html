@@ -978,7 +978,8 @@ function renderBadges(){
 document.getElementById('notaRegra').innerHTML =
   'Reúne protocolos do <b>mesmo nome</b>, <b>mesmo Prec-cp</b> e <b>mesmo Nr BI</b> (desconsiderados os '+
   'zeros à esquerda), no <b>mesmo ano</b>, qualquer que seja o valor — o padrão de um processo rejeitado, '+
-  'corrigido e relançado. Os que atravessam a virada do ano estão na aba <b>Entre anos</b>. '+
+  'corrigido e relançado. Quem tem <b>um único protocolo</b> também aparece, como grupo de 1. '+
+  'Os que atravessam a virada do ano estão na aba <b>Entre anos</b>. '+
   'Aqui ficam só os grupos <b>encerrados sem pagamento</b>: nenhum protocolo foi pago e nenhum segue em curso — '+
   'todos foram rejeitados/restituídos ou excluídos pelo operador. Se algum protocolo do grupo ainda pode ser aprovado '+
   '(aguardando análise, aprovado aguardando pagamento, aguardando envio pela DAP, homologado etc.), o grupo está na aba '+
@@ -990,7 +991,7 @@ document.getElementById('notaRegra').innerHTML =
 
 document.getElementById('notaCP').innerHTML =
   'Mesmo critério de agrupamento da aba <b>DEA encerrado sem pagamento</b> (mesmo nome, Prec-cp e Nr BI, no mesmo ano, '+
-  'qualquer valor), mas aqui ficam os grupos sem pagamento em que <b>ao menos um protocolo ainda está em curso</b> — '+
+  'qualquer valor, inclusive quem tem um único protocolo), mas aqui ficam os grupos sem pagamento em que <b>ao menos um protocolo ainda está em curso</b> — '+
   'protocolado e aguardando análise ou documentação, analisado aguardando envio pela DAP ou homologação, homologado, '+
   'aprovado aguardando pagamento, pagamento autorizado ou processado. Ainda há chance de o crédito sair: acompanhe até o pagamento. '+
   'Grupos em que algum protocolo foi pago não aparecem aqui. '+
@@ -1070,7 +1071,7 @@ function desenharGrupos(lista, pref, modo){
             ((modo==='ea' || g.anos)
               ? esc(g.anos_txt)+' &middot; '+esc(g.intervalo)+' ('+g.meses+' meses)'
               : g.ano)+
-            ' &middot; Nr BI '+esc(g.nr_bi || '???')+' &middot; '+g.qtd+' protocolos &middot; total '+
+            ' &middot; Nr BI '+esc(g.nr_bi || '???')+' &middot; '+g.qtd+(g.qtd===1?' protocolo':' protocolos')+' &middot; total '+
             esc(brl(g.valor_total))+'</span>'+
         '</span>'+
         '<span class="grupo-dir">'+
@@ -1106,6 +1107,8 @@ function explicacaoGrupo(g, modo){
     ? 'Nenhum protocolo deste grupo consta como pago, mas ao menos um ainda está em curso no fluxo do CPEx — o crédito ainda pode sair. Acompanhe até o pagamento; se o protocolo em curso for rejeitado ou excluído, o grupo passa para "DEA encerrado sem pagamento".'
     : modo === 'eacpex'
     ? 'Nenhum protocolo deste grupo consta como pago, mas ao menos um ainda está em curso no fluxo do CPEx — o crédito ainda pode sair. O ciclo atravessa a virada do ano ('+g.intervalo+'). Se o protocolo em curso for rejeitado ou excluído, o grupo passa para "Entre anos — encerrado sem pagamento".'
+    : modo === 'ano' && g.status === 'risco' && g.qtd === 1
+    ? 'Protocolo único deste nome, Prec-cp e Nr BI no ano: foi rejeitado/restituído e não há pagamento nem nova tentativa em curso. Confira se o crédito foi relançado ou se segue pendente.'
     : modo === 'ano' && g.status === 'risco'
     ? 'Nenhum protocolo deste grupo consta como pago e nenhum segue em curso: as tentativas foram rejeitadas/restituídas (ou excluídas) e a correção não gerou pagamento. É o caso que exige conferência: o crédito segue pendente.'
     : modo === 'ea' && g.status === 'risco'
@@ -1958,7 +1961,7 @@ function relGrupo(g, modo){
     ((modo === 'ea' || g.anos)
       ? esc(g.anos_txt)+' · '+esc(g.intervalo)+' ('+g.meses+' meses)'
       : esc(g.ano))+
-    ' · '+esc(g.segmento||'')+' · Nr BI '+esc(g.nr_bi || '???')+' · '+g.qtd+' protocolos · total '+
+    ' · '+esc(g.segmento||'')+' · Nr BI '+esc(g.nr_bi || '???')+' · '+g.qtd+(g.qtd===1?' protocolo':' protocolos')+' · total '+
     esc(brl(g.valor_total));
 
   return '<article class="rel-grupo '+cls+'">'+
@@ -2022,7 +2025,7 @@ document.getElementById('g-pdf').addEventListener('click', function(){
   abrirRelatorio(
     relCapa('DEA encerrado sem pagamento',
       'Protocolos do mesmo nome, Prec-cp e Nr BI, no mesmo ano, qualquer que seja o valor '+
-      '— o padrão de um processo rejeitado, corrigido e relançado. '+
+      '— o padrão de um processo rejeitado, corrigido e relançado —, inclusive quem tem um único protocolo. '+
       'Constam só os grupos em que nenhum protocolo foi pago e nenhum segue em curso: todos '+
       'rejeitados/restituídos ou excluídos pelo operador.',
       [['Grupos no relatório', num(lista.length)],
@@ -2040,8 +2043,8 @@ document.getElementById('gc-pdf').addEventListener('click', function(){
   var lista = cpexFiltrados();
   abrirRelatorio(
     relCapa('DEA pendente de análise CPEx',
-      'Protocolos do mesmo nome, Prec-cp e Nr BI, no mesmo ano, qualquer que seja o valor, '+
-      'sem pagamento e com ao menos um protocolo ainda em curso no fluxo do CPEx — o crédito '+
+      'Protocolos do mesmo nome, Prec-cp e Nr BI, no mesmo ano, qualquer que seja o valor '+
+      '(inclusive quem tem um único protocolo), sem pagamento e com ao menos um protocolo ainda em curso no fluxo do CPEx — o crédito '+
       'ainda pode sair.',
       [['Grupos no relatório', num(lista.length)],
        ['Protocolos', num(lista.reduce(function(a,g){ return a+g.qtd; }, 0))],

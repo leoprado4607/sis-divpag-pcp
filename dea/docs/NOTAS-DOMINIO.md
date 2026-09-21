@@ -57,8 +57,18 @@ dentro de grupos, refaça essa medição** — ali ele decide se um grupo é
 ## A análise principal: DEA pendente (antes "Prec-cp repetido")
 
 **Regra vigente desde 21/09/2026, por pedido do usuário:** mesmo **nome** +
-mesmo **Prec-cp** + mesmo **Nr BI** + mesmo ano + 2 ou mais protocolos,
-**qualquer que seja o valor** (a referência de R$ 50,00 deixou de agrupar).
+mesmo **Prec-cp** + mesmo **Nr BI** + mesmo ano, **qualquer que seja o
+valor** (a referência de R$ 50,00 deixou de agrupar).
+
+**Protocolo único também entra (pedido do usuário, 21/09/2026):** até então só
+chaves com 2 ou mais protocolos formavam grupo; agora o nome/Prec-cp com **um
+único protocolo** vira grupo de 1 (`agrupar_repetidos` não descarta mais
+`len < 2`). Vale para todas as abas de grupos. Na prática afeta só as abas de
+ano único ("DEA encerrado sem pagamento" e "DEA pendente de análise CPEx"):
+um protocolo só tem um ano, então nunca cai em "Entre anos" nem em "Pago em
+outro ano". Protocolo único pago fica de fora, como qualquer grupo pago. As
+contagens `grupos_*` de `agregados` (e o `risco` do Histórico) passam a
+incluir esses grupos — o salto no número na primeira rodada é esperado.
 
 - **Nr BI** comparado sem espaços, em maiúsculas e **sem zero à esquerda** em
   cada número (`norm_bi`): "045/2026" = "45/2026", "BI 007" = "BI7".

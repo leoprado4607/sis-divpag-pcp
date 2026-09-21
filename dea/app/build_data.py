@@ -431,7 +431,7 @@ def analisar_homologacao(linhas, processos, anterior, data_ref):
 
 
 # --------------------------------------------------------------------------
-# Análise principal "DEA pendente": mesmo nome + Prec-cp + Nr BI, 2+ protocolos
+# Análise principal "DEA pendente": mesmo nome + Prec-cp + Nr BI, 1+ protocolos
 # --------------------------------------------------------------------------
 
 def norm_bi(s):
@@ -459,8 +459,10 @@ def chave_grupo(p):
 def agrupar_repetidos(processos):
     """
     Devolve (mesmo_ano, entre_anos): listas de grupos (listas de processos)
-    com 2+ protocolos na mesma chave. A chave que atravessa a virada do ano vai
-    INTEIRA para "Entre anos" e não aparece na tela principal.
+    por chave. Regra do usuário (21/09/2026): o nome/Prec-cp com UM único
+    protocolo também forma grupo (antes exigia 2+). A chave que atravessa a
+    virada do ano vai INTEIRA para "Entre anos" e não aparece na tela
+    principal; grupo de um protocolo só tem um ano e fica sempre em mesmo_ano.
     """
     por_chave = defaultdict(list)
     for p in processos:
@@ -469,8 +471,6 @@ def agrupar_repetidos(processos):
             por_chave[k].append(p)
     mesmo_ano, entre_anos = [], []
     for itens in por_chave.values():
-        if len(itens) < 2:
-            continue
         (entre_anos if len({i["ano"] for i in itens}) > 1 else mesmo_ano).append(itens)
     return mesmo_ano, entre_anos
 
@@ -483,8 +483,8 @@ def _faixa_valores(g):
 def analisar_grupos(processos):
     """
     Regra do usuário:
-      mesmo nome + mesmo Prec-cp + mesmo Nr BI + mesmo ano + 2 ou mais protocolos
-      (qualquer valor).
+      mesmo nome + mesmo Prec-cp + mesmo Nr BI + mesmo ano, qualquer valor.
+      Desde 21/09/2026 inclui o protocolo único (grupo de 1).
       - se NENHUM do grupo está Pago  -> RISCO (rejeitado e ainda pendente)
       - se ALGUM está Pago            -> RESOLVIDO (corrigido e pago)
     A situação considerada é a da aba Acompanhamento; quando o protocolo não
