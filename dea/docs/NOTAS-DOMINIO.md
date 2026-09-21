@@ -77,8 +77,8 @@ selos de contagem no cabeçalho do grupo contam **só a situação da aba
 Acompanhamento**; protocolos sem linha lá seguem no selo "aguardando CPEx". A
 classificação risco/atenção/resolvido (veredito e contador da aba) não mudou.
 
-`TOLERANCIA_VALOR` (R$ 50) continua existindo, mas só para localizar pagamento
-de valor equivalente em outro ano (aba "Pago em outro ano").
+Não há mais referência de valor em nenhuma aba de grupos: `TOLERANCIA_VALOR` (R$ 50)
+foi removida em 21/09/2026 (ver "Pago em outro ano").
 
 A primeira execução sob a regra nova **não foi medida contra os dados reais**
 (o ambiente onde foi feita não tinha a planilha). Na próxima atualização,
@@ -106,6 +106,11 @@ demais (amplitude de centavos) para a diferença importar.
 
 ## Regra do indicador "Grupos em risco"
 
+> **Superada em 21/09/2026:** com o agrupamento por nome + Prec-cp + Nr BI não
+> há mais reclassificação por pagamento em outro ano (ver "Pago em outro ano");
+> `grupos_risco` passou a ser igual a `grupos_risco_regra_ano`. O texto abaixo é
+> a regra anterior.
+
 **O indicador conta apenas os grupos que ainda não foram pagos em ano algum.**
 Depois da classificação acima, `marcar_pagamento_outro_ano()` reclassifica para
 `resolvido` (com `resolvido_por = "ano_posterior"`) todo grupo sem pagamento no
@@ -127,10 +132,51 @@ outubro volta corrigida em janeiro. A regra "mesmo ano" deixava esses casos
 invisíveis. A aba "Entre anos" aplica o mesmo critério da tela principal **sem a
 trava do ano** e mostra só os grupos que atravessam a virada (os de ano único ficam na
 tela principal). Desde 21/09/2026 o critério é nome + Prec-cp + Nr BI (ver acima);
-antes era o de valor (R$ 50). Esta aba manteve os filtros de situação do grupo. Retrato de 16/09/2026: 7 grupos em risco, 23 protocolos,
-7 Prec-cp, R$ 56.642,52 sem pagamento.
+antes era o de valor (R$ 50).
+
+Também desde 21/09/2026, por pedido do usuário:
+
+- **Grupo entre anos com algum protocolo pago sai desta aba e vai para "Pago em
+  outro ano"** (`separar_pagos_entre_anos`, campo `origem = "entre_anos"`). Aqui
+  ficam só os sem pagamento (risco ou atenção). O `pago_fora` desses grupos é
+  montado com os protocolos pagos do próprio grupo; o sentido compara o ano do
+  pagamento com o das tentativas não pagas: **posterior** (pago depois de todas),
+  **anterior** (antes de todas) ou **misto** (tentativas antes e depois).
+- Saíram os filtros de situação do grupo; entraram os filtros de **ano** (casa
+  com qualquer ano que o grupo atravessa) e de **protocolo**.
+- Os selos de contagem contam só a situação do Acompanhamento (igual a "DEA
+  pendente").
+
+Retrato de 16/09/2026, pela regra anterior (valor, R$ 50): 7 grupos em risco,
+23 protocolos, 7 Prec-cp, R$ 56.642,52 sem pagamento.
 
 ## Aba "Pago em outro ano"
+
+**Regra vigente desde 21/09/2026, por pedido do usuário:** a aba segue o
+critério de "DEA pendente" (mesmo nome + Prec-cp + Nr BI, qualquer valor) e é
+formada **só** pelos grupos que atravessam a virada do ano e têm algum protocolo
+pago (`separar_pagos_entre_anos`). "Entre anos" fica só com os não pagos.
+
+Consequência que precisa ficar clara: **acabou a busca por pagamento de valor
+parecido (R$ 50) do mesmo Prec-cp em outro ano.** Pela chave nova, um pagamento
+em outro ano com o mesmo nome, Prec-cp e Nr BI já faz o grupo atravessar a
+virada; pagamento com **outro** Nr BI é outro processo e não conta. Por isso:
+
+- `TOLERANCIA_VALOR` foi removida do `build_data.py` (e o `verificar_pacote.py`
+  passou a conferir a ausência dela);
+- `marcar_pagamento_outro_ano()` não reclassifica mais nada — deixou de existir
+  o "resolvido por pagamento em ano posterior" em "DEA pendente", e
+  `grupos_risco` = `grupos_risco_regra_ano`;
+- o sentido (`posterior` / `anterior` / `misto`) compara o ano do pagamento com o
+  das tentativas não pagas do próprio grupo.
+
+Na tela saíram os filtros "Ano posterior" / "Ano anterior"; entraram **ano**
+(qualquer ano que o grupo atravessa) e **protocolo**. O contador da aba passou a
+mostrar o total de grupos. Os selos contam só a situação do Acompanhamento.
+
+O texto a seguir descreve a regra anterior, mantido como histórico.
+
+### Regra anterior (até 20/09/2026)
 
 Grupos que **não** tiveram pagamento no próprio ano, mas cujo Prec-cp registra
 pagamento de valor equivalente (mesma tolerância de R$ 50) em **ano diferente**.

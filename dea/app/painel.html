@@ -526,16 +526,16 @@ body.modo-relatorio .rodape{display:none !important}
 
     <div class="controles" style="margin-top:var(--s4)">
       <div class="campo">
-        <span class="rotulo" id="lbl-estatus">Situação do grupo</span>
-        <div class="chips" role="group" aria-labelledby="lbl-estatus">
-          <button class="chip" id="e-risco" data-st="risco" aria-pressed="true" type="button">Em risco</button>
-          <button class="chip" id="e-atencao" data-st="atencao" aria-pressed="true" type="button">Atenção</button>
-          <button class="chip" id="e-resolvido" data-st="resolvido" aria-pressed="false" type="button">Resolvidos</button>
-        </div>
+        <label for="e-ano">Ano</label>
+        <select id="e-ano"><option value="">Todos</option></select>
       </div>
       <div class="campo" style="flex:1 1 220px">
         <label for="e-busca">Nome ou Prec-cp</label>
         <input id="e-busca" type="search" placeholder="ex.: 359172131" autocomplete="off">
+      </div>
+      <div class="campo" style="flex:0 1 180px">
+        <label for="e-protocolo">Protocolo</label>
+        <input id="e-protocolo" type="search" inputmode="numeric" placeholder="ex.: 454407" autocomplete="off">
       </div>
       <button class="btn secundario" id="e-limpar" type="button">Limpar</button>
       <button class="btn" id="e-pdf" type="button">Relatório PDF</button>
@@ -554,15 +554,16 @@ body.modo-relatorio .rodape{display:none !important}
 
     <div class="controles" style="margin-top:var(--s4)">
       <div class="campo">
-        <span class="rotulo" id="lbl-pfsent">Momento do pagamento</span>
-        <div class="chips" role="group" aria-labelledby="lbl-pfsent">
-          <button class="chip" id="pf-posterior" aria-pressed="true" type="button">Ano posterior</button>
-          <button class="chip" id="pf-anterior" aria-pressed="true" type="button">Ano anterior</button>
-        </div>
+        <label for="pf-ano">Ano</label>
+        <select id="pf-ano"><option value="">Todos</option></select>
       </div>
       <div class="campo" style="flex:1 1 220px">
         <label for="pf-busca">Nome ou Prec-cp</label>
         <input id="pf-busca" type="search" placeholder="ex.: 346157275" autocomplete="off">
+      </div>
+      <div class="campo" style="flex:0 1 180px">
+        <label for="pf-protocolo">Protocolo</label>
+        <input id="pf-protocolo" type="search" inputmode="numeric" placeholder="ex.: 454407" autocomplete="off">
       </div>
       <button class="btn secundario" id="pf-limpar" type="button">Limpar</button>
       <button class="btn" id="pf-pdf" type="button">Relatório PDF</button>
@@ -900,7 +901,7 @@ function renderBadges(){
   document.getElementById('c-entreanos').textContent =
     num(V.EA.filter(function(g){return g.status==='risco';}).length);
   document.getElementById('c-pagofora').textContent =
-    num(V.PF.filter(function(g){return g.pago_fora.sentido==='posterior';}).length);
+    num(V.PF.length);
   document.getElementById('c-diff').textContent = V.DIFF.disponivel ? num(V.DIFF.total) : '—';
   document.getElementById('c-fila').textContent =
     V.FILA.disponivel ? num(V.FILA.total) : '—';
@@ -921,31 +922,34 @@ document.getElementById('notaRegra').innerHTML =
   'corrigido e relançado. Os que atravessam a virada do ano estão na aba <b>Entre anos</b>. '+
   '<b>Em risco</b>: nenhum protocolo do grupo foi pago e ainda há processo vivo. '+
   '<b>Atenção</b>: nenhum pago, todos excluídos pelo operador. '+
-  '<b>Resolvido</b>: um dos protocolos foi pago, os demais foram as tentativas corrigidas — '+
-  'inclui os grupos cujo crédito saiu em <b>ano posterior</b> (esses deixam de contar como risco; '+
-  'veja a aba "Pago em outro ano"). '+
+  '<b>Resolvido</b>: um dos protocolos foi pago, os demais foram as tentativas corrigidas. '+
   'A situação considerada é a da aba Acompanhamento; para os processos que ainda aguardam avaliação do CPEx, vale a da aba DEA.';
 
 var gEstado = {ano:'', busca:'', protocolo:''};
 
 (function(){
   var anos = A.anos.slice().sort(function(a,b){ return b-a; });
-  var sel = document.getElementById('g-ano');
-  anos.forEach(function(a){
-    var o = document.createElement('option'); o.value = a; o.textContent = a; sel.appendChild(o);
+  ['g-ano', 'e-ano', 'pf-ano'].forEach(function(id){
+    var sel = document.getElementById(id);
+    anos.forEach(function(a){
+      var o = document.createElement('option'); o.value = a; o.textContent = a; sel.appendChild(o);
+    });
   });
 })();
 
-function gruposFiltrados(){
-  var b = semAcento(gEstado.busca).trim();
-  var pr = gEstado.protocolo.replace(/\s+/g, '');
-  return V.G.filter(function(g){
-    if(gEstado.ano && String(g.ano) !== gEstado.ano) return false;
+// Filtros comuns de "DEA pendente" e "Entre anos". No grupo entre anos, o ano
+// casa com qualquer um dos anos que ele atravessa.
+function filtrarGrupos(lista, est){
+  var b = semAcento(est.busca).trim();
+  var pr = est.protocolo.replace(/\s+/g, '');
+  return lista.filter(function(g){
+    if(est.ano && (g.anos || [g.ano]).map(String).indexOf(est.ano) === -1) return false;
     if(b && g._busca.indexOf(b) === -1) return false;
     if(pr && !g._protos.some(function(p){ return p.indexOf(pr) !== -1; })) return false;
     return true;
   });
 }
+function gruposFiltrados(){ return filtrarGrupos(V.G, gEstado); }
 
 // Contagem por situação da aba ACOMPANHAMENTO (não a efetiva, que mistura DEA e
 // Acompanhamento). Os protocolos sem linha lá vão no selo "aguardando CPEx".
@@ -977,7 +981,7 @@ function desenharGrupos(lista, pref, modo){
     var cls = g.status, verd = VER[g.status];
     if(modo === 'pf'){
       cls  = post ? 'resolvido' : 'atencao';
-      verd = post ? 'Pago em '+esc(pf.anos_txt) : 'Pagamento anterior';
+      verd = (post || (g.origem === 'entre_anos' && pf.sentido === 'misto')) ?'Pago em '+esc(pf.anos_txt) : 'Pagamento anterior';
     } else if(g.resolvido_por === 'ano_posterior'){
       // saiu do risco porque o crédito foi pago num ano seguinte
       verd = 'Pago em '+esc(pf.anos_txt);
@@ -990,7 +994,7 @@ function desenharGrupos(lista, pref, modo){
         '<span class="grupo-id">'+
           '<span class="grupo-nome">'+esc(g.nomes.join(' / ') || '(sem nome)')+'</span>'+
           '<span class="grupo-meta">Prec-cp '+esc(g.prec_cp)+' &middot; '+
-            (modo==='ea'
+            ((modo==='ea' || g.anos)
               ? esc(g.anos_txt)+' &middot; '+esc(g.intervalo)+' ('+g.meses+' meses)'
               : g.ano)+
             ' &middot; Nr BI '+esc(g.nr_bi || '???')+' &middot; '+g.qtd+' protocolos &middot; total '+
@@ -1037,6 +1041,15 @@ function explicacaoGrupo(g, modo){
     expl = pfx.sentido === 'posterior'
       ? 'Os protocolos abaixo não foram pagos em '+g.ano+', mas o mesmo Prec-cp registra pagamento de valor equivalente em '+pfx.anos_txt+'. O crédito saiu: as tentativas de '+g.ano+' foram as rejeitadas antes do acerto. Este grupo aparece como "em risco" na tela principal apenas porque a regra ali confina a busca ao ano.'
       : 'O pagamento de valor equivalente é ANTERIOR ('+pfx.anos_txt+') às tentativas de '+g.ano+'. Isso não comprova quitação destes protocolos: um pagamento que veio antes costuma se referir a outra dívida, de outro período, com valor por acaso parecido. Trate este grupo como pendência até conferir a competência de cada processo.';
+    if(g.origem === 'entre_anos'){
+      // grupo de mesmo nome, Prec-cp e Nr BI que atravessa a virada do ano e teve pagamento
+      expl = 'Protocolos do mesmo nome, Prec-cp e Nr BI que atravessam a virada do ano ('+g.anos_txt+'), com pagamento em '+pfx.anos_txt+'. '+
+        (pfx.sentido === 'posterior'
+          ? 'O pagamento veio depois das tentativas não pagas: o crédito saiu e o grupo deixa de ser pendência.'
+          : pfx.sentido === 'anterior'
+          ? 'O pagamento é ANTERIOR às tentativas não pagas, o que não comprova quitação delas — confira a competência de cada processo.'
+          : 'Há tentativas não pagas antes e depois do pagamento — confira se as posteriores se referem ao mesmo crédito.');
+    }
   }
   if(g.incerto) expl += ' Observação: '+g.sem_acomp+' protocolo(s) deste grupo ainda não foram avaliados, aprovados/rejeitados ou homologados pelo CPEx — por isso não constam na aba Acompanhamento, e a situação exibida é a registrada na aba DEA, que é a vigente para eles.';
   return expl;
@@ -1048,7 +1061,7 @@ function corpoGrupo(g, modo){
     return '<tr>'+
       '<td class="mono">'+esc(p.protocolo)+'</td>'+
       '<td class="mono">'+esc(p.data)+'</td>'+
-      (modo==='ea' ? '<td class="mono">'+esc(p.ano)+'</td>' : '')+
+      ((modo==='ea' || g.anos) ? '<td class="mono">'+esc(p.ano)+'</td>' : '')+
       '<td class="num">'+esc(p.valor_fmt)+'</td>'+
       '<td>'+esc(p.nr_bi || '???')+'</td>'+
       '<td><span class="selo '+esc(p.sit_dea_classe)+'">'+esc(p.sit_dea)+'</span></td>'+
@@ -1060,7 +1073,8 @@ function corpoGrupo(g, modo){
   }).join('');
 
   var extraPF = '';
-  if(g.pago_fora && (modo === 'pf' || g.pago_fora.sentido === 'posterior')){
+  // no grupo vindo de "Entre anos" o protocolo pago já está na tabela do próprio grupo
+  if(g.pago_fora && g.origem !== 'entre_anos' && (modo === 'pf' || g.pago_fora.sentido === 'posterior')){
     extraPF = '<p class="rotulo" style="margin:var(--s4) 0 var(--s2)">Pagamento localizado em outro ano</p>'+
       '<div class="rolagem"><table class="tbl-interna"><thead><tr>'+
         '<th scope="col">Protocolo</th><th scope="col">Data</th><th scope="col">Ano</th>'+
@@ -1081,7 +1095,7 @@ function corpoGrupo(g, modo){
   return '<p class="grupo-expl">'+esc(expl)+'</p>'+
     '<div class="rolagem"><table class="tbl-interna"><thead><tr>'+
       '<th scope="col">Protocolo</th><th scope="col">Data</th>'+
-      (modo==='ea' ? '<th scope="col">Ano</th>' : '')+'<th scope="col">Valor</th>'+
+      ((modo==='ea' || g.anos) ? '<th scope="col">Ano</th>' : '')+'<th scope="col">Valor</th>'+
       '<th scope="col">Nr BI</th><th scope="col">Situação — DEA</th>'+
       '<th scope="col">Situação — Acompanhamento</th><th scope="col">Parecer</th>'+
     '</tr></thead><tbody>'+linhas+'</tbody></table></div>' + extraPF;
@@ -1108,7 +1122,8 @@ document.getElementById('notaEA').innerHTML =
   'O ciclo rejeição → correção → relançamento não respeita o calendário: um processo rejeitado em '+
   'outubro costuma voltar corrigido em janeiro. Esta tela aplica o mesmo critério da aba '+
   '<b>DEA pendente</b> (mesmo nome, Prec-cp e Nr BI) <b>sem a trava do ano</b>, e mostra apenas os grupos que '+
-  '<b>atravessam a virada</b> — os de ano único já estão na tela principal. '+
+  '<b>atravessam a virada</b> — os de ano único já estão na tela principal. Os grupos em que algum '+
+  'protocolo foi pago ficam na aba <b>Pago em outro ano</b>. '+
   '<span id="ea-numeros"></span>';
 
 function notaEANumeros(){
@@ -1121,33 +1136,19 @@ function notaEANumeros(){
     : 'Neste recorte não há grupo em risco atravessando a virada do ano.';
 }
 
-var eEstado = {status:{risco:true, atencao:true, resolvido:false}, busca:''};
+var eEstado = {ano:'', busca:'', protocolo:''};
 
-function eaFiltrados(){
-  var b = semAcento(eEstado.busca).trim();
-  return V.EA.filter(function(g){
-    if(!eEstado.status[g.status]) return false;
-    if(b && g._busca.indexOf(b) === -1) return false;
-    return true;
-  });
-}
+function eaFiltrados(){ return filtrarGrupos(V.EA, eEstado); }
 function pintaEA(){ notaEANumeros(); desenharGrupos(eaFiltrados(), 'e', 'ea'); }
 
-['risco','atencao','resolvido'].forEach(function(st){
-  var b = document.getElementById('e-'+st);
-  b.addEventListener('click', function(){
-    eEstado.status[st] = !eEstado.status[st];
-    b.setAttribute('aria-pressed', eEstado.status[st]?'true':'false');
-    pintaEA();
-  });
-});
+document.getElementById('e-ano').addEventListener('change', function(){ eEstado.ano = this.value; pintaEA(); });
 document.getElementById('e-busca').addEventListener('input', function(){ eEstado.busca = this.value; pintaEA(); });
+document.getElementById('e-protocolo').addEventListener('input', function(){ eEstado.protocolo = this.value; pintaEA(); });
 document.getElementById('e-limpar').addEventListener('click', function(){
-  eEstado = {status:{risco:true, atencao:true, resolvido:false}, busca:''};
-  ['risco','atencao','resolvido'].forEach(function(st){
-    document.getElementById('e-'+st).setAttribute('aria-pressed', eEstado.status[st]?'true':'false');
-  });
+  eEstado = {ano:'', busca:'', protocolo:''};
+  document.getElementById('e-ano').value = '';
   document.getElementById('e-busca').value = '';
+  document.getElementById('e-protocolo').value = '';
   pintaEA();
 });
 pintaEA();
@@ -1156,36 +1157,26 @@ pintaEA();
    1c. PAGO EM OUTRO ANO
    ======================================================================= */
 document.getElementById('notaPF').innerHTML =
-  'Grupos da tela <b>DEA pendente</b> que não tiveram pagamento no próprio ano, '+
-  'mas cujo Prec-cp registra pagamento de valor equivalente (até <b>'+brl(META.tolerancia_valor)+
-  '</b>) em <b>outro ano</b>. '+
+  'Grupos de protocolos do <b>mesmo nome</b>, <b>mesmo Prec-cp</b> e <b>mesmo Nr BI</b> (qualquer que seja o '+
+  'valor) que <b>atravessam a virada do ano</b> e em que <b>algum protocolo foi pago</b>. Os que não têm '+
+  'pagamento ficam na aba <b>Entre anos</b>. '+
   '<span id="pf-numeros"></span>';
 
 function notaPFNumeros(){
   var post = V.PF.filter(function(g){ return g.pago_fora.sentido === 'posterior'; });
-  var ant  = V.PF.filter(function(g){ return g.pago_fora.sentido !== 'posterior'; });
-  var bruto = V.G.filter(function(g){ return g.status_ano === 'risco'; }).length;
-  var liq   = V.G.filter(function(g){ return g.status === 'risco'; }).length;
+  var ant  = V.PF.filter(function(g){ return g.pago_fora.sentido === 'anterior'; });
+  var mist = V.PF.length - post.length - ant.length;
   document.getElementById('pf-numeros').innerHTML =
-    '<b>Ano posterior</b> ('+num(post.length)+' grupos, '+
-    num(post.reduce(function(t,g){return t+g.qtd;},0))+' protocolos): o processo foi rejeitado e o '+
-    'crédito saiu depois — deixa de ser pendência. <b>Ano anterior</b> ('+num(ant.length)+'): o pagamento '+
-    'veio ANTES das tentativas, o que em geral indica outra dívida de valor parecido e <b>não</b> comprova '+
-    'quitação — esses <b>continuam</b> no risco. Pela regra do mesmo ano haveria '+num(bruto)+
-    ' grupos em risco; excluídos os '+num(post.length)+' já pagos depois, o indicador mostra <b>'+num(liq)+'</b>.';
+    '<b>Pagamento posterior</b> ('+num(post.length)+'): veio depois de todas as tentativas não pagas — '+
+    'o crédito saiu e o grupo deixa de ser pendência. <b>Pagamento anterior</b> ('+num(ant.length)+'): '+
+    'veio antes das tentativas não pagas e <b>não</b> comprova a quitação delas.'+
+    (mist ? ' <b>Misto</b> ('+num(mist)+'): há tentativas não pagas antes e depois do pagamento.' : '');
 }
 
-var pfEstado = {posterior:true, anterior:true, busca:''};
+var pfEstado = {ano:'', busca:'', protocolo:''};
 
 function pfFiltrados(){
-  var b = semAcento(pfEstado.busca).trim();
-  return V.PF.filter(function(g){
-    var post = g.pago_fora.sentido === 'posterior';
-    if(post && !pfEstado.posterior) return false;
-    if(!post && !pfEstado.anterior) return false;
-    if(b && g._busca.indexOf(b) === -1) return false;
-    return true;
-  }).sort(function(x,y){
+  return filtrarGrupos(V.PF, pfEstado).sort(function(x,y){
     var px = x.pago_fora.sentido === 'posterior' ? 0 : 1;
     var py = y.pago_fora.sentido === 'posterior' ? 0 : 1;
     return px - py || y.ano - x.ano;
@@ -1193,21 +1184,14 @@ function pfFiltrados(){
 }
 function pintaPF(){ notaPFNumeros(); desenharGrupos(pfFiltrados(), 'pf', 'pf'); }
 
-[['pf-posterior','posterior'],['pf-anterior','anterior']].forEach(function(t){
-  var b = document.getElementById(t[0]);
-  b.addEventListener('click', function(){
-    pfEstado[t[1]] = !pfEstado[t[1]];
-    b.setAttribute('aria-pressed', pfEstado[t[1]]?'true':'false');
-    pintaPF();
-  });
-});
+document.getElementById('pf-ano').addEventListener('change', function(){ pfEstado.ano = this.value; pintaPF(); });
 document.getElementById('pf-busca').addEventListener('input', function(){ pfEstado.busca = this.value; pintaPF(); });
+document.getElementById('pf-protocolo').addEventListener('input', function(){ pfEstado.protocolo = this.value; pintaPF(); });
 document.getElementById('pf-limpar').addEventListener('click', function(){
-  pfEstado = {posterior:true, anterior:true, busca:''};
-  ['pf-posterior','pf-anterior'].forEach(function(id){
-    document.getElementById(id).setAttribute('aria-pressed','true');
-  });
+  pfEstado = {ano:'', busca:'', protocolo:''};
+  document.getElementById('pf-ano').value = '';
   document.getElementById('pf-busca').value = '';
+  document.getElementById('pf-protocolo').value = '';
   pintaPF();
 });
 pintaPF();
@@ -1781,11 +1765,11 @@ function riscoDe(lista){ return lista.filter(function(g){ return g.status === 'r
 // parágrafo repetido dezenas de vezes.
 function relLegenda(modo){
   var itens = modo === 'pf'
-    ? [['resolvido','Pago em ano posterior','O processo foi rejeitado num ano e o crédito de valor equivalente saiu em ano seguinte. O grupo deixa de ser pendência.'],
-       ['atencao','Pagamento anterior','O pagamento de valor equivalente é ANTERIOR às tentativas rejeitadas. Não comprova quitação: costuma se referir a outra dívida, de outro período, com valor por acaso parecido. Continua no risco.']]
+    ? [['resolvido','Pagamento posterior','O pagamento veio depois de todas as tentativas não pagas do grupo: o crédito saiu e o grupo deixa de ser pendência.'],
+       ['atencao','Pagamento anterior ou misto','O pagamento veio antes de alguma tentativa não paga do grupo. Não comprova a quitação dessas tentativas: confira a competência de cada processo.']]
     : [['risco','Em risco','Nenhum protocolo do grupo consta como pago e ainda há processo em aberto. É o caso que exige conferência: se as tentativas foram rejeitadas e a correção não gerou pagamento, o crédito segue pendente.'],
        ['atencao','Atenção','Nenhum pago e todos excluídos pelo operador. Não há pagamento pendente em curso, mas também não houve pagamento — confira se o direito foi abandonado por engano.'],
-       ['resolvido','Resolvido','Um dos protocolos do grupo foi pago; os demais são as tentativas rejeitadas e corrigidas. Inclui os grupos cujo crédito saiu em ano posterior.']];
+       ['resolvido','Resolvido','Um dos protocolos do grupo foi pago; os demais são as tentativas rejeitadas e corrigidas.']];
   itens.push(['','Aguardando CPEx','Protocolo ainda não avaliado, aprovado/rejeitado ou homologado pelo CPEx. Por isso não consta na aba Acompanhamento, e a situação vigente para ele é a da aba DEA.']);
   return '<section class="rel-legenda"><p class="rel-sublegenda">Como ler este relatório</p><dl>'+
     itens.map(function(i){
@@ -1816,15 +1800,15 @@ function relCapa(tit, sub, inds, filtros){
 }
 
 function relTabela(g, modo){
-  var cols = modo === 'ea' ? 7 : 6;
-  var cab = '<tr><th>Protocolo</th><th>Data</th>'+(modo==='ea'?'<th>Ano</th>':'')+
+  var cols = (modo === 'ea' || g.anos) ? 7 : 6;
+  var cab = '<tr><th>Protocolo</th><th>Data</th>'+((modo==='ea' || g.anos)?'<th>Ano</th>':'')+
     '<th class="num">Valor</th><th>Nr BI</th><th>Situação (DEA)</th>'+
     '<th>Situação (Acomp.)</th></tr>';
   var linhas = g.itens.map(function(p){
     var tr = '<tr>'+
       '<td class="mono">'+esc(p.protocolo)+'</td>'+
       '<td class="mono">'+esc(p.data)+'</td>'+
-      (modo==='ea' ? '<td class="mono">'+esc(p.ano)+'</td>' : '')+
+      ((modo==='ea' || g.anos) ? '<td class="mono">'+esc(p.ano)+'</td>' : '')+
       '<td class="num">'+esc(p.valor_fmt)+'</td>'+
       '<td>'+esc(p.nr_bi || '???')+'</td>'+
       '<td>'+selo(p.sit_dea_classe, p.sit_dea)+'</td>'+
@@ -1859,7 +1843,7 @@ function relGrupo(g, modo){
   var cls = g.status, verd = VEREDITO[g.status];
   if(modo === 'pf'){
     cls  = post ? 'resolvido' : 'atencao';
-    verd = post ? 'Pago em '+pf.anos_txt : 'Pagamento anterior';
+    verd = (post || (g.origem === 'entre_anos' && pf.sentido === 'misto')) ? 'Pago em '+pf.anos_txt : 'Pagamento anterior';
   } else if(g.resolvido_por === 'ano_posterior'){
     verd = 'Pago em '+pf.anos_txt;
   }
@@ -1867,7 +1851,7 @@ function relGrupo(g, modo){
   if(g.incerto)       cont.push('<span class="selo-incerto">'+g.sem_acomp+' aguardando CPEx</span>');
 
   var meta = 'Prec-cp '+esc(g.prec_cp)+' · '+
-    (modo === 'ea'
+    ((modo === 'ea' || g.anos)
       ? esc(g.anos_txt)+' · '+esc(g.intervalo)+' ('+g.meses+' meses)'
       : esc(g.ano))+
     ' · '+esc(g.segmento||'')+' · Nr BI '+esc(g.nr_bi || '???')+' · '+g.qtd+' protocolos · total '+
@@ -1882,7 +1866,7 @@ function relGrupo(g, modo){
     '</div>'+
     '<div class="rel-grupo-corpo">'+
       relTabela(g, modo)+
-      ((modo === 'pf' || post) ? relPagoFora(g) : '')+
+      ((g.origem !== 'entre_anos' && (modo === 'pf' || post)) ? relPagoFora(g) : '')+
     '</div></article>';
 }
 
@@ -1960,7 +1944,7 @@ document.getElementById('e-pdf').addEventListener('click', function(){
        ['Protocolos', num(lista.reduce(function(a,g){ return a+g.qtd; }, 0))],
        ['Em risco no recorte', num(risco.length)],
        ['Valor em risco', brl(valorVivo(risco))]],
-      relFiltros(eEstado, false))+
+      relFiltros(eEstado, true))+
     relLegenda('ea')+
     '<section class="rel-secao"><h2 class="rel-secao-tit">Grupos</h2>'+
     relLista(lista, 'ea', 'Nenhum grupo corresponde aos filtros.')+'</section>');
@@ -1969,25 +1953,19 @@ document.getElementById('e-pdf').addEventListener('click', function(){
 /* ---- 3. Pago em outro ano ---- */
 document.getElementById('pf-pdf').addEventListener('click', function(){
   var lista = pfFiltrados();
-  var post = V.PF.filter(function(g){ return g.pago_fora.sentido === 'posterior'; });
-  var ant  = V.PF.filter(function(g){ return g.pago_fora.sentido !== 'posterior'; });
-  var mom = [];
-  if(pfEstado.posterior) mom.push('ano posterior');
-  if(pfEstado.anterior)  mom.push('ano anterior');
+  var post = lista.filter(function(g){ return g.pago_fora.sentido === 'posterior'; });
+  var ant  = lista.filter(function(g){ return g.pago_fora.sentido !== 'posterior'; });
   abrirRelatorio(
-    relCapa('Rejeitados num ano, pagos em outro',
-      'Grupos que não tiveram pagamento no próprio ano, mas cujo Prec-cp registra pagamento de '+
-      'valor equivalente (até '+brl(META.tolerancia_valor)+') em outro ano. Pagamento em ano '+
-      'posterior significa que o crédito saiu depois da rejeição e o grupo deixa de ser '+
-      'pendência. Pagamento em ano anterior não comprova quitação: costuma se referir a outra '+
-      'dívida, de outro período, com valor por acaso parecido — esses continuam no risco.',
+    relCapa('Pagos em outro ano',
+      'Grupos de protocolos do mesmo nome, Prec-cp e Nr BI, qualquer que seja o valor, que '+
+      'atravessam a virada do ano e em que algum protocolo foi pago. Pagamento posterior às '+
+      'tentativas não pagas significa que o crédito saiu e o grupo deixa de ser pendência; '+
+      'pagamento anterior a elas não comprova a quitação das tentativas seguintes.',
       [['Grupos no relatório', num(lista.length)],
-       ['Pagos em ano posterior', num(post.length)],
-       ['Pagos em ano anterior', num(ant.length)],
+       ['Pagamento posterior', num(post.length)],
+       ['Anterior ou misto', num(ant.length)],
        ['Protocolos envolvidos', num(lista.reduce(function(a,g){ return a+g.qtd; }, 0))]],
-      'Recorte deste relatório: segmento <b>'+esc(segTexto())+'</b> · momento do pagamento <b>'+
-      (mom.length ? esc(mom.join(' e ')) : 'nenhum')+'</b>'+
-      (pfEstado.busca ? ' · busca <b>'+esc(pfEstado.busca)+'</b>' : '')+'.')+
+      relFiltros(pfEstado, true))+
     relLegenda('pf')+
     '<section class="rel-secao"><h2 class="rel-secao-tit">Grupos</h2>'+
     relLista(lista, 'pf', 'Nenhum grupo corresponde aos filtros.')+'</section>');

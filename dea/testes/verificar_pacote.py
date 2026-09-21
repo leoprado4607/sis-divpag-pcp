@@ -51,7 +51,7 @@ for f in ["app/build_data.py", "app/drive_download.py", "app/atualizar.py",
 
 print("\n[3] parâmetros de negócio (não devem ter sido alterados)")
 s = open("app/build_data.py", encoding="utf-8").read()
-chk("TOLERANCIA_VALOR = 50.00" in s, "tolerância de valor = R$ 50,00")
+chk("TOLERANCIA_VALOR" not in s and "def chave_grupo" in s, "agrupamento por nome + Prec-cp + Nr BI, sem referência de valor (desde 21/09/2026)")
 chk("DIAS_ALERTA_FILA = 2" in s, "alerta da fila = 2 dias")
 chk("MAX_ENTRADAS = 400" in s, "histórico limitado a 400 execuções")
 chk("America/Sao_Paulo" in s, "fuso horário de Brasília")

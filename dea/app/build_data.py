@@ -43,10 +43,8 @@ ABAS_DEA = ["DEA 2019", "DEA 2020", "DEA 2021", "DEA 2022",
 ABA_ACOMP = "Acompanhamento"
 ABA_HOMOLOG = "Protocolos para homologação"
 
-# R$ - usada só para localizar pagamento de valor equivalente em outro ano (aba
-# "Pago em outro ano"). Desde 21/09/2026 NÃO agrupa mais os protocolos: o
-# agrupamento é por nome + Prec-cp + Nr BI (ver chave_grupo).
-TOLERANCIA_VALOR = 50.00
+# Desde 21/09/2026 não há referência de valor (antes, R$ 50): todas as abas de
+# grupos agrupam por nome + Prec-cp + Nr BI (ver chave_grupo).
 
 # Nr BI exibido no grupo quando os protocolos não trazem BI na planilha
 BI_AUSENTE = "???"
@@ -554,65 +552,20 @@ def analisar_grupos(processos):
 
 def marcar_pagamento_outro_ano(processos, grupos):
     """
-    Para cada grupo da tela "DEA pendente", procura um pagamento do MESMO Prec-cp em ANO
-    DIFERENTE, com valor a no máximo R$50 de algum protocolo do grupo.
-
-    A direção importa e não pode ser colapsada:
-      - pagamento POSTERIOR  -> o processo foi rejeitado e o crédito saiu depois.
-        O grupo deixa de ser pendência real.
-      - pagamento ANTERIOR   -> alguém já recebeu antes e depois surgiram novas
-        tentativas rejeitadas de valor parecido. Costuma ser outra dívida (outro
-        período) que por acaso tem valor próximo, e NÃO comprova quitação.
+    Até 20/09/2026 procurava, para cada grupo de "DEA pendente", pagamento do
+    mesmo Prec-cp em outro ano com valor a até R$ 50 e, se POSTERIOR, tirava o
+    grupo do risco. Regra do usuário (21/09/2026): "Pago em outro ano" também
+    agrupa por nome + Prec-cp + Nr BI, sem referência de valor. Pela mesma chave,
+    um pagamento em outro ano faz o grupo atravessar a virada: ele vai para
+    "Entre anos" e, pago, para "Pago em outro ano" (separar_pagos_entre_anos).
+    Logo nenhum grupo de ano único tem pagamento em outro ano; aqui só ficam os
+    campos que o painel e o histórico leem.
     """
-    por_prec = defaultdict(list)
-    for p in processos:
-        if p["prec_cp"]:
-            por_prec[p["prec_cp"]].append(p)
-
     for g in grupos:
-        # guarda a classificação pela regra do mesmo ano, antes de qualquer
-        # reclassificação — é ela que diz se houve pagamento no PRÓPRIO ano
         g["status_ano"] = g["status"]
         g["sem_pagto_no_ano"] = g["status"] != "resolvido"
         g["resolvido_por"] = ""
-        itens = g["itens"]
-        pagos = []
-        for q in por_prec.get(g["prec_cp"], []):
-            if q["ano"] == g["ano"] or q["valor"] is None:
-                continue
-            if q["sit_efetiva_classe"] != "pago":
-                continue
-            if any(x["valor"] is not None and abs(q["valor"] - x["valor"]) <= TOLERANCIA_VALOR + 1e-9
-                   for x in itens):
-                pagos.append(q)
-        if not pagos:
-            g["pago_fora"] = None
-            continue
-        pagos.sort(key=lambda q: (q["data_iso"] or "", q["protocolo"]))
-        anos = sorted({q["ano"] for q in pagos})
-        if all(q["ano"] > g["ano"] for q in pagos):
-            sentido = "posterior"
-        elif all(q["ano"] < g["ano"] for q in pagos):
-            sentido = "anterior"
-        else:
-            sentido = "misto"
-        g["pago_fora"] = {
-            "qtd": len(pagos),
-            "sentido": sentido,
-            "anos": anos,
-            "anos_txt": ", ".join(str(a) for a in anos),
-            "valor_fmt": fmt_brl(pagos[-1]["valor"]),
-            "itens": pagos,
-        }
-
-        # Regra do indicador "Grupos em risco": um grupo cujo crédito saiu em ano
-        # POSTERIOR não é mais pendência — sai do risco. Pagamento ANTERIOR não
-        # comprova quitação (costuma ser outra dívida de valor parecido) e fica.
-        if sentido == "posterior" and g["sem_pagto_no_ano"]:
-            g["status"] = "resolvido"
-            g["prioridade"] = 3
-            g["resolvido_por"] = "ano_posterior"
-
+        g["pago_fora"] = None
     return grupos
 
 
@@ -692,6 +645,42 @@ def analisar_grupos_entre_anos(processos):
 
     grupos.sort(key=lambda g: (g["prioridade"], -g["ano"], -g["qtd"], g["prec_cp"]))
     return grupos
+
+
+def separar_pagos_entre_anos(grupos_ea):
+    """
+    Regra do usuário (21/09/2026): grupo "Entre anos" com algum protocolo pago
+    sai de "Entre anos" e vai para "Pago em outro ano". O pagamento está no
+    próprio grupo, então `pago_fora` é montado com os protocolos pagos dele e o
+    sentido compara o ano do pagamento com o das tentativas não pagas.
+    Devolve (sem_pagamento, pagos).
+    """
+    sem_pagto, pagos = [], []
+    for g in grupos_ea:
+        pg = [i for i in g["itens"] if i["sit_efetiva_classe"] == "pago"]
+        if not pg:
+            sem_pagto.append(g)
+            continue
+        anos_pg = sorted({i["ano"] for i in pg})
+        anos_np = {i["ano"] for i in g["itens"] if i["sit_efetiva_classe"] != "pago"}
+        if anos_np and min(anos_pg) > max(anos_np):
+            sentido = "posterior"
+        elif anos_np and max(anos_pg) < min(anos_np):
+            sentido = "anterior"
+        else:
+            sentido = "misto"
+        pg.sort(key=lambda q: (q["data_iso"] or "", q["protocolo"]))
+        g["origem"] = "entre_anos"
+        g["pago_fora"] = {
+            "qtd": len(pg),
+            "sentido": sentido,
+            "anos": anos_pg,
+            "anos_txt": ", ".join(str(a) for a in anos_pg),
+            "valor_fmt": fmt_brl(pg[-1]["valor"]),
+            "itens": pg,
+        }
+        pagos.append(g)
+    return sem_pagto, pagos
 
 
 # --------------------------------------------------------------------------
@@ -918,7 +907,7 @@ def main():
 
     processos, acomp, so_acomp, duplicados, acomp_dup = ler_planilha(args.xlsx)
     grupos = marcar_pagamento_outro_ano(processos, analisar_grupos(processos))
-    grupos_ea = analisar_grupos_entre_anos(processos)
+    grupos_ea, ea_pagos = separar_pagos_entre_anos(analisar_grupos_entre_anos(processos))
     linhas_hl = ler_homologacao(args.xlsx)
 
     # ---- Homologados para lançamento -------------------------------------
@@ -938,6 +927,8 @@ def main():
 
     # grupos sem pagamento no próprio ano, mas com pagamento em outro ano
     pagos_fora = [g for g in grupos if g["pago_fora"] and g["sem_pagto_no_ano"]]
+    # ... e os grupos "Entre anos" que tiveram pagamento (regra de 21/09/2026)
+    pagos_fora += ea_pagos
     pf_post = [g for g in pagos_fora if g["pago_fora"]["sentido"] == "posterior"]
     pf_ant = [g for g in pagos_fora if g["pago_fora"]["sentido"] != "posterior"]
 
@@ -1005,7 +996,6 @@ def main():
             "data_ref": data_ref,
             "fonte": "Planilha DEA — Google Sheets",
             "organizacao": "Base Administrativa da Guarnição de Natal",
-            "tolerancia_valor": TOLERANCIA_VALOR,
             "abas": ABAS_DEA,
             "avisos": ([] if not duplicados else
                        ["%d protocolo(s) repetido(s) entre abas foram ignorados na segunda ocorrência."
@@ -1079,8 +1069,6 @@ def main():
     print("pago em outro ano ..... %d  | posterior: %d (%d protocolos)  anterior/misto: %d"
           % (agregados["pf_total"], agregados["pf_posterior"],
              agregados["pf_protocolos"], agregados["pf_anterior"]))
-    print("   risco após excluir os pagos em ano posterior: %d (pela regra do ano seriam %d)"
-          % (agregados["grupos_risco"], agregados["grupos_risco_regra_ano"]))
     print("entre anos ............ %d  | risco: %d (%d Prec-cp, %d protocolos)"
           % (len(grupos_ea), agregados["ea_risco"],
              agregados["ea_precs_risco"], agregados["ea_protocolos_risco"]))
