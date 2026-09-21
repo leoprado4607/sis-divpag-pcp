@@ -71,8 +71,14 @@ mesmo **Prec-cp** + mesmo **Nr BI** + mesmo ano + 2 ou mais protocolos,
 - Chave cujos protocolos caem em **anos diferentes** vai **inteira** para a aba
   "Entre anos" e **não** aparece nesta tela (`agrupar_repetidos`).
 
+**A aba mostra só grupos SEM pagamento** (pedido do usuário, 21/09/2026): os
+"resolvido" (algum protocolo pago) ficam de fora — só interessam os ainda não
+pagos. O filtro está no painel (`naoPago()` em `recortar()`), vale também para
+"Entre anos" e para os relatórios PDF; o pipeline continua gerando os grupos
+resolvidos no `dados.js` (e contando-os em `agregados`).
+
 Na tela, a aba perdeu os três filtros de situação do grupo (risco, atenção,
-resolvido) — todos os grupos aparecem — e ganhou o filtro por **protocolo**. Os
+resolvido) e ganhou o filtro por **protocolo**. Os
 selos de contagem no cabeçalho do grupo contam **só a situação da aba
 Acompanhamento**; protocolos sem linha lá seguem no selo "aguardando CPEx". A
 classificação risco/atenção/resolvido (veredito e contador da aba) não mudou.

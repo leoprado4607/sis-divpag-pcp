@@ -799,11 +799,14 @@ var FILA = D.homolog || {disponivel:false, motivo:'', itens:[], novos:[], saidos
 var SEG = {Veteranos:true, Pensionistas:true, Ativa:true};
 function segOK(s){ return SEG[s || 'Ativa'] !== false; }
 function porSeg(g){ return segOK(g.segmento); }
+function naoPago(g){ return g.status !== 'resolvido'; }
 var V = {};
 function recortar(){
   V.P  = P.filter(porSeg);
-  V.G  = GRUPOS.filter(porSeg);
-  V.EA = GRUPOS_EA.filter(porSeg);
+  // "DEA pendente" e "Entre anos" mostram só grupos SEM pagamento (regra do
+  // usuário, 21/09/2026): o "resolvido" (algum protocolo pago) fica de fora.
+  V.G  = GRUPOS.filter(function(g){ return porSeg(g) && naoPago(g); });
+  V.EA = GRUPOS_EA.filter(function(g){ return porSeg(g) && naoPago(g); });
   V.PF = GRUPOS_PF.filter(porSeg);
   V.HL = HOMOL.filter(porSeg);
   V.HIST = HIST.map(function(h){
@@ -911,7 +914,7 @@ document.getElementById('notaRegra').innerHTML =
   'corrigido e relançado. Os que atravessam a virada do ano estão na aba <b>Entre anos</b>. '+
   '<b>Em risco</b>: nenhum protocolo do grupo foi pago e ainda há processo vivo. '+
   '<b>Atenção</b>: nenhum pago, todos excluídos pelo operador. '+
-  '<b>Resolvido</b>: um dos protocolos foi pago, os demais foram as tentativas corrigidas. '+
+  'Grupos em que algum protocolo foi pago não aparecem aqui: esta aba mostra só o que ainda não foi pago. '+
   'A situação considerada é a da aba Acompanhamento; para os processos que ainda aguardam avaliação do CPEx, vale a da aba DEA.';
 
 var gEstado = {ano:'', busca:'', protocolo:''};
@@ -1732,8 +1735,7 @@ function relLegenda(modo){
     ? [['resolvido','Pagamento posterior','O pagamento veio depois de todas as tentativas não pagas do grupo: o crédito saiu e o grupo deixa de ser pendência.'],
        ['atencao','Pagamento anterior ou misto','O pagamento veio antes de alguma tentativa não paga do grupo. Não comprova a quitação dessas tentativas: confira a competência de cada processo.']]
     : [['risco','Em risco','Nenhum protocolo do grupo consta como pago e ainda há processo em aberto. É o caso que exige conferência: se as tentativas foram rejeitadas e a correção não gerou pagamento, o crédito segue pendente.'],
-       ['atencao','Atenção','Nenhum pago e todos excluídos pelo operador. Não há pagamento pendente em curso, mas também não houve pagamento — confira se o direito foi abandonado por engano.'],
-       ['resolvido','Resolvido','Um dos protocolos do grupo foi pago; os demais são as tentativas rejeitadas e corrigidas.']];
+       ['atencao','Atenção','Nenhum pago e todos excluídos pelo operador. Não há pagamento pendente em curso, mas também não houve pagamento — confira se o direito foi abandonado por engano.']];
   itens.push(['','Aguardando CPEx','Protocolo ainda não avaliado, aprovado/rejeitado ou homologado pelo CPEx. Por isso não consta na aba Acompanhamento, e a situação vigente para ele é a da aba DEA.']);
   return '<section class="rel-legenda"><p class="rel-sublegenda">Como ler este relatório</p><dl>'+
     itens.map(function(i){
