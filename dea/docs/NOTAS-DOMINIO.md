@@ -91,9 +91,9 @@ Na tela, a aba perdeu os três filtros de situação do grupo (risco, atenção,
 resolvido) e ganhou o filtro por **protocolo**. Os
 selos de contagem no cabeçalho do grupo contam **só a "Situação — DEA"** de
 todos os protocolos, e não há mais o selo "aguardando CPEx" (pedido do usuário,
-21/09/2026 — antes contavam só a situação do Acompanhamento). Vale para as quatro
-abas de grupos sem pagamento e para os relatórios PDF delas; "Pago em outro ano"
-continua contando pelo Acompanhamento (`contaPorDea()` no painel). A
+21/09/2026 — antes contavam só a situação do Acompanhamento). Vale para todas
+as abas de grupos, inclusive "Pago em outro ano", e para os relatórios PDF
+(`contagensDea()` no painel). A
 classificação risco/atenção/resolvido (veredito e contador da aba) não mudou.
 
 **Divisão em duas abas (pedido do usuário, 21/09/2026).** Os grupos sem
@@ -212,7 +212,7 @@ virada; pagamento com **outro** Nr BI é outro processo e não conta. Por isso:
 
 Na tela saíram os filtros "Ano posterior" / "Ano anterior"; entraram **ano**
 (qualquer ano que o grupo atravessa) e **protocolo**. O contador da aba passou a
-mostrar o total de grupos. Os selos contam só a situação do Acompanhamento.
+mostrar o total de grupos. Os selos contam só a "Situação — DEA".
 
 O texto a seguir descreve a regra anterior, mantido como histórico.
 

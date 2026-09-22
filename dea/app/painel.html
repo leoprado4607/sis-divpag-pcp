@@ -208,10 +208,6 @@ a{color:var(--verde)}
 .veredito.risco{background:var(--critico); color:#fff}
 .veredito.atencao{background:var(--alerta); color:#fff}
 .veredito.resolvido{background:var(--ok-bg); color:var(--ok); border:1px solid rgba(47,107,58,.3)}
-.selo-incerto{
-  font-size:.66rem; padding:3px 8px; background:var(--neutro-bg);
-  color:var(--ink-2); border:1px dashed var(--line-forte); white-space:nowrap;
-}
 .grupo-corpo{border-top:1px solid var(--line); padding:var(--s4); background:var(--surface-2)}
 .grupo-expl{font-size:.78rem; color:var(--ink-2); margin-bottom:var(--s3); max-width:74ch}
 /* pagamento do mesmo nome/Prec-cp fora do grupo (outro Nr BI) — 21/09/2026 */
@@ -1105,19 +1101,15 @@ function filtrarGrupos(lista, est){
 }
 function gruposFiltrados(){ return filtrarGrupos(V.G, gEstado); }
 
-// Selos de contagem do cabeçalho do grupo. Nas quatro abas de grupos sem
-// pagamento (ano, cpex, ea, eacpex) contam SÓ a "Situação — DEA", de todos os
-// protocolos (pedido do usuário, 21/09/2026). Em "Pago em outro ano" (pf) seguem
-// contando a situação do ACOMPANHAMENTO; lá os protocolos sem linha no
-// Acompanhamento vão no selo "aguardando CPEx".
-function contaPorDea(modo){ return modo !== 'pf'; }
-function contagensAcomp(g, mk, modo){
+// Selos de contagem do cabeçalho do grupo: contam SÓ a "Situação — DEA" de
+// todos os protocolos, em todas as abas de grupos e nos relatórios PDF
+// (pedido do usuário, 21/09/2026; antes contavam a situação do Acompanhamento
+// e havia o selo "aguardando CPEx").
+function contagensDea(g, mk){
   var n = {}, ordem = [['pago','pago'], ['rejeitado','rejeitado'],
                        ['andamento','em andamento'], ['excluido','excluído']];
-  var dea = contaPorDea(modo);
   g.itens.forEach(function(p){
-    var c = dea ? p.sit_dea_classe : (p.tem_acomp ? p.sit_acomp_classe : '');
-    if(c) n[c] = (n[c]||0) + 1;
+    if(p.sit_dea_classe) n[p.sit_dea_classe] = (n[p.sit_dea_classe]||0) + 1;
   });
   return ordem.filter(function(o){ return n[o[0]]; })
               .map(function(o){ return mk(o[0], n[o[0]]+' '+o[1]); });
@@ -1135,9 +1127,9 @@ function desenharGrupos(lista, pref, modo){
 
   var VER = {risco:'Em risco', atencao:'Atenção', resolvido:'Resolvido'};
   alvo.innerHTML = lista.slice(0,400).map(function(g,i){
-    var cont = contagensAcomp(g, function(cls, txt){
+    var cont = contagensDea(g, function(cls, txt){
       return '<span class="selo '+cls+'">'+esc(txt)+'</span>';
-    }, modo);
+    });
 
     var pf = g.pago_fora, post = pf && pf.sentido === 'posterior';
     var cls = g.status, verd = VER[g.status];
@@ -1170,7 +1162,6 @@ function desenharGrupos(lista, pref, modo){
         '</span>'+
         '<span class="grupo-dir">'+
           avisoPessoa+
-          ((g.incerto && !contaPorDea(modo))?'<span class="selo-incerto">'+g.sem_acomp+' aguardando CPEx</span>':'')+
           '<span class="contagens">'+cont.join('')+'</span>'+
           '<span class="veredito '+cls+'">'+verd+'</span>'+
         '</span>'+
@@ -2105,8 +2096,7 @@ function relGrupo(g, modo){
   } else if(g.resolvido_por === 'ano_posterior'){
     verd = 'Pago em '+pf.anos_txt;
   }
-  var cont = contagensAcomp(g, selo, modo);
-  if(g.incerto && !contaPorDea(modo)) cont.push('<span class="selo-incerto">'+g.sem_acomp+' aguardando CPEx</span>');
+  var cont = contagensDea(g, selo);
   if(modo !== 'pf' && g.pagos_pessoa && g.pagos_pessoa.length){
     cont.push('<span class="selo-aviso">pago em outro BI: '+esc(g.pagos_pessoa.map(function(q){
       return q.protocolo+' (BI '+(q.nr_bi || '???')+', '+q.valor_fmt+')';
