@@ -214,6 +214,18 @@ a{color:var(--verde)}
 }
 .grupo-corpo{border-top:1px solid var(--line); padding:var(--s4); background:var(--surface-2)}
 .grupo-expl{font-size:.78rem; color:var(--ink-2); margin-bottom:var(--s3); max-width:74ch}
+/* pagamento do mesmo nome/Prec-cp fora do grupo (outro Nr BI) — 21/09/2026 */
+.aviso-pessoa{
+  font-size:.78rem; color:var(--ink); background:var(--alerta-bg);
+  border-left:3px solid var(--alerta); padding:10px 14px; margin-bottom:var(--s3); max-width:90ch;
+}
+.aviso-pessoa .rolagem{margin-top:var(--s2)}
+.selo-aviso{
+  font-size:.66rem; padding:3px 8px; background:var(--alerta-bg); color:var(--alerta);
+  border:1px solid rgba(138,90,18,.3); white-space:nowrap;
+}
+.acoes-admin{display:flex; gap:var(--s3); align-items:center; flex-wrap:wrap; margin-top:var(--s4)}
+.acoes-admin .dica{font-size:.72rem; color:var(--ink-3)}
 
 /* ---------- tabelas ---------- */
 .rolagem{overflow-x:auto; border:1px solid var(--line); background:var(--surface)}
@@ -487,6 +499,7 @@ body.modo-relatorio .rodape{display:none !important}
     <button class="aba" role="tab" id="t-fila" aria-controls="p-fila" aria-selected="false" type="button">Fila de homologação<span class="cnt" id="c-fila">0</span></button>
     <button class="aba" role="tab" id="t-historico" aria-controls="p-historico" aria-selected="false" type="button">Histórico<span class="cnt" id="c-historico">0</span></button>
     <button class="aba" role="tab" id="t-homologados" aria-controls="p-homologados" aria-selected="false" type="button">Homologados para lançamento<span class="cnt" id="c-homologados">0</span></button>
+    <button class="aba" role="tab" id="t-resolvidos" aria-controls="p-resolvidos" aria-selected="false" type="button">Resolvidos manualmente<span class="cnt" id="c-resolvidos">0</span></button>
     <button class="aba" role="tab" id="t-consulta" aria-controls="p-consulta" aria-selected="false" type="button">Consulta de processos<span class="cnt" id="c-consulta">0</span></button>
     <button class="aba" role="tab" id="t-geral" aria-controls="p-geral" aria-selected="false" type="button">Visão geral</button>
   </div>
@@ -711,6 +724,16 @@ body.modo-relatorio .rodape{display:none !important}
   </section>
 
   <!-- ============ CONSULTA ============ -->
+  <!-- ============ RESOLVIDOS MANUALMENTE ============ -->
+  <section class="painel" id="p-resolvidos" role="tabpanel" aria-labelledby="t-resolvidos" hidden>
+    <div class="secao-cab">
+      <h2 class="secao-tit">Resolvidos manualmente</h2>
+    </div>
+    <p class="nota" id="notaRM"></p>
+    <p class="resumo-filtro" style="margin-top:var(--s4)"><span><b id="rm-cont">0</b> grupo(s) · <b id="rm-proto">0</b> protocolo(s)</span></p>
+    <div id="rm-lista"></div>
+  </section>
+
   <section class="painel" id="p-consulta" role="tabpanel" aria-labelledby="t-consulta" hidden>
     <div class="secao-cab">
       <h2 class="secao-tit">Consulta de processos</h2>
@@ -853,6 +876,60 @@ var HOMOL = (D.homologados_idx || []).map(function(i){ return P[i]; });
 var HIST = (D.historico || []);
 var FILA = D.homolog || {disponivel:false, motivo:'', itens:[], novos:[], saidos:[], alerta:[], total:0};
 
+/* ---------- pagamento da mesma pessoa em outro Nr BI (21/09/2026) ----------
+   O grupo usa nome + Prec-cp + Nr BI. Se a correção saiu com outro BI, o
+   protocolo rejeitado fica sozinho num grupo "sem pagamento" enquanto a pessoa
+   já recebeu. Não muda a classificação (o pagamento pode ser de outra dívida):
+   só avisa, listando os protocolos pagos do mesmo nome e Prec-cp no(s) ano(s)
+   do grupo que estão FORA dele. Nome comparado como no _slug do build_data.py. */
+function chavePessoa(nome, prec){
+  return semAcento(nome).replace(/[^a-z0-9]+/g,' ').trim() + '|' + prec;
+}
+var PAGOS_PESSOA = {};
+P.forEach(function(p){
+  if(p.sit_efetiva_classe !== 'pago' || !p.prec_cp || !p.nome) return;
+  var k = chavePessoa(p.nome, p.prec_cp);
+  (PAGOS_PESSOA[k] = PAGOS_PESSOA[k] || []).push(p);
+});
+function marcarPagosPessoa(lista){
+  lista.forEach(function(g){
+    var anos = (g.anos || [g.ano]).map(String), vistos = {}, fora = [];
+    g.itens.forEach(function(p){
+      (PAGOS_PESSOA[chavePessoa(p.nome, p.prec_cp)] || []).forEach(function(q){
+        var pr = String(q.protocolo);
+        if(vistos[pr] || g._protos.indexOf(pr) !== -1 || anos.indexOf(String(q.ano)) === -1) return;
+        vistos[pr] = 1; fora.push(q);
+      });
+    });
+    g.pagos_pessoa = fora.sort(function(a,b){ return a.data_ord < b.data_ord ? -1 : a.data_ord > b.data_ord ? 1 : 0; });
+  });
+}
+marcarPagosPessoa(GRUPOS);
+marcarPagosPessoa(GRUPOS_EA);
+
+/* ---------- resolvidos manualmente (21/09/2026) ----------
+   Lista gravada pelo administrador (com senha) no bucket privado e anexada ao
+   dados.js pelo servidor. Um grupo sai das abas quando TODOS os seus protocolos
+   estão num registro — se entrar protocolo novo, ele volta a aparecer.
+   null = o servidor não conseguiu ler a lista. */
+var RESOLVIDOS = window.DEA_RESOLVIDOS;
+var RES_FALHOU = !Array.isArray(RESOLVIDOS);
+if(RES_FALHOU) RESOLVIDOS = [];
+var ADMIN = window.DEA_ADMIN === true;
+var RES_PROTO = {};
+RESOLVIDOS.forEach(function(r){ (r.protocolos||[]).forEach(function(p){ RES_PROTO[String(p)] = r; }); });
+function resolvidoManual(g){
+  return g._protos.length > 0 && g._protos.every(function(p){ return RES_PROTO[p]; });
+}
+function segDoResolvido(r){
+  return r.segmento || (/^96/.test(r.prec_cp) ? 'Veteranos' : /^98/.test(r.prec_cp) ? 'Pensionistas' : 'Ativa');
+}
+if(RES_FALHOU){
+  elAviso.textContent = 'Não foi possível carregar a lista de grupos resolvidos manualmente: '+
+    'grupos já marcados como resolvidos podem estar aparecendo nas abas. Recarregue o painel.';
+  elAviso.hidden = false;
+}
+
 /* ---------- recorte por segmento (vale para todas as abas) ---------- */
 var SEG = {Veteranos:true, Pensionistas:true, Ativa:true};
 function segOK(s){ return SEG[s || 'Ativa'] !== false; }
@@ -869,11 +946,15 @@ function recortar(){
   // usuário, 21/09/2026): o "resolvido" (algum protocolo pago) fica de fora.
   // Regra de 21/09/2026: o antigo "DEA pendente" se divide em "encerrado sem
   // pagamento" (V.G) e "pendente de análise CPEx" (V.GC).
-  V.G  = GRUPOS.filter(function(g){ return porSeg(g) && naoPago(g) && !emCurso(g); });
-  V.GC = GRUPOS.filter(function(g){ return porSeg(g) && naoPago(g) && emCurso(g); });
+  // Os resolvidos manualmente pelo administrador também saem (21/09/2026).
+  function pend(g){ return porSeg(g) && naoPago(g) && !resolvidoManual(g); }
+  V.G  = GRUPOS.filter(function(g){ return pend(g) && !emCurso(g); });
+  V.GC = GRUPOS.filter(function(g){ return pend(g) && emCurso(g); });
   // "Entre anos" segue a mesma divisão (21/09/2026): V.EA encerrados, V.EC em curso.
-  V.EA = GRUPOS_EA.filter(function(g){ return porSeg(g) && naoPago(g) && !emCurso(g); });
-  V.EC = GRUPOS_EA.filter(function(g){ return porSeg(g) && naoPago(g) && emCurso(g); });
+  V.EA = GRUPOS_EA.filter(function(g){ return pend(g) && !emCurso(g); });
+  V.EC = GRUPOS_EA.filter(function(g){ return pend(g) && emCurso(g); });
+  V.RM = RESOLVIDOS.filter(function(r){ return segOK(segDoResolvido(r)); })
+    .sort(function(a,b){ return a.em < b.em ? 1 : a.em > b.em ? -1 : 0; });
   V.PF = GRUPOS_PF.filter(porSeg);
   V.HL = HOMOL.filter(porSeg);
   V.HIST = HIST.map(function(h){
@@ -941,7 +1022,7 @@ document.getElementById('rod-fonte').textContent = META.fonte + ' · retrato de 
 document.getElementById('rod-org').textContent = META.organizacao;
 
 /* ---------- abas ---------- */
-var ABAS = ['grupos','cpex','entreanos','eacpex','pagofora','diff','fila','historico','homologados','consulta','geral'];
+var ABAS = ['grupos','cpex','entreanos','eacpex','pagofora','diff','fila','historico','homologados','resolvidos','consulta','geral'];
 function mostrarAba(id){
   ABAS.forEach(function(a){
     var t = document.getElementById('t-'+a), p = document.getElementById('p-'+a);
@@ -968,6 +1049,7 @@ function renderBadges(){
     !!(V.FILA.disponivel && V.FILA.alerta.length));
   document.getElementById('c-historico').textContent = num(V.HIST.length);
   document.getElementById('c-homologados').textContent = num(V.HL.length);
+  document.getElementById('c-resolvidos').textContent = RES_FALHOU ? '—' : num(V.RM.length);
   document.getElementById('c-consulta').textContent = num(V.P.length);
   document.getElementById('t-homologados').classList.toggle('urgente', V.HL.length > 0);
 }
@@ -1061,6 +1143,10 @@ function desenharGrupos(lista, pref, modo){
       verd = 'Pago em '+esc(pf.anos_txt);
       cont.push('<span class="selo pago">crédito pago em '+esc(pf.anos_txt)+'</span>');
     }
+    var avisoPessoa = (modo !== 'pf' && g.pagos_pessoa && g.pagos_pessoa.length)
+      ? '<span class="selo-aviso" title="Há protocolo pago do mesmo nome e Prec-cp no ano, fora deste grupo (outro Nr BI)">'+
+          'pago em outro BI: '+esc(g.pagos_pessoa.map(function(q){ return q.protocolo; }).join(', '))+'</span>'
+      : '';
 
     return '<article class="grupo '+cls+'" data-i="'+i+'" data-aberto="0">'+
       '<button class="grupo-cab" type="button" aria-expanded="false">'+
@@ -1075,6 +1161,7 @@ function desenharGrupos(lista, pref, modo){
             esc(brl(g.valor_total))+'</span>'+
         '</span>'+
         '<span class="grupo-dir">'+
+          avisoPessoa+
           (g.incerto?'<span class="selo-incerto">'+g.sem_acomp+' aguardando CPEx</span>':'')+
           '<span class="contagens">'+cont.join('')+'</span>'+
           '<span class="veredito '+cls+'">'+verd+'</span>'+
@@ -1094,6 +1181,8 @@ function desenharGrupos(lista, pref, modo){
       if(!aberto && !corpo.dataset.pronto){
         corpo.innerHTML = corpoGrupo(g, modo);
         corpo.dataset.pronto = '1';
+        var bRes = corpo.querySelector('[data-resolver]');
+        if(bRes) bRes.addEventListener('click', function(){ pedirResolver(g, modo); });
       }
       art.dataset.aberto = aberto ? '0' : '1';
       corpo.hidden = aberto;
@@ -1174,13 +1263,67 @@ function corpoGrupo(g, modo){
       }).join('')+'</tbody></table></div>';
   }
 
-  return '<p class="grupo-expl">'+esc(expl)+'</p>'+
+  var avisoPessoa = '';
+  if(modo !== 'pf' && g.pagos_pessoa && g.pagos_pessoa.length){
+    avisoPessoa = '<div class="aviso-pessoa"><b>Há protocolo pago para este nome e Prec-cp no mesmo ano</b>, '+
+      'fora deste grupo porque o Nr BI é outro. Pode ser a correção paga deste crédito — ou outra dívida. '+
+      'Confira a competência antes de tratar o grupo como pendência.'+
+      '<div class="rolagem"><table class="tbl-interna"><thead><tr>'+
+        '<th scope="col">Protocolo</th><th scope="col">Data</th><th scope="col">Valor</th>'+
+        '<th scope="col">Nr BI</th><th scope="col">Nome</th><th scope="col">Situação</th>'+
+      '</tr></thead><tbody>'+
+      g.pagos_pessoa.map(function(q){
+        return '<tr>'+
+          '<td class="mono">'+esc(q.protocolo)+'</td>'+
+          '<td class="mono">'+esc(q.data)+'</td>'+
+          '<td class="num">'+esc(q.valor_fmt)+'</td>'+
+          '<td>'+esc(q.nr_bi || '???')+'</td>'+
+          '<td>'+esc(q.nome)+'</td>'+
+          '<td><span class="selo pago">'+esc(q.sit_efetiva)+'</span></td>'+
+        '</tr>';
+      }).join('')+'</tbody></table></div></div>';
+  }
+
+  // Só o administrador vê o botão; o servidor exige, além da sessão, a senha.
+  var acoes = (ADMIN && modo !== 'pf')
+    ? '<div class="acoes-admin"><button class="btn secundario" type="button" data-resolver>Enviar para resolvidos</button>'+
+      '<span class="dica">Tira o grupo do painel. Pede a senha de administrador e o motivo; pode ser desfeito na aba "Resolvidos manualmente".</span></div>'
+    : '';
+
+  return '<p class="grupo-expl">'+esc(expl)+'</p>'+ avisoPessoa +
     '<div class="rolagem"><table class="tbl-interna"><thead><tr>'+
       '<th scope="col">Protocolo</th><th scope="col">Data</th>'+
       ((modo==='ea' || g.anos) ? '<th scope="col">Ano</th>' : '')+'<th scope="col">Valor</th>'+
       '<th scope="col">Nr BI</th><th scope="col">Situação — DEA</th>'+
       '<th scope="col">Situação — Acompanhamento</th><th scope="col">Parecer</th>'+
-    '</tr></thead><tbody>'+linhas+'</tbody></table></div>' + extraPF;
+    '</tr></thead><tbody>'+linhas+'</tbody></table></div>' + extraPF + acoes;
+}
+
+/* ---------- ponte com a página que embute o painel ----------
+   O painel não faz requisições (CSP connect-src 'none'): o pedido vai por
+   postMessage para a ferramenta (DeaDashboard), que pede a senha, chama o
+   /api/dea e recarrega o painel. */
+var NOME_ABA = {ano:'DEA encerrado sem pagamento', cpex:'DEA pendente de análise CPEx',
+                ea:'Entre anos — encerrado sem pagamento', eacpex:'Entre anos — pendente de análise CPEx'};
+function avisarPai(msg){
+  if(window.parent === window){
+    window.alert('Abra o painel pela ferramenta "Exercícios Anteriores" para usar esta ação.');
+    return;
+  }
+  window.parent.postMessage(msg, window.location.origin);
+}
+function pedirResolver(g, modo){
+  avisarPai({tipo:'dea-resolver', grupo:{
+    protocolos: g._protos.slice(),
+    nome: (g.nomes||[]).join(' / '),
+    prec_cp: g.prec_cp,
+    ano: g.anos_txt || String(g.ano),
+    nr_bi: g.nr_bi || '???',
+    segmento: g.segmento || 'Ativa',
+    aba: NOME_ABA[modo] || '',
+    total: brl(g.valor_total),
+    pagos_pessoa: (g.pagos_pessoa||[]).map(function(q){ return q.protocolo; })
+  }});
 }
 
 function pintaGrupos(){ desenharGrupos(gruposFiltrados(), 'g', 'ano'); }
@@ -1956,6 +2099,11 @@ function relGrupo(g, modo){
   }
   var cont = contagensAcomp(g, selo);
   if(g.incerto)       cont.push('<span class="selo-incerto">'+g.sem_acomp+' aguardando CPEx</span>');
+  if(modo !== 'pf' && g.pagos_pessoa && g.pagos_pessoa.length){
+    cont.push('<span class="selo-aviso">pago em outro BI: '+esc(g.pagos_pessoa.map(function(q){
+      return q.protocolo+' (BI '+(q.nr_bi || '???')+', '+q.valor_fmt+')';
+    }).join('; '))+'</span>');
+  }
 
   var meta = 'Prec-cp '+esc(g.prec_cp)+' · '+
     ((modo === 'ea' || g.anos)
@@ -2400,9 +2548,68 @@ document.getElementById('fl-pdf').addEventListener('click', function(){
 });
 
 /* ---------- filtro de segmento: recalcula tudo ---------- */
+/* =======================================================================
+   RESOLVIDOS MANUALMENTE (21/09/2026)
+   ======================================================================= */
+document.getElementById('notaRM').innerHTML =
+  'Grupos sem pagamento que o <b>administrador</b> conferiu e enviou para resolvidos, com a senha e um motivo — '+
+  'por exemplo, quando o crédito foi pago num protocolo de <b>outro Nr BI</b>. Eles deixam de aparecer nas abas de grupos. '+
+  'Se entrar um protocolo novo no mesmo grupo, ele volta a aparecer lá. '+
+  (ADMIN ? 'Como administrador, você pode <b>desfazer</b> a marcação; a senha é pedida de novo.'
+         : 'Só o administrador pode marcar ou desfazer.');
+
+function dataHoraBR(iso){
+  var d = new Date(iso);
+  if(isNaN(d)) return iso || '—';
+  return d.toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo', day:'2-digit', month:'2-digit',
+                                    year:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+function renderRM(){
+  var lista = V.RM;
+  document.getElementById('rm-cont').textContent = num(lista.length);
+  document.getElementById('rm-proto').textContent =
+    num(lista.reduce(function(s,r){ return s + (r.protocolos||[]).length; }, 0));
+  var alvo = document.getElementById('rm-lista');
+  if(RES_FALHOU){
+    alvo.innerHTML = '<p class="vazio-msg">A lista de resolvidos não pôde ser carregada. Recarregue o painel.</p>';
+    return;
+  }
+  if(!lista.length){
+    alvo.innerHTML = '<p class="vazio-msg">Nenhum grupo foi resolvido manualmente.</p>';
+    return;
+  }
+  alvo.innerHTML = '<div class="rolagem"><table><thead><tr>'+
+      '<th scope="col">Marcado em</th><th scope="col">Nome</th><th scope="col">Prec-cp</th>'+
+      '<th scope="col">Ano</th><th scope="col">Nr BI</th><th scope="col">Protocolos</th>'+
+      '<th scope="col">Aba de origem</th><th scope="col">Motivo</th>'+(ADMIN ? '<th scope="col"></th>' : '')+
+    '</tr></thead><tbody>'+
+    lista.map(function(r, i){
+      return '<tr>'+
+        '<td class="mono">'+esc(dataHoraBR(r.em))+'</td>'+
+        '<td>'+esc(r.nome)+'</td>'+
+        '<td class="mono">'+esc(r.prec_cp)+'</td>'+
+        '<td class="mono">'+esc(r.ano)+'</td>'+
+        '<td>'+esc(r.nr_bi)+'</td>'+
+        '<td class="mono">'+esc((r.protocolos||[]).join(', '))+'</td>'+
+        '<td>'+esc(r.aba)+'</td>'+
+        '<td class="parecer-txt">'+esc(r.motivo)+'</td>'+
+        (ADMIN ? '<td><button class="btn-exp" type="button" data-desfazer="'+i+'">Desfazer</button></td>' : '')+
+      '</tr>';
+    }).join('')+'</tbody></table></div>';
+  alvo.querySelectorAll('[data-desfazer]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var r = lista[+b.dataset.desfazer];
+      avisarPai({tipo:'dea-desfazer-resolvido', registro:{
+        id: r.id, nome: r.nome, prec_cp: r.prec_cp, ano: r.ano, protocolos: r.protocolos
+      }});
+    });
+  });
+}
+
 function aplicarSegmento(){
   recortar();
   renderBadges();
+  renderRM();
   pintaGrupos();
   pintaCP();
   pintaEA();

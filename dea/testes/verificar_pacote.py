@@ -63,7 +63,7 @@ print("\n[4] painel")
 h = open("app/painel.html", encoding="utf-8").read()
 chk(h.rstrip().endswith("</body></html>"), "arquivo completo")
 chk('<script src="dados.js"></script>' in h, "carrega dados.js como arquivo irmão")
-chk(h.count('role="tab"') == 9, "9 abas")
+chk(h.count('role="tab"') == 12, "12 abas")
 chk("data:image/webp;base64" in h, "brasão embutido, sem dependência externa")
 chk(not re.search(r">\s*Copiar CSV\s*<", h), "sem botões Copiar CSV")
 

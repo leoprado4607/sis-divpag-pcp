@@ -27,14 +27,17 @@
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY   leitura do bucket privado
 //   DEA_DADOS_LOCAL            (SÓ em dev, ignorada na Vercel) caminho de um dados.js local
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { isRequestAllowed, getClientIp } from './_gemini.js';
 import { checkRateLimitAsync } from './_ratelimit.js';
 import { readJsonBody } from './_http.js';
 
 export const DEA_BUCKET = 'dea-privado';
 export const DEA_DADOS_PATH = 'publicado/dados.js';
+// Grupos que o administrador enviou para "resolvidos" à mão. Fica fora de
+// estado/ de propósito: o pipeline (supabase_sync.py) não lê nem sobrescreve.
+export const DEA_RESOLVIDOS_PATH = 'manual/resolvidos.json';
 
 const COOKIE = 'dea_sessao';
 const SESSAO_MS = 8 * 60 * 60 * 1000; // 8h
@@ -42,6 +45,8 @@ const LOGIN_MAX = 10;                  // tentativas de senha...
 const LOGIN_JANELA_MS = 15 * 60 * 1000; // ...por IP a cada 15 min
 const ATUALIZAR_MAX = 5;                    // disparos de atualização...
 const ATUALIZAR_JANELA_MS = 10 * 60 * 1000; // ...por IP a cada 10 min
+const RESOLVER_MAX = 30;                    // marcações de grupo resolvido...
+const RESOLVER_JANELA_MS = 10 * 60 * 1000;  // ...por IP a cada 10 min
 
 type Papel = 'leitor' | 'admin';
 
@@ -189,9 +194,9 @@ async function lerDadosJs(): Promise<Buffer | null> {
   const local = process.env.DEA_DADOS_LOCAL;
   if (local && !process.env.VERCEL) return readFileSync(local);
 
-  const url = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/+$/, '');
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
+  const cfg = storageCfg();
+  if (!cfg) return null;
+  const { url, key } = cfg;
 
   // O CDN do Storage chegou a entregar à Vercel o dados.js anterior por mais de
   // uma hora depois de sobrescrito (21/09/2026), enquanto a Action já lia o novo.
@@ -205,6 +210,113 @@ async function lerDadosJs(): Promise<Buffer | null> {
     return null;
   }
   return Buffer.from(await r.arrayBuffer());
+}
+
+// ---------------------------------------------------------------------------
+// Resolvidos manualmente — o administrador, com a senha, tira do painel um grupo
+// sem pagamento que ele conferiu e sabe estar quitado (ex.: pago em outro Nr BI).
+// O arquivo guarda a lista vigente e um log de tudo que foi marcado/desfeito.
+// A lista vai para o painel anexada ao dados.js (o painel não faz requisições:
+// CSP connect-src 'none'); o painel esconde o grupo cujos protocolos estejam
+// TODOS na lista — se surgir protocolo novo no grupo, ele volta a aparecer.
+// ---------------------------------------------------------------------------
+interface Resolvido {
+  id: string;
+  protocolos: string[];
+  nome: string;
+  prec_cp: string;
+  ano: string;
+  nr_bi: string;
+  segmento: string;
+  aba: string;
+  motivo: string;
+  em: string;
+}
+interface ArquivoResolvidos {
+  resolvidos: Resolvido[];
+  log: Array<{ acao: 'resolver' | 'desfazer'; id: string; protocolos: string[]; nome: string; motivo: string; em: string }>;
+}
+
+function storageCfg(): { url: string; key: string } | null {
+  const url = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/+$/, '');
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  return url && key ? { url, key } : null;
+}
+
+// Em dev com DEA_DADOS_LOCAL, a lista fica num arquivo ao lado do dados.js local.
+function resolvidosLocal(): string | null {
+  const local = process.env.DEA_DADOS_LOCAL;
+  return local && !process.env.VERCEL ? join(dirname(local), 'resolvidos-manuais.json') : null;
+}
+
+function arquivoVazio(): ArquivoResolvidos {
+  return { resolvidos: [], log: [] };
+}
+
+function normalizarArquivo(obj: any): ArquivoResolvidos {
+  return {
+    resolvidos: Array.isArray(obj?.resolvidos) ? obj.resolvidos : [],
+    log: Array.isArray(obj?.log) ? obj.log : [],
+  };
+}
+
+// null = não foi possível ler (o painel avisa, em vez de mostrar tudo como pendente em silêncio).
+async function lerResolvidos(): Promise<ArquivoResolvidos | null> {
+  const local = resolvidosLocal();
+  if (local) {
+    if (!existsSync(local)) return arquivoVazio();
+    try { return normalizarArquivo(JSON.parse(readFileSync(local, 'utf8'))); } catch { return null; }
+  }
+  const cfg = storageCfg();
+  if (!cfg) return null;
+  const r = await fetch(`${cfg.url}/storage/v1/object/${DEA_BUCKET}/${DEA_RESOLVIDOS_PATH}?v=${Date.now()}`, {
+    headers: { Authorization: `Bearer ${cfg.key}`, apikey: cfg.key, 'Cache-Control': 'no-cache' },
+    cache: 'no-store',
+  });
+  if (r.ok) {
+    try { return normalizarArquivo(await r.json()); } catch { return null; }
+  }
+  // O Storage responde 400/404 "not_found" para objeto inexistente: lista vazia.
+  const corpo = (await r.text().catch(() => '')).toLowerCase();
+  if (r.status === 404 || (r.status === 400 && corpo.includes('not') && corpo.includes('found'))) return arquivoVazio();
+  console.error('[dea] falha ao ler resolvidos manuais:', r.status);
+  return null;
+}
+
+async function gravarResolvidos(arq: ArquivoResolvidos): Promise<void> {
+  const corpo = JSON.stringify(arq);
+  const local = resolvidosLocal();
+  if (local) { writeFileSync(local, corpo, 'utf8'); return; }
+  const cfg = storageCfg();
+  if (!cfg) throw new Error('Storage não configurado');
+  const r = await fetch(`${cfg.url}/storage/v1/object/${DEA_BUCKET}/${DEA_RESOLVIDOS_PATH}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${cfg.key}`, apikey: cfg.key,
+      'Content-Type': 'application/json', 'x-upsert': 'true', 'Cache-Control': 'no-store',
+    },
+    body: corpo,
+  });
+  if (!r.ok) {
+    console.error('[dea] falha ao gravar resolvidos manuais:', r.status, (await r.text().catch(() => '')).slice(0, 200));
+    throw new Error('Falha ao gravar a lista de resolvidos.');
+  }
+}
+
+function texto(v: unknown, max: number): string {
+  return String(v ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
+}
+
+function idGrupo(protocolos: string[]): string {
+  return createHash('sha256').update([...protocolos].sort().join('|')).digest('hex').slice(0, 16);
+}
+
+// Anexa a lista (só o necessário para exibir) e o papel ao dados.js entregue.
+function anexarAoDados(dados: Buffer, arq: ArquivoResolvidos | null, admin: boolean): Buffer {
+  const lista = arq ? arq.resolvidos : null;
+  // "<" escapado: o conteúdo vem de texto digitado (motivo, nome).
+  const js = `\nwindow.DEA_RESOLVIDOS=${JSON.stringify(lista).replace(/</g, '\\u003c')};window.DEA_ADMIN=${admin};\n`;
+  return Buffer.concat([dados, Buffer.from(js, 'utf8')]);
 }
 
 // ---------------------------------------------------------------------------
@@ -282,6 +394,8 @@ async function statusAtualizacao(cfg: GithubCfg) {
 //   GET  /api/dea?r=atualizacao                 (só admin) status do workflow
 //   POST /api/dea  {acao: 'entrar', senha} | {acao: 'sair'}
 //   POST /api/dea  {acao: 'atualizar'}          (só admin) dispara o workflow
+//   POST /api/dea  {acao: 'resolver', senha, motivo, grupo}      (só admin + senha)
+//   POST /api/dea  {acao: 'desfazer-resolvido', senha, id, motivo?} (só admin + senha)
 // ---------------------------------------------------------------------------
 export async function handleDea(req: any, res: any): Promise<void> {
   const url = new URL(req.url || '/', 'http://local');
@@ -318,12 +432,13 @@ export async function handleDea(req: any, res: any): Promise<void> {
       if (!sessaoValida(req)) {
         return send(res, 401, '/* acesso restrito */', { 'Content-Type': 'application/javascript; charset=utf-8', ...HEADERS_PRIVADOS });
       }
-      const dados = await lerDadosJs();
+      const [dados, resolvidos] = await Promise.all([lerDadosJs(), lerResolvidos().catch(() => null)]);
       if (!dados) {
         // Sem corpo JS: o painel mostra o próprio aviso de "dados indisponíveis".
         return send(res, 503, '/* dados indisponíveis */', { 'Content-Type': 'application/javascript; charset=utf-8', ...HEADERS_PRIVADOS });
       }
-      return send(res, 200, dados, { 'Content-Type': 'application/javascript; charset=utf-8', ...HEADERS_PRIVADOS });
+      const corpo = anexarAoDados(dados, resolvidos, papelDaSessao(req) === 'admin');
+      return send(res, 200, corpo, { 'Content-Type': 'application/javascript; charset=utf-8', ...HEADERS_PRIVADOS });
     }
 
     if (req.method === 'POST') {
@@ -379,6 +494,58 @@ export async function handleDea(req: any, res: any): Promise<void> {
           throw new ErroGithub(d.status);
         }
         return sendJson(res, 202, { ok: true, disparadoEm: new Date().toISOString() });
+      }
+
+      if (body?.acao === 'resolver' || body?.acao === 'desfazer-resolvido') {
+        // Dupla trava: sessão de administrador E a senha de administrador digitada
+        // de novo no momento da ação.
+        if (papelDaSessao(req) !== 'admin') {
+          return sendJson(res, 403, { error: 'Apenas o administrador pode alterar os resolvidos.' });
+        }
+        const rl = await checkRateLimitAsync('dea-resolver:' + getClientIp(req), RESOLVER_MAX, RESOLVER_JANELA_MS);
+        if (!rl.allowed) {
+          return sendJson(res, 429, { error: 'Muitas tentativas. Aguarde alguns minutos.' }, { 'Retry-After': String(rl.retryAfterSec) });
+        }
+        if (papelDaSenha(String(body?.senha || '')) !== 'admin') {
+          return sendJson(res, 401, { error: 'Senha de administrador incorreta.' });
+        }
+        const arq = await lerResolvidos();
+        if (!arq) return sendJson(res, 503, { error: 'Não foi possível ler a lista de resolvidos. Tente de novo.' });
+        const em = new Date().toISOString();
+
+        if (body.acao === 'resolver') {
+          const g = body?.grupo || {};
+          const protocolos = Array.isArray(g.protocolos)
+            ? [...new Set(g.protocolos.map((p: unknown) => texto(p, 30)).filter((p: string) => /^\d{1,30}$/.test(p)))] as string[]
+            : [];
+          if (!protocolos.length || protocolos.length > 200 || protocolos.length !== g.protocolos.length) {
+            return sendJson(res, 400, { error: 'Grupo inválido.' });
+          }
+          const motivo = texto(body?.motivo, 500);
+          if (motivo.length < 5) return sendJson(res, 400, { error: 'Informe o motivo (mínimo de 5 caracteres).' });
+          const id = idGrupo(protocolos);
+          if (arq.resolvidos.some((x) => x.id === id)) {
+            return sendJson(res, 409, { error: 'Este grupo já está nos resolvidos.' });
+          }
+          const reg: Resolvido = {
+            id, protocolos, motivo, em,
+            nome: texto(g.nome, 200), prec_cp: texto(g.prec_cp, 30), ano: texto(g.ano, 40),
+            nr_bi: texto(g.nr_bi, 60), segmento: texto(g.segmento, 20), aba: texto(g.aba, 80),
+          };
+          arq.resolvidos.push(reg);
+          arq.log.push({ acao: 'resolver', id, protocolos, nome: reg.nome, motivo, em });
+          await gravarResolvidos(arq);
+          return sendJson(res, 200, { ok: true, id });
+        }
+
+        const id = texto(body?.id, 32);
+        const alvo = arq.resolvidos.find((x) => x.id === id);
+        if (!alvo) return sendJson(res, 404, { error: 'Registro não encontrado (talvez já desfeito).' });
+        const motivo = texto(body?.motivo, 500);
+        arq.resolvidos = arq.resolvidos.filter((x) => x.id !== id);
+        arq.log.push({ acao: 'desfazer', id, protocolos: alvo.protocolos, nome: alvo.nome, motivo, em });
+        await gravarResolvidos(arq);
+        return sendJson(res, 200, { ok: true });
       }
     }
 

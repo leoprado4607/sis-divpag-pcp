@@ -231,6 +231,55 @@ A direção do pagamento muda a conclusão e não pode ser colapsada:
   quatro novas tentativas de R$ 43,28 rejeitadas em 2026). **Continua no risco.**
   Retrato: **3 grupos** (411648310/2026, 411647593/2026, 357702665/2023).
 
+## Aviso "pago em outro BI" (21/09/2026)
+
+Efeito colateral da chave nome + Prec-cp + Nr BI: quando a correção de um
+protocolo rejeitado sai com **outro Nr BI**, os dois caem em grupos diferentes, e
+o rejeitado aparece sozinho em "DEA encerrado sem pagamento" mesmo com a pessoa
+já paga. Caso que originou a regra: um protocolo rejeitado com outro, do mesmo
+nome e Prec-cp, pago no mesmo ano.
+
+Decisão do usuário: **avisar, não reclassificar** — o pagamento em outro BI pode
+ser de outra dívida. Em todas as abas de grupos sem pagamento (as duas de ano único
+e as duas de "Entre anos"), o grupo ganha o selo **"pago em outro BI: <protocolos>"**
+e, aberto, um quadro com os protocolos pagos do **mesmo nome e Prec-cp**, fora do
+grupo, no(s) **ano(s) do grupo**. O relatório PDF traz o mesmo selo.
+
+Calculado **no painel** (`marcarPagosPessoa()`, a partir de `processos`), sem
+mudança no `build_data.py`. O nome é comparado como no `_slug` do pipeline
+(`chavePessoa()`). A classificação e os contadores não mudam.
+
+## Resolvidos manualmente (21/09/2026)
+
+O administrador pode tirar do painel um grupo sem pagamento que ele conferiu
+(ex.: o crédito saiu em outro Nr BI). No grupo aberto aparece **"Enviar para
+resolvidos"** — só para a sessão de administrador —, que pede **motivo** (mínimo
+de 5 caracteres) e a **senha de administrador de novo**. A aba **"Resolvidos
+manualmente"** lista os marcados e, para o administrador, tem **"Desfazer"** (pede a
+senha de novo).
+
+Como funciona, e por quê:
+
+- **O painel não faz requisições** (CSP `connect-src 'none'`). O botão manda um
+  `postMessage` para a casca (`DeaDashboard.tsx`), que valida a origem e o iframe,
+  abre a janela de senha e chama `POST /api/dea {acao:'resolver'|'desfazer-resolvido'}`.
+- O servidor exige **sessão de admin E `DEA_ADMIN_PASSWORD` digitada**, com limite
+  de 30 tentativas por IP a cada 10 min, e grava em `manual/resolvidos.json` no
+  bucket privado `dea-privado` — **fora de `estado/`**, então o pipeline não lê nem
+  sobrescreve. O arquivo tem `resolvidos` (a lista vigente) e `log` (tudo que foi
+  marcado/desfeito, com motivo e hora — é a trilha de auditoria; não apague).
+- A lista chega ao painel **anexada ao `dados.js`** pelo `/api/dea`
+  (`window.DEA_RESOLVIDOS`, e `window.DEA_ADMIN` com o papel da sessão). Não é
+  preciso rodar a atualização: vale na hora.
+- O grupo some quando **todos** os protocolos dele estão na lista. Se entrar um
+  protocolo novo no grupo, ele **volta a aparecer** (é uma tentativa nova, merece
+  olhar). O registro guarda os protocolos, não o id do grupo, por isso resiste a
+  mudanças no agrupamento.
+- Se o servidor não conseguir ler a lista, o painel mostra o aviso do topo e o
+  contador da aba fica "—" (os grupos marcados reaparecem até recarregar).
+- Em dev com `DEA_DADOS_LOCAL`, a lista fica em `resolvidos-manuais.json`, ao lado
+  do `dados.js` local.
+
 ## Aba "Homologados para lançamento" (16/09/2026)
 
 Processos das abas DEA com situação **"Pagamento autorizado (CPEx). Aguardando

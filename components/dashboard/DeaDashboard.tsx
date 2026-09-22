@@ -16,6 +16,60 @@ import { ArrowLeft, Lock, LogOut, Loader2, RefreshCw } from 'lucide-react';
 // botão "Atualizar", que pede ao /api/dea para disparar o workflow
 // dea-atualizar.yml no GitHub Actions (a rodada leva ~1-2 min). Enquanto ela
 // corre, a barra consulta o status; ao terminar com sucesso, recarrega o iframe.
+//
+// Resolvidos manualmente: o painel não faz requisições (CSP connect-src 'none').
+// O botão "Enviar para resolvidos" (e o "Desfazer") do painel manda um
+// postMessage para cá; esta casca pede o motivo e a senha de administrador,
+// chama o /api/dea e recarrega o iframe.
+
+interface GrupoResolver {
+  protocolos: string[];
+  nome: string;
+  prec_cp: string;
+  ano: string;
+  nr_bi: string;
+  segmento: string;
+  aba: string;
+  total: string;
+  pagos_pessoa: string[];
+}
+interface RegistroDesfazer { id: string; nome: string; prec_cp: string; ano: string; protocolos: string[] }
+type PedidoResolvido =
+  | { tipo: 'resolver'; grupo: GrupoResolver }
+  | { tipo: 'desfazer'; registro: RegistroDesfazer };
+
+function listaTexto(v: unknown): string[] {
+  return Array.isArray(v) ? v.map((x) => String(x)).slice(0, 200) : [];
+}
+
+// A mensagem vem do iframe do painel: só se aceita a do próprio iframe, na mesma origem.
+function lerPedido(data: any): PedidoResolvido | null {
+  if (data?.tipo === 'dea-resolver' && data.grupo) {
+    const g = data.grupo;
+    const protocolos = listaTexto(g.protocolos);
+    if (!protocolos.length) return null;
+    return {
+      tipo: 'resolver',
+      grupo: {
+        protocolos, pagos_pessoa: listaTexto(g.pagos_pessoa),
+        nome: String(g.nome || ''), prec_cp: String(g.prec_cp || ''), ano: String(g.ano || ''),
+        nr_bi: String(g.nr_bi || ''), segmento: String(g.segmento || ''), aba: String(g.aba || ''),
+        total: String(g.total || ''),
+      },
+    };
+  }
+  if (data?.tipo === 'dea-desfazer-resolvido' && data.registro?.id) {
+    const r = data.registro;
+    return {
+      tipo: 'desfazer',
+      registro: {
+        id: String(r.id), nome: String(r.nome || ''), prec_cp: String(r.prec_cp || ''),
+        ano: String(r.ano || ''), protocolos: listaTexto(r.protocolos),
+      },
+    };
+  }
+  return null;
+}
 
 interface DeaDashboardProps {
   onBack: () => void;
@@ -59,6 +113,52 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
   const [msgAtualizacao, setMsgAtualizacao] = useState('');
   const [versaoPainel, setVersaoPainel] = useState(0);
   const acompanhando = useRef(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [pedido, setPedido] = useState<PedidoResolvido | null>(null);
+  const [motivo, setMotivo] = useState('');
+  const [senhaAcao, setSenhaAcao] = useState('');
+  const [erroAcao, setErroAcao] = useState('');
+  const [enviandoAcao, setEnviandoAcao] = useState(false);
+
+  useEffect(() => {
+    if (!admin) return;
+    const aoReceber = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin || e.source !== iframeRef.current?.contentWindow) return;
+      const p = lerPedido(e.data);
+      if (!p) return;
+      setPedido(p);
+      setMotivo('');
+      setSenhaAcao('');
+      setErroAcao('');
+    };
+    window.addEventListener('message', aoReceber);
+    return () => window.removeEventListener('message', aoReceber);
+  }, [admin]);
+
+  const fecharPedido = () => { if (!enviandoAcao) setPedido(null); };
+
+  const confirmarPedido = async () => {
+    if (!pedido || enviandoAcao) return;
+    if (pedido.tipo === 'resolver' && motivo.trim().length < 5) { setErroAcao('Informe o motivo (mínimo de 5 caracteres).'); return; }
+    if (!senhaAcao) { setErroAcao('Digite a senha de administrador.'); return; }
+    setEnviandoAcao(true);
+    setErroAcao('');
+    try {
+      const corpo = pedido.tipo === 'resolver'
+        ? { acao: 'resolver', senha: senhaAcao, motivo: motivo.trim(), grupo: pedido.grupo }
+        : { acao: 'desfazer-resolvido', senha: senhaAcao, motivo: motivo.trim(), id: pedido.registro.id };
+      const r = await postDea(corpo);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setErroAcao(d?.error || 'Não foi possível concluir.'); return; }
+      setPedido(null);
+      setSenhaAcao('');
+      setVersaoPainel((v) => v + 1); // recarrega o painel com a lista nova
+    } catch {
+      setErroAcao('Falha de conexão. Tente novamente.');
+    } finally {
+      setEnviandoAcao(false);
+    }
+  };
 
   // Sessão ainda válida (cookie de até 8h) entra direto, sem pedir a senha de novo.
   useEffect(() => {
@@ -228,11 +328,83 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
       </div>
       <iframe
         key={versaoPainel}
+        ref={iframeRef}
         src="/dea/painel"
         title="Painel DEA — Exercícios Anteriores"
         className="flex-1 w-full border-0"
         referrerPolicy="no-referrer"
       />
+      {pedido && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={fecharPedido}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dea-pedido-titulo"
+            className="bg-white rounded-2xl w-full max-w-lg p-6 border-t-8 border-army-green shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.key === 'Escape' && fecharPedido()}
+          >
+            <h3 id="dea-pedido-titulo" className="text-lg font-bold text-slate-800">
+              {pedido.tipo === 'resolver' ? 'Enviar grupo para resolvidos' : 'Desfazer resolvido manual'}
+            </h3>
+            {pedido.tipo === 'resolver' ? (
+              <dl className="mt-3 text-sm text-slate-700 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                <dt className="font-semibold">Nome</dt><dd>{pedido.grupo.nome || '—'}</dd>
+                <dt className="font-semibold">Prec-cp</dt><dd>{pedido.grupo.prec_cp}</dd>
+                <dt className="font-semibold">Ano · Nr BI</dt><dd>{pedido.grupo.ano} · {pedido.grupo.nr_bi}</dd>
+                <dt className="font-semibold">Protocolos</dt><dd className="break-words">{pedido.grupo.protocolos.join(', ')} ({pedido.grupo.total})</dd>
+                <dt className="font-semibold">Aba</dt><dd>{pedido.grupo.aba}</dd>
+                {pedido.grupo.pagos_pessoa.length > 0 && (
+                  <><dt className="font-semibold">Pago em outro BI</dt><dd>{pedido.grupo.pagos_pessoa.join(', ')}</dd></>
+                )}
+              </dl>
+            ) : (
+              <p className="mt-3 text-sm text-slate-700">
+                {pedido.registro.nome} · Prec-cp {pedido.registro.prec_cp} · {pedido.registro.ano}<br />
+                Protocolos {pedido.registro.protocolos.join(', ')} voltarão a aparecer nas abas de grupos.
+              </p>
+            )}
+            <label className="block mt-4 text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="dea-motivo">
+              Motivo{pedido.tipo === 'desfazer' ? ' (opcional)' : ''}
+            </label>
+            <textarea
+              id="dea-motivo"
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              maxLength={500}
+              rows={3}
+              autoFocus
+              placeholder={pedido.tipo === 'resolver' ? 'ex.: crédito pago no protocolo 123456, em outro Nr BI' : ''}
+              className="mt-1 w-full border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-army-green outline-none"
+            />
+            <label className="block mt-3 text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="dea-senha-acao">
+              Senha de administrador
+            </label>
+            <input
+              id="dea-senha-acao"
+              type="password"
+              autoComplete="current-password"
+              value={senhaAcao}
+              onChange={(e) => setSenhaAcao(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && confirmarPedido()}
+              className="mt-1 w-full border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-army-green outline-none"
+            />
+            {erroAcao && <p role="alert" className="mt-3 text-sm font-semibold text-red-600">{erroAcao}</p>}
+            <div className="mt-5 flex justify-end gap-3">
+              <button onClick={fecharPedido} disabled={enviandoAcao} className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700">
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarPedido}
+                disabled={enviandoAcao}
+                className="px-4 py-2 rounded-xl bg-army-green text-white text-sm font-bold hover:bg-green-900 disabled:opacity-60"
+              >
+                {enviandoAcao ? 'Enviando…' : pedido.tipo === 'resolver' ? 'Enviar para resolvidos' : 'Desfazer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

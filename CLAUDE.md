@@ -61,6 +61,7 @@ Pacote portado em [dea/](dea/) — leia [dea/LEIA-PRIMEIRO.md](dea/LEIA-PRIMEIRO
 - `dados.js` (nome, Prec-cp e valor de milhares de pessoas) e o estado (`snapshot-anterior.json`, `historico.json`, insubstituíveis) vivem **só** no bucket privado `dea-privado` do Supabase — nunca no repositório, em `public/` ou em bucket público.
 - Atualização **só manual** (sem agendamento): o admin (login com `DEA_ADMIN_PASSWORD`) clica em "Atualizar" → `/api/dea` dispara a GitHub Action [dea-atualizar.yml](.github/workflows/dea-atualizar.yml) via `workflow_dispatch` (token `DEA_GITHUB_TOKEN`) → `supabase_sync.py baixar` → `atualizar.py` (intocado) → `supabase_sync.py enviar`. A barra acompanha o status e recarrega o iframe ao terminar.
 - Em dev, `DEA_DADOS_LOCAL` aponta para um `dados.js` fora do repositório.
+- **Resolvidos manualmente:** o admin (sessão admin + senha redigitada) tira do painel um grupo sem pagamento; a lista fica em `manual/resolvidos.json` no bucket privado e o `/api/dea` a anexa ao `dados.js`. O painel não faz requisições (CSP `connect-src 'none'`): os botões falam com o `DeaDashboard.tsx` por `postMessage`. Detalhes em [dea/docs/NOTAS-DOMINIO.md](dea/docs/NOTAS-DOMINIO.md).
 
 ## Banco de dados (Supabase)
 
