@@ -89,8 +89,11 @@ resolvidos no `dados.js` (e contando-os em `agregados`).
 
 Na tela, a aba perdeu os três filtros de situação do grupo (risco, atenção,
 resolvido) e ganhou o filtro por **protocolo**. Os
-selos de contagem no cabeçalho do grupo contam **só a situação da aba
-Acompanhamento**; protocolos sem linha lá seguem no selo "aguardando CPEx". A
+selos de contagem no cabeçalho do grupo contam **só a "Situação — DEA"** de
+todos os protocolos, e não há mais o selo "aguardando CPEx" (pedido do usuário,
+21/09/2026 — antes contavam só a situação do Acompanhamento). Vale para as quatro
+abas de grupos sem pagamento e para os relatórios PDF delas; "Pago em outro ano"
+continua contando pelo Acompanhamento (`contaPorDea()` no painel). A
 classificação risco/atenção/resolvido (veredito e contador da aba) não mudou.
 
 **Divisão em duas abas (pedido do usuário, 21/09/2026).** Os grupos sem
@@ -182,8 +185,7 @@ Também desde 21/09/2026, por pedido do usuário:
   **anterior** (antes de todas) ou **misto** (tentativas antes e depois).
 - Saíram os filtros de situação do grupo; entraram os filtros de **ano** (casa
   com qualquer ano que o grupo atravessa) e de **protocolo**.
-- Os selos de contagem contam só a situação do Acompanhamento (igual a "DEA
-  pendente").
+- Os selos de contagem contam só a "Situação — DEA" (igual a "DEA pendente").
 
 Retrato de 16/09/2026, pela regra anterior (valor, R$ 50): 7 grupos em risco,
 23 protocolos, 7 Prec-cp, R$ 56.642,52 sem pagamento.
