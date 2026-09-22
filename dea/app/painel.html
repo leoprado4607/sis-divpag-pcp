@@ -478,9 +478,9 @@ body.modo-relatorio .rodape{display:none !important}
   <div class="segbar">
     <span class="rotulo" id="lbl-seg">Segmento</span>
     <div class="chips" role="group" aria-labelledby="lbl-seg">
-      <button class="chip" id="seg-Veteranos" data-seg="Veteranos" aria-pressed="true" type="button">Veteranos <i>96…</i></button>
-      <button class="chip" id="seg-Pensionistas" data-seg="Pensionistas" aria-pressed="true" type="button">Pensionistas <i>98…</i></button>
-      <button class="chip" id="seg-Ativa" data-seg="Ativa" aria-pressed="true" type="button">Ativa <i>demais</i></button>
+      <button class="chip" id="seg-Ativa" data-seg="Ativa" aria-pressed="true" type="button">Ativa</button>
+      <button class="chip" id="seg-Veteranos" data-seg="Veteranos" aria-pressed="false" type="button">Veteranos</button>
+      <button class="chip" id="seg-Pensionistas" data-seg="Pensionistas" aria-pressed="false" type="button">Pensionistas</button>
     </div>
     <span class="seg-resumo" id="seg-resumo"></span>
   </div>
@@ -927,7 +927,7 @@ if(RES_FALHOU){
 }
 
 /* ---------- recorte por segmento (vale para todas as abas) ---------- */
-var SEG = {Veteranos:true, Pensionistas:true, Ativa:true};
+var SEG = {Ativa:true, Veteranos:false, Pensionistas:false};
 function segOK(s){ return SEG[s || 'Ativa'] !== false; }
 function porSeg(g){ return segOK(g.segmento); }
 function naoPago(g){ return g.status !== 'resolvido'; }
@@ -1995,7 +1995,7 @@ function temParecer(t){
 }
 
 function segAtivos(){
-  return ['Veteranos','Pensionistas','Ativa'].filter(function(k){ return SEG[k]; });
+  return ['Ativa','Veteranos','Pensionistas'].filter(function(k){ return SEG[k]; });
 }
 function segTexto(){
   var on = segAtivos();
@@ -2620,12 +2620,12 @@ function aplicarSegmento(){
   fEstado.pag = 1;
   pintaTabela();
   renderGeral();
-  var on = ['Veteranos','Pensionistas','Ativa'].filter(function(k){ return SEG[k]; });
+  var on = ['Ativa','Veteranos','Pensionistas'].filter(function(k){ return SEG[k]; });
   document.getElementById('seg-resumo').textContent =
     on.length === 0 ? 'Nenhum segmento selecionado'
     : (on.length === 3 ? 'Todos os segmentos' : on.join(' + ')) + ' · ' + num(V.P.length) + ' processos';
 }
-['Veteranos','Pensionistas','Ativa'].forEach(function(k){
+['Ativa','Veteranos','Pensionistas'].forEach(function(k){
   var b = document.getElementById('seg-'+k);
   b.addEventListener('click', function(){
     SEG[k] = !SEG[k];

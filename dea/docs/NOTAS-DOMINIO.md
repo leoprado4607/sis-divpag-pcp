@@ -388,6 +388,11 @@ globais de `agregados` para exibir — senão o recorte e o número na tela se
 contradizem. Distribuição em 16/09/2026: Ativa 2.439, Pensionistas 753,
 Veteranos 200.
 
+Desde 22/09/2026, a pedido do usuário, os botões vêm na ordem **Ativa,
+Veteranos, Pensionistas**, sem o texto do prefixo ("96…", "98…", "demais") no
+rótulo, e a página abre **só com Ativa marcada** (`SEG` inicial); Veteranos e
+Pensionistas começam desmarcados.
+
 ## Ano do processo
 
 Vem da **Data Implantação**, não do nome da aba. Em 14/09/2026 a aba `DEA 2022`
