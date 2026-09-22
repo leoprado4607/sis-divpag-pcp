@@ -12,7 +12,8 @@ npm run lint      # type-check TypeScript (tsc --noEmit)
 
 **Deploy:**
 ```bash
-vercel build && vercel deploy --prebuilt --prod
+vercel build --prod && vercel deploy --prebuilt --prod
+# --prod no build: usa as variáveis de ambiente de produção (sem ele, o build sai com as de preview).
 # Não usar "vercel --prod" direto: trava no build do servidor.
 ```
 
