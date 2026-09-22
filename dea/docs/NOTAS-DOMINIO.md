@@ -425,6 +425,21 @@ custaram uma rodada e ficam registradas:
    dia os dois textos passarem a conviver, com processos andando de um para o
    outro, reveja essa decisão.
 
+## Aba "Aguardando envio pela DAP" (22/09/2026)
+
+Pedida pelo usuário para apoiar a rotina de remessa. Fica **entre "Alterações do
+dia" e "Fila de homologação"** e lista os protocolos cuja situação **na aba DEA**
+é `AGUARDANDO_ENVIO_DAP` e que **ainda não foram pagos** (`sit_efetiva_classe !==
+'pago'`, ou seja, considerando o Acompanhamento). Os pagos com essa mesma
+situação viram só uma nota de rodapé com a contagem.
+
+É calculada **no painel** (`DAP`/`DAP_PAGOS` em `painel.html`), não no
+`build_data.py`: o `dados.js` já exporta `sit_dea_cod` de cada protocolo, então a
+aba funciona com qualquer `dados.js` — inclusive os já publicados. Ordena do mais
+antigo para o mais novo pela Data Implantação; "protocolado há" é contado no
+navegador entre `meta.data_ref` e essa data. Tem busca, filtro de ano, respeita o
+recorte por segmento e gera relatório PDF em paisagem.
+
 ## Relatórios em PDF (15/09/2026)
 
 As abas "Prec-cp repetido", "Entre anos", "Pago em outro ano", "Histórico",

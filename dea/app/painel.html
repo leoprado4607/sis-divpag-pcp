@@ -492,6 +492,7 @@ body.modo-relatorio .rodape{display:none !important}
     <button class="aba" role="tab" id="t-eacpex" aria-controls="p-eacpex" aria-selected="false" type="button">Entre anos — pendente de análise CPEx<span class="cnt" id="c-eacpex">0</span></button>
     <button class="aba" role="tab" id="t-pagofora" aria-controls="p-pagofora" aria-selected="false" type="button">Pago em outro ano<span class="cnt" id="c-pagofora">0</span></button>
     <button class="aba" role="tab" id="t-diff" aria-controls="p-diff" aria-selected="false" type="button">Alterações do dia<span class="cnt" id="c-diff">0</span></button>
+    <button class="aba" role="tab" id="t-dap" aria-controls="p-dap" aria-selected="false" type="button">Aguardando envio pela DAP<span class="cnt" id="c-dap">0</span></button>
     <button class="aba" role="tab" id="t-fila" aria-controls="p-fila" aria-selected="false" type="button">Fila de homologação<span class="cnt" id="c-fila">0</span></button>
     <button class="aba" role="tab" id="t-historico" aria-controls="p-historico" aria-selected="false" type="button">Histórico<span class="cnt" id="c-historico">0</span></button>
     <button class="aba" role="tab" id="t-homologados" aria-controls="p-homologados" aria-selected="false" type="button">Homologados para lançamento<span class="cnt" id="c-homologados">0</span></button>
@@ -651,6 +652,33 @@ body.modo-relatorio .rodape{display:none !important}
       <span style="font-size:.76rem;color:var(--ink-2)">Gera um documento A4 com todas as alterações do dia, pronto para compartilhar.</span>
     </div>
     <div class="diff-grid" id="diff-grid" style="margin-top:var(--s4)"></div>
+  </section>
+
+  <!-- ============ AGUARDANDO ENVIO PELA DAP ============ -->
+  <section class="painel" id="p-dap" role="tabpanel" aria-labelledby="t-dap" hidden>
+    <div class="secao-cab">
+      <h2 class="secao-tit">Aguardando envio pela DAP</h2>
+    </div>
+    <p class="nota" id="notaDAP"></p>
+
+    <div class="controles">
+      <div class="campo" style="flex:1 1 220px">
+        <label for="dp-busca">Protocolo, nome ou Prec-cp</label>
+        <input id="dp-busca" type="search" placeholder="ex.: 529224 ou MARCIO" autocomplete="off">
+      </div>
+      <div class="campo">
+        <label for="dp-ano">Ano</label>
+        <select id="dp-ano"><option value="">Todos</option></select>
+      </div>
+      <button class="btn secundario" id="dp-limpar" type="button">Limpar</button>
+      <button class="btn" id="dp-pdf" type="button">Relatório PDF</button>
+    </div>
+
+    <p class="resumo-filtro">
+      <span><b id="dp-cont">0</b> de <b id="dp-tot">0</b> protocolo(s) a enviar</span>
+      <span id="dp-soma"></span>
+    </p>
+    <div id="dp-area"></div>
   </section>
 
   <!-- ============ FILA DE HOMOLOGAÇÃO ============ -->
@@ -869,6 +897,15 @@ var GRUPOS = hidratarGrupos(D.grupos);
 var GRUPOS_EA = hidratarGrupos(D.grupos_entre_anos);
 var GRUPOS_PF = hidratarGrupos(D.grupos_pagos_fora);
 var HOMOL = (D.homologados_idx || []).map(function(i){ return P[i]; });
+/* ---------- aguardando envio pela DAP (22/09/2026) ----------
+   Situação da aba DEA "4 - Analisado / Aguardando envio pela DAP, para
+   Homologação do CPEx" (código AGUARDANDO_ENVIO_DAP). A lista de trabalho leva
+   só os que ainda não foram pagos; os pagos viram nota de rodapé. Calculado
+   aqui, no painel: o dados.js já traz sit_dea_cod de cada protocolo. */
+var _DAP_TODOS = P.filter(function(p){ return p.sit_dea_cod === 'AGUARDANDO_ENVIO_DAP'; });
+var DAP = _DAP_TODOS.filter(function(p){ return p.sit_efetiva_classe !== 'pago'; })
+  .sort(function(a,b){ return a.data_ord < b.data_ord ? -1 : a.data_ord > b.data_ord ? 1 : 0; });
+var DAP_PAGOS = _DAP_TODOS.filter(function(p){ return p.sit_efetiva_classe === 'pago'; });
 var HIST = (D.historico || []);
 var FILA = D.homolog || {disponivel:false, motivo:'', itens:[], novos:[], saidos:[], alerta:[], total:0};
 
@@ -953,6 +990,10 @@ function recortar(){
     .sort(function(a,b){ return a.em < b.em ? 1 : a.em > b.em ? -1 : 0; });
   V.PF = GRUPOS_PF.filter(porSeg);
   V.HL = HOMOL.filter(porSeg);
+  // "Aguardando envio pela DAP" (22/09/2026): protocolos que a DAP ainda precisa
+  // remeter ao CPEx. Sai da lista quem já consta como pago (situação efetiva).
+  V.DAP = DAP.filter(porSeg);
+  V.DAP_PAGOS = DAP_PAGOS.filter(porSeg).length;
   V.HIST = HIST.map(function(h){
     if(h.resumido) return h;   // entrada antiga: só contagens, não dá para recortar
     var a = (h.acomp||[]).filter(porSeg), d = (h.dea2026||[]).filter(porSeg),
@@ -1018,7 +1059,7 @@ document.getElementById('rod-fonte').textContent = META.fonte + ' · retrato de 
 document.getElementById('rod-org').textContent = META.organizacao;
 
 /* ---------- abas ---------- */
-var ABAS = ['grupos','cpex','entreanos','eacpex','pagofora','diff','fila','historico','homologados','resolvidos','consulta','geral'];
+var ABAS = ['grupos','cpex','entreanos','eacpex','pagofora','diff','dap','fila','historico','homologados','resolvidos','consulta','geral'];
 function mostrarAba(id){
   ABAS.forEach(function(a){
     var t = document.getElementById('t-'+a), p = document.getElementById('p-'+a);
@@ -1039,6 +1080,7 @@ function renderBadges(){
   document.getElementById('c-pagofora').textContent =
     num(V.PF.length);
   document.getElementById('c-diff').textContent = V.DIFF.disponivel ? num(V.DIFF.total) : '—';
+  document.getElementById('c-dap').textContent = num(V.DAP.length);
   document.getElementById('c-fila').textContent =
     V.FILA.disponivel ? num(V.FILA.total) : '—';
   document.getElementById('t-fila').classList.toggle('urgente',
@@ -1079,7 +1121,7 @@ var gEstado = {ano:'', busca:'', protocolo:''};
 
 (function(){
   var anos = A.anos.slice().sort(function(a,b){ return b-a; });
-  ['g-ano', 'gc-ano', 'e-ano', 'ec-ano', 'pf-ano'].forEach(function(id){
+  ['g-ano', 'gc-ano', 'e-ano', 'ec-ano', 'pf-ano', 'dp-ano'].forEach(function(id){
     var sel = document.getElementById(id);
     anos.forEach(function(a){
       var o = document.createElement('option'); o.value = a; o.textContent = a; sel.appendChild(o);
@@ -2401,6 +2443,143 @@ document.getElementById('d-pdf').addEventListener('click', function(){
 });
 
 /* =======================================================================
+   6b. AGUARDANDO ENVIO PELA DAP (22/09/2026)
+   Lista de trabalho da rotina de remessa: os protocolos que a planilha marca
+   como "4 - Analisado / Aguardando envio pela DAP, para Homologação do CPEx"
+   e que ainda NÃO foram pagos. A situação vem da aba DEA (sit_dea_cod); o
+   "já pago" é a situação efetiva, que considera o Acompanhamento.
+   ======================================================================= */
+var dpEstado = {ano:'', busca:''};
+
+document.getElementById('notaDAP').innerHTML =
+  'Protocolos das abas DEA com a situação <b>"Analisado / Aguardando envio pela DAP, para '+
+  'Homologação do CPEx"</b> — o CPEx ainda não os recebeu, e a OM não deve lançar no SIPPES. '+
+  'Esta é a lista de trabalho da remessa: entram apenas os que <b>ainda não foram pagos</b>; '+
+  'os que já constam como pagos no Acompanhamento ficam de fora. Os mais antigos aparecem '+
+  'primeiro, pela Data Implantação. Depois de enviados e homologados, os protocolos reaparecem '+
+  'em <b>Homologados para lançamento</b>.';
+
+// dias corridos entre o retrato do painel e a data de implantação do protocolo
+function diasDesde(dataOrd){
+  if(!dataOrd || dataOrd.length < 8 || !META.data_ref) return null;
+  var a = new Date(META.data_ref.slice(0,4), +META.data_ref.slice(5,7)-1, +META.data_ref.slice(8,10));
+  var b = new Date(+dataOrd.slice(0,4), +dataOrd.slice(4,6)-1, +dataOrd.slice(6,8));
+  if(isNaN(a) || isNaN(b)) return null;
+  return Math.round((a - b) / 86400000);
+}
+
+function dapFiltrados(){
+  var b = semAcento(dpEstado.busca).trim();
+  return V.DAP.filter(function(p){
+    if(dpEstado.ano && String(p.ano) !== dpEstado.ano) return false;
+    if(b && String(p.protocolo).indexOf(b) === -1 &&
+            String(p.prec_cp||'').indexOf(b) === -1 &&
+            p._busca.indexOf(b) === -1) return false;
+    return true;
+  });
+}
+
+function notaDapPagos(){
+  return V.DAP_PAGOS
+    ? num(V.DAP_PAGOS)+' protocolo(s) com essa situação na aba DEA ficaram de fora por já '+
+      'constarem como pagos no Acompanhamento — não precisam de envio.'
+    : '';
+}
+
+function renderDAP(){
+  var lista = dapFiltrados();
+  document.getElementById('dp-cont').textContent = num(lista.length);
+  document.getElementById('dp-tot').textContent = num(V.DAP.length);
+  document.getElementById('dp-soma').textContent = lista.length
+    ? 'Soma dos valores: ' + brl(somaValor(lista)) : '';
+  document.getElementById('dp-pdf').hidden = !lista.length;
+  var area = document.getElementById('dp-area');
+  var pagos = notaDapPagos();
+
+  if(!lista.length){
+    area.innerHTML = '<div class="cartao" style="padding:var(--s5)">'+
+      '<p class="vazio-msg">'+
+      (V.DAP.length ? 'Nenhum protocolo corresponde aos filtros.'
+                    : 'Nenhum protocolo aguardando envio pela DAP neste recorte.')+'</p>'+
+      (pagos ? '<p class="nota vazio">'+pagos+'</p>' : '')+'</div>';
+    return;
+  }
+
+  area.innerHTML = '<div class="rolagem"><table><thead><tr>'+
+      '<th scope="col">Protocolo</th><th scope="col">Protocolado em</th>'+
+      '<th scope="col">Protocolado há</th><th scope="col">Ano</th>'+
+      '<th scope="col">Prec-cp</th><th scope="col">Nome</th>'+
+      '<th scope="col">Valor</th><th scope="col">Nr BI</th>'+
+      '<th scope="col">CODOM</th><th scope="col">Segmento</th>'+
+    '</tr></thead><tbody>'+
+    lista.map(function(p){
+      var d = diasDesde(p.data_ord);
+      return '<tr>'+
+        '<td class="mono">'+esc(p.protocolo)+'</td>'+
+        '<td class="mono">'+esc(p.data)+'</td>'+
+        '<td class="num">'+(d == null ? '—' : num(d)+(d === 1 ? ' dia' : ' dias'))+'</td>'+
+        '<td class="mono">'+esc(p.ano)+'</td>'+
+        '<td class="mono">'+esc(p.prec_cp)+'</td>'+
+        '<td>'+esc(p.nome)+'</td>'+
+        '<td class="num">'+esc(p.valor_fmt)+'</td>'+
+        '<td class="mono">'+esc(p.nr_bi)+'</td>'+
+        '<td class="mono">'+esc(p.codom)+'</td>'+
+        '<td>'+esc(p.segmento)+'</td>'+
+      '</tr>';
+    }).join('')+'</tbody></table></div>'+
+    (pagos ? '<p class="nota vazio" style="margin-top:var(--s3)">'+pagos+'</p>' : '');
+}
+
+document.getElementById('dp-busca').addEventListener('input', function(){
+  dpEstado.busca = this.value; renderDAP();
+});
+document.getElementById('dp-ano').addEventListener('change', function(){
+  dpEstado.ano = this.value; renderDAP();
+});
+document.getElementById('dp-limpar').addEventListener('click', function(){
+  dpEstado = {ano:'', busca:''};
+  document.getElementById('dp-busca').value = '';
+  document.getElementById('dp-ano').value = '';
+  renderDAP();
+});
+
+document.getElementById('dp-pdf').addEventListener('click', function(){
+  var lista = dapFiltrados();
+  var corpo = lista.length
+    ? '<table class="rel-tab"><thead><tr><th>Protocolo</th><th>Protocolado em</th>'+
+      '<th class="num">Protocolado há</th><th>Ano</th><th>Prec-cp</th><th>Nome</th>'+
+      '<th class="num">Valor</th><th>Nr BI</th><th>CODOM</th></tr></thead><tbody>'+
+      lista.map(function(p){
+        var d = diasDesde(p.data_ord);
+        return '<tr><td class="mono">'+esc(p.protocolo)+'</td>'+
+          '<td class="mono">'+esc(p.data)+'</td>'+
+          '<td class="num">'+(d == null ? '—' : d+' dias')+'</td>'+
+          '<td class="mono">'+esc(p.ano)+'</td>'+
+          '<td class="mono">'+esc(p.prec_cp)+'</td>'+
+          '<td>'+esc(p.nome)+'</td><td class="num">'+esc(p.valor_fmt)+'</td>'+
+          '<td class="mono">'+esc(p.nr_bi)+'</td>'+
+          '<td class="mono">'+esc(p.codom)+'</td></tr>';
+      }).join('')+'</tbody></table>'
+    : '<p class="rel-vazio">Nenhum protocolo corresponde aos filtros.</p>';
+  abrirRelatorio(
+    relCapa('Aguardando envio pela DAP',
+      'Protocolos das abas DEA com situação "Analisado / Aguardando envio pela DAP, para '+
+      'Homologação do CPEx" que ainda não foram pagos. É a relação de remessa: o CPEx ainda '+
+      'não recebeu esses processos e a OM não deve lançá-los no SIPPES. Os que já constam '+
+      'como pagos no Acompanhamento não entram.',
+      [['Protocolos a enviar', num(lista.length)],
+       ['Valor envolvido', lista.length ? brl(somaValor(lista)) : '—'],
+       ['Excluídos por já constarem pagos', num(V.DAP_PAGOS)],
+       ['Segmento', segTexto()]],
+      'Recorte deste relatório: segmento <b>'+esc(segTexto())+'</b>'+
+      (dpEstado.ano ? ' · ano <b>'+esc(dpEstado.ano)+'</b>' : '')+
+      (dpEstado.busca ? ' · busca <b>'+esc(dpEstado.busca)+'</b>' : '')+'. '+
+      'Os filtros da tela valem para o documento — limpe-os antes de gerar para incluir tudo.')+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">Protocolos a enviar para o CPEx</h2>'+
+    corpo+'</section>', true);
+});
+
+/* =======================================================================
    7. FILA DE HOMOLOGAÇÃO
    A aba "Protocolos para homologação" da planilha NÃO traz data. O tempo de
    espera é medido pelo próprio painel: a cada atualização o pipeline guarda
@@ -2614,6 +2793,7 @@ function aplicarSegmento(){
   pintaEC();
   pintaPF();
   renderDiff();
+  renderDAP();
   pintaHist();
   renderHL();
   renderFila();
