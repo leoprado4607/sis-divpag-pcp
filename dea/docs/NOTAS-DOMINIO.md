@@ -436,6 +436,33 @@ O código está no commit `6bdc6fc` (removido no commit seguinte): era calculado
 no painel, a partir do `sit_dea_cod` que o `dados.js` já traz, sem nada no
 `build_data.py`. Se um dia voltar a fazer falta, é de lá que se recupera.
 
+## Relatório "Perfil das rejeições — DEA 2026" (23/09/2026)
+
+Botão na **Visão geral**, no cartão logo abaixo de "Cobertura do cruzamento".
+Pedido pelo usuário para orientar quem elabora os processos sobre o que mais
+derruba protocolo. Lê a coluna **Parecer** dos protocolos com
+`sit_dea_classe === 'rejeitado'` na aba **DEA 2026** (`p.aba`, não o ano da Data
+Implantação) — é na aba DEA que o parecer é escrito. Respeita o segmento.
+
+Quatro seções: motivos agrupados, termos recorrentes, reincidência por militar
+(mesmo nome + Prec-cp, pela `chavePessoa`) e anexo com os pareceres na íntegra.
+Duas decisões que sustentam o relatório e não devem ser desfeitas sem pensar:
+
+- **Agrupamento por texto normalizado** (`motivoChave`): sem acento, sem
+  pontuação e com **todo número virando `#`**. É isso que faz "valor R$ 1.234
+  diverge" e "valor R$ 987 diverge" caírem no mesmo motivo. O exemplo exibido é
+  a redação mais curta do grupo; o número de variações vai como nota.
+- **Os pares de palavras saem adjacentes no texto original.** Filtrar as
+  stopwords antes de formar os pares produzia expressões que ninguém escreveu
+  ("publicacao concessao", de "publicação em BI do ato de concessão"). Os termos
+  são contados por **frequência de documento** — em quantos pareceres aparecem,
+  não quantas vezes ao todo.
+
+Nenhuma taxonomia de erro é criada pelo painel: tudo sai do texto. Se o ranking
+vier pulverizado (cada parecer com redação própria), é a seção de termos que
+responde "qual o erro mais comum" — foi por isso que ela existe. A lista
+`STOP_REJ` pode precisar de ajuste quando confrontada com os pareceres reais.
+
 ## Relatórios em PDF (15/09/2026)
 
 As abas "Prec-cp repetido", "Entre anos", "Pago em outro ano", "Histórico",

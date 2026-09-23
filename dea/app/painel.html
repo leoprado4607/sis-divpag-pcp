@@ -812,6 +812,14 @@ body.modo-relatorio .rodape{display:none !important}
       <p class="rotulo">Cobertura do cruzamento</p>
       <div id="qualidade" style="margin-top:var(--s3)"></div>
     </div>
+    <div class="cartao" style="padding:var(--s5); margin-top:var(--s4)">
+      <p class="rotulo">Perfil das rejeições — DEA 2026</p>
+      <p class="nota" id="notaRej" style="margin-top:var(--s3)"></p>
+      <div class="controles" style="margin-top:var(--s4)">
+        <button class="btn" id="rj-pdf" type="button">Relatório PDF</button>
+        <span style="font-size:.76rem;color:var(--ink-2)" id="rj-resumo"></span>
+      </div>
+    </div>
   </section>
 
   <div class="rel-barra" id="rel-barra" hidden>
@@ -2545,6 +2553,231 @@ document.getElementById('fl-pdf').addEventListener('click', function(){
     corpo+'</section>', true);
 });
 
+/* =======================================================================
+   PERFIL DAS REJEIÇÕES — DEA 2026 (23/09/2026)
+   Relatório analítico dos textos da coluna Parecer da aba DEA 2026, para
+   orientar quem monta os processos sobre os erros que mais derrubam protocolo.
+   Só protocolos REJEITADOS na própria aba DEA (é lá que o parecer é escrito).
+   Duas leituras, ambas tiradas do texto — nenhuma categoria inventada aqui:
+     1. motivos agrupados pelo texto normalizado (números viram "#", para que
+        "valor R$ 1.234" e "valor R$ 99" caiam no mesmo motivo);
+     2. termos e pares de termos mais recorrentes, contados por parecer
+        (frequência de documento), não por repetição dentro do mesmo texto.
+   ======================================================================= */
+var ABA_REJ = 'DEA 2026';
+
+// palavras sem valor discriminante: conectivos e o vocabulário que aparece em
+// praticamente todo parecer. Sem esta lista o topo do ranking vira "de, o, a".
+var STOP_REJ = (' a as o os e é da das de do dos na nas no nos em um uma uns umas '+
+  'para por com sem sob sobre ao aos à às pelo pela pelos pelas que se ser foi '+
+  'nao sim mais menos ja apos ate entre qual quais quando onde como porem mas '+
+  'este esta isto esse essa isso aquele aquela seu sua seus suas ou tambem '+
+  'sr sra militar militares processo processos protocolo protocolos requerente '+
+  'favor obs ref refere devera deve deverao ').trim().split(/\s+/);
+var STOP_MAP = {};
+STOP_REJ.forEach(function(w){ STOP_MAP[w] = 1; });
+
+// chave de agrupamento: sem acento, sem pontuação, números viram "#"
+function motivoChave(t){
+  return semAcento(t)
+    .replace(/\d+/g, '#')
+    .replace(/[^a-z#\s]+/g, ' ')
+    .replace(/#(\s*#)+/g, '#')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function rejBase(){
+  return V.P.filter(function(p){
+    return p.aba === ABA_REJ && p.sit_dea_classe === 'rejeitado';
+  });
+}
+
+// agrupa os pareceres por texto normalizado, do mais frequente para o menos
+function rejMotivos(lista){
+  var mapa = {};
+  lista.forEach(function(p){
+    var k = motivoChave(p.parecer);
+    if(!k) return;
+    var m = mapa[k] || (mapa[k] = {chave:k, qtd:0, valor:0, textos:{}, exemplo:p.parecer, protos:[]});
+    m.qtd++;
+    m.valor += (p.valor || 0);
+    m.textos[String(p.parecer).trim()] = 1;
+    m.protos.push(p.protocolo);
+    // guarda o texto mais curto como exemplo: costuma ser o que tem menos
+    // nome/número colado e lê melhor no relatório
+    if(String(p.parecer).length < String(m.exemplo).length) m.exemplo = p.parecer;
+  });
+  return Object.keys(mapa).map(function(k){
+    var m = mapa[k];
+    m.variacoes = Object.keys(m.textos).length;
+    return m;
+  }).sort(function(a,b){ return b.qtd - a.qtd || b.valor - a.valor; });
+}
+
+// termos (1 e 2 palavras) por número de pareceres em que aparecem
+function rejTermos(lista){
+  var df = {}, exemplos = {};
+  lista.forEach(function(p){
+    // os pares saem do texto na ordem original: "publicação em BI do ato de
+    // concessão" não pode virar o par "publicacao concessao", que ninguém
+    // escreveu. Por isso a lista completa entra aqui, e o filtro vem depois.
+    var toks = motivoChave(p.parecer).split(' ');
+    function vale(w){ return w && w.length > 3 && w !== '#' && !STOP_MAP[w]; }
+    var vistos = {};
+    toks.forEach(function(w, i){
+      if(!vale(w)) return;
+      vistos[w] = 1;
+      if(i < toks.length - 1 && vale(toks[i+1])) vistos[w + ' ' + toks[i+1]] = 1;
+    });
+    Object.keys(vistos).forEach(function(t){
+      df[t] = (df[t] || 0) + 1;
+      if(!exemplos[t]) exemplos[t] = p.protocolo;
+    });
+  });
+  return Object.keys(df).map(function(t){
+    return {termo:t, qtd:df[t], duplo:t.indexOf(' ') !== -1};
+  }).filter(function(x){ return x.qtd > 1; })
+    .sort(function(a,b){ return b.qtd - a.qtd || (a.termo < b.termo ? -1 : 1); });
+}
+
+// pessoas com mais de uma rejeição no ano: quem está repetindo o erro
+function rejReincidentes(lista){
+  var mapa = {};
+  lista.forEach(function(p){
+    if(!p.nome || !p.prec_cp) return;
+    var k = chavePessoa(p.nome, p.prec_cp);
+    var r = mapa[k] || (mapa[k] = {nome:p.nome, prec_cp:p.prec_cp, qtd:0, valor:0, protos:[]});
+    r.qtd++; r.valor += (p.valor || 0); r.protos.push(p.protocolo);
+  });
+  return Object.keys(mapa).map(function(k){ return mapa[k]; })
+    .filter(function(r){ return r.qtd > 1; })
+    .sort(function(a,b){ return b.qtd - a.qtd || b.valor - a.valor; });
+}
+
+function pctTxt(n, tot){
+  return tot ? (Math.round(n * 1000 / tot) / 10).toFixed(1).replace('.', ',') + '%' : '—';
+}
+
+function renderRej(){
+  var rej = rejBase();
+  var comP = rej.filter(function(p){ return temParecer(p.parecer); });
+  document.getElementById('notaRej').innerHTML =
+    'Leitura dos textos da coluna <b>Parecer</b> da aba <b>DEA 2026</b>, nos protocolos '+
+    '<b>rejeitados</b> — é onde o CPEx escreve o que derrubou o processo. O relatório ordena '+
+    'os motivos por frequência, mostra os termos que mais se repetem e quem já teve mais de '+
+    'uma rejeição no ano, para orientar quem monta os processos. Segue o recorte por segmento '+
+    'da barra do topo.';
+  document.getElementById('rj-resumo').textContent = rej.length
+    ? num(rej.length) + ' rejeitado(s) em 2026 · ' + num(comP.length) + ' com parecer preenchido'
+    : 'Nenhum protocolo rejeitado na aba DEA 2026 neste recorte.';
+  document.getElementById('rj-pdf').hidden = !comP.length;
+}
+
+document.getElementById('rj-pdf').addEventListener('click', function(){
+  var rej = rejBase();
+  var comP = rej.filter(function(p){ return temParecer(p.parecer); });
+  var semP = rej.length - comP.length;
+  var motivos = rejMotivos(comP);
+  var repetidos = motivos.filter(function(m){ return m.qtd > 1; });
+  var unicos = motivos.length - repetidos.length;
+  var termos = rejTermos(comP).slice(0, 20);
+  var reinc = rejReincidentes(rej);
+
+  /* ---- 1. motivos ---- */
+  var secMotivos = repetidos.length
+    ? '<table class="rel-tab"><thead><tr><th>#</th><th>Motivo (texto do parecer)</th>'+
+      '<th class="num">Protocolos</th><th class="num">% dos pareceres</th>'+
+      '<th class="num">Valor</th></tr></thead><tbody>'+
+      repetidos.map(function(m, i){
+        return '<tr><td class="num">'+(i+1)+'</td>'+
+          '<td class="parecer-txt">'+esc(m.exemplo)+
+          (m.variacoes > 1 ? '<br><span style="font-size:.66rem;color:var(--ink-2)">'+
+            m.variacoes+' redações que só diferem em números ou acentuação; acima, a mais '+
+            'curta</span>' : '')+'</td>'+
+          '<td class="num">'+num(m.qtd)+'</td>'+
+          '<td class="num">'+pctTxt(m.qtd, comP.length)+'</td>'+
+          '<td class="num">'+brl(m.valor)+'</td></tr>';
+      }).join('')+'</tbody></table>'+
+      (unicos ? '<p class="rel-vazio" style="text-align:left">Além desses, '+num(unicos)+
+        ' parecer(es) aparecem uma única vez cada — estão no anexo, na íntegra.</p>' : '')
+    : '<p class="rel-vazio">Nenhum motivo se repetiu: cada parecer tem uma redação própria. '+
+      'Veja os termos recorrentes abaixo e o anexo com os textos na íntegra.</p>';
+
+  /* ---- 2. termos ---- */
+  var secTermos = termos.length
+    ? '<table class="rel-tab"><thead><tr><th>Termo</th><th>Tipo</th>'+
+      '<th class="num">Pareceres em que aparece</th><th class="num">% dos pareceres</th>'+
+      '</tr></thead><tbody>'+
+      termos.map(function(t){
+        return '<tr><td>'+esc(t.termo)+'</td>'+
+          '<td>'+(t.duplo ? 'expressão' : 'palavra')+'</td>'+
+          '<td class="num">'+num(t.qtd)+'</td>'+
+          '<td class="num">'+pctTxt(t.qtd, comP.length)+'</td></tr>';
+      }).join('')+'</tbody></table>'
+    : '<p class="rel-vazio">Nenhum termo se repete em mais de um parecer.</p>';
+
+  /* ---- 3. reincidência ---- */
+  var secReinc = reinc.length
+    ? '<table class="rel-tab"><thead><tr><th>Nome</th><th>Prec-cp</th>'+
+      '<th class="num">Rejeições</th><th class="num">Valor</th><th>Protocolos</th>'+
+      '</tr></thead><tbody>'+
+      reinc.map(function(r){
+        return '<tr><td>'+esc(r.nome)+'</td><td class="mono">'+esc(r.prec_cp)+'</td>'+
+          '<td class="num">'+num(r.qtd)+'</td><td class="num">'+brl(r.valor)+'</td>'+
+          '<td class="mono">'+esc(r.protos.join(', '))+'</td></tr>';
+      }).join('')+'</tbody></table>'
+    : '<p class="rel-vazio">Nenhum nome teve mais de uma rejeição em 2026 neste recorte.</p>';
+
+  /* ---- 4. anexo com os pareceres na íntegra ---- */
+  var secAnexo = comP.length
+    ? '<table class="rel-tab"><thead><tr><th>Protocolo</th><th>Data</th><th>Prec-cp</th>'+
+      '<th>Nome</th><th class="num">Valor</th></tr></thead><tbody>'+
+      comP.map(function(p){
+        return '<tr><td class="mono">'+esc(p.protocolo)+'</td>'+
+          '<td class="mono">'+esc(p.data)+'</td>'+
+          '<td class="mono">'+esc(p.prec_cp)+'</td>'+
+          '<td>'+esc(p.nome)+'</td>'+
+          '<td class="num">'+esc(p.valor_fmt)+'</td></tr>'+
+          '<tr class="rel-parecer"><td colspan="5"><b>Parecer:</b> '+esc(p.parecer)+'</td></tr>';
+      }).join('')+'</tbody></table>'
+    : '<p class="rel-vazio">Nenhum parecer preenchido neste recorte.</p>';
+
+  abrirRelatorio(
+    relCapa('Perfil das rejeições — DEA 2026',
+      'Análise dos pareceres dos protocolos rejeitados na aba DEA 2026, para orientar a '+
+      'elaboração dos processos: o que mais derruba protocolo, com que frequência e quanto '+
+      'valor fica parado por causa disso. Os motivos saem do próprio texto do parecer, '+
+      'agrupados por redação equivalente — nenhuma categoria foi criada por fora.',
+      [['Rejeitados em 2026', num(rej.length)],
+       ['Com parecer preenchido', num(comP.length)],
+       ['Sem parecer', num(semP)],
+       ['Motivos distintos', num(motivos.length)],
+       ['Valor rejeitado', brl(somaValor(comP))],
+       ['Segmento', segTexto()]],
+      'Recorte deste relatório: aba <b>DEA 2026</b> · segmento <b>'+esc(segTexto())+'</b> · '+
+      'situação <b>rejeitado</b> na aba DEA. '+
+      (semP ? num(semP)+' protocolo(s) rejeitado(s) estão fora da análise por não terem '+
+              'parecer escrito (vazio ou "ND"). ' : '')+
+      'Os percentuais têm como base os '+num(comP.length)+' parecer(es) preenchido(s).')+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">1. Motivos mais frequentes</h2>'+
+    '<p class="rel-vazio" style="text-align:left">Pareceres com a mesma redação contam juntos; '+
+    'números (valores, datas, protocolos) são ignorados na comparação, para que a mesma '+
+    'exigência escrita com números diferentes caia num motivo só.</p>'+
+    secMotivos+'</section>'+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">2. Termos que mais se repetem</h2>'+
+    '<p class="rel-vazio" style="text-align:left">Palavras e expressões contadas por '+
+    '<b>número de pareceres</b> em que aparecem. Servem para achar o erro comum quando cada '+
+    'parecer tem redação própria e o agrupamento do item 1 não os junta.</p>'+
+    secTermos+'</section>'+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">3. Reincidência por militar</h2>'+
+    '<p class="rel-vazio" style="text-align:left">Mesmo nome e Prec-cp com mais de uma '+
+    'rejeição na aba DEA 2026 — onde a orientação individual rende mais.</p>'+
+    secReinc+'</section>'+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">Anexo — pareceres na íntegra</h2>'+
+    secAnexo+'</section>');
+});
+
 /* ---------- filtro de segmento: recalcula tudo ---------- */
 /* =======================================================================
    RESOLVIDOS MANUALMENTE (21/09/2026)
@@ -2615,6 +2848,7 @@ function aplicarSegmento(){
   pintaPF();
   renderDiff();
   pintaHist();
+  renderRej();
   renderHL();
   renderFila();
   fEstado.pag = 1;
