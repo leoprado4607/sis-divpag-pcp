@@ -429,6 +429,15 @@ body.modo-relatorio .rodape{display:none !important}
   white-space:pre-wrap; overflow-wrap:anywhere}
 .rel-sublegenda{font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3);
   margin:var(--s4) 0 6px}
+/* resumo 80/20: frase de abertura, barra de acumulado e a linha de corte */
+.rel-destaque{font-size:.86rem; line-height:1.55; margin:0 0 var(--s3);
+  background:var(--surface-2); border-left:3px solid var(--dourado); padding:10px 14px}
+.rel-barra-ext{display:block; width:70px; height:8px; background:var(--line);
+  border:1px solid var(--line-forte)}
+.rel-barra-int{display:block; height:100%; background:var(--neutro)}
+.rel-barra-int.vital{background:var(--verde)}
+.rel-tab .rel-corte td{background:var(--dourado); color:#2A2A22; font-size:.64rem;
+  letter-spacing:.06em; text-transform:uppercase; font-weight:700; padding:3px 8px}
 .rel-vazio{font-size:.8rem; color:var(--ink-3); padding:var(--s5); text-align:center;
   border:1px dashed var(--line-forte)}
 .rel-rodape{margin-top:var(--s6); padding-top:var(--s3); border-top:1px solid var(--line-forte);
@@ -2655,6 +2664,23 @@ function rejReincidentes(lista){
     .sort(function(a,b){ return b.qtd - a.qtd || b.valor - a.valor; });
 }
 
+/* Pareto: quantos motivos explicam 80% das rejeições. Só faz sentido afirmar a
+   concentração quando ela existe — por isso o relatório imprime o número real
+   (os 20% mais frequentes respondem por X%) em vez de repetir "80/20". */
+function rejPareto(motivos, total){
+  var acc = 0, corte = -1;
+  var linhas = motivos.map(function(m, i){
+    acc += m.qtd;
+    if(corte < 0 && acc / total >= 0.8) corte = i;
+    return {pos:i+1, motivo:m, acum:acc, cum:acc/total};
+  });
+  if(corte < 0) corte = motivos.length - 1;
+  var n20 = Math.max(1, Math.round(motivos.length * 0.2));
+  var soma20 = motivos.slice(0, n20).reduce(function(t, m){ return t + m.qtd; }, 0);
+  return {linhas:linhas, corte:corte, vitais:corte + 1, n20:n20,
+          pct20: total ? soma20 / total : 0};
+}
+
 function pctTxt(n, tot){
   return tot ? (Math.round(n * 1000 / tot) / 10).toFixed(1).replace('.', ',') + '%' : '—';
 }
@@ -2683,6 +2709,51 @@ document.getElementById('rj-pdf').addEventListener('click', function(){
   var unicos = motivos.length - repetidos.length;
   var termos = rejTermos(comP).slice(0, 20);
   var reinc = rejReincidentes(rej);
+  var pareto = rejPareto(motivos, comP.length);
+
+  /* ---- 0. resumo 80/20 ---- */
+  var concentra = pareto.vitais <= Math.max(1, Math.round(motivos.length * 0.35));
+  var secPareto = motivos.length
+    ? '<p class="rel-destaque"><b>'+num(pareto.vitais)+'</b> '+
+      (pareto.vitais === 1 ? 'motivo, de ' : 'motivos, de ')+num(motivos.length)+
+      (pareto.vitais === 1 ? ', responde' : ', respondem')+
+      ' por <b>80% das rejeições</b> com parecer — '+
+      pctTxt(pareto.vitais, motivos.length)+' dos motivos distintos. '+
+      (pareto.n20 === 1
+        ? 'O motivo mais frequente, sozinho, explica '
+        : 'Os '+num(pareto.n20)+' motivos mais frequentes (os 20% do topo) explicam ')+
+      '<b>'+pctTxt(pareto.pct20 * comP.length, comP.length)+'</b> das rejeições.</p>'+
+      '<p class="rel-vazio" style="text-align:left">'+
+      (concentra
+        ? 'A concentração prevista por Pareto se confirma: atacar essa minoria de motivos '+
+          'resolve a maior parte das devoluções. É por eles que a orientação deve começar.'
+        : 'A concentração prevista por Pareto <b>não</b> se confirma aqui: as rejeições estão '+
+          'pulverizadas em muitos motivos diferentes, e nenhum punhado deles resolve o grosso '+
+          'do problema. Nesse caso, a seção de termos recorrentes ajuda mais do que este corte, '+
+          'porque encontra o erro comum mesmo quando cada parecer tem redação própria.')+
+      '</p>'+
+      '<table class="rel-tab"><thead><tr><th>#</th><th>Motivo</th>'+
+      '<th class="num">Protocolos</th><th class="num">% </th>'+
+      '<th class="num">% acumulado</th><th>Concentração</th><th class="num">Valor</th>'+
+      '</tr></thead><tbody>'+
+      pareto.linhas.map(function(l){
+        var dentro = l.pos <= pareto.vitais;
+        return '<tr'+(dentro ? '' : ' style="color:var(--ink-2)"')+'>'+
+          '<td class="num">'+l.pos+'</td>'+
+          '<td class="parecer-txt">'+esc(l.motivo.exemplo)+'</td>'+
+          '<td class="num">'+num(l.motivo.qtd)+'</td>'+
+          '<td class="num">'+pctTxt(l.motivo.qtd, comP.length)+'</td>'+
+          '<td class="num"><b>'+pctTxt(l.acum, comP.length)+'</b></td>'+
+          '<td><span class="rel-barra-ext"><span class="rel-barra-int'+
+            (dentro ? ' vital' : '')+'" style="width:'+Math.round(l.cum * 100)+'%"></span></span></td>'+
+          '<td class="num">'+brl(l.motivo.valor)+'</td></tr>'+
+          (l.pos === pareto.vitais && l.pos < motivos.length
+            ? '<tr class="rel-corte"><td colspan="7">linha dos 80% — daqui para baixo está a '+
+              'cauda: '+num(motivos.length - pareto.vitais)+' motivo(s) que somam os 20% '+
+              'restantes</td></tr>'
+            : '');
+      }).join('')+'</tbody></table>'
+    : '<p class="rel-vazio">Sem pareceres preenchidos, não há como aplicar o corte de Pareto.</p>';
 
   /* ---- 1. motivos ---- */
   var secMotivos = repetidos.length
@@ -2753,6 +2824,7 @@ document.getElementById('rj-pdf').addEventListener('click', function(){
        ['Com parecer preenchido', num(comP.length)],
        ['Sem parecer', num(semP)],
        ['Motivos distintos', num(motivos.length)],
+       ['Motivos que explicam 80%', motivos.length ? num(pareto.vitais) : '—'],
        ['Valor rejeitado', brl(somaValor(comP))],
        ['Segmento', segTexto()]],
       'Recorte deste relatório: aba <b>DEA 2026</b> · segmento <b>'+esc(segTexto())+'</b> · '+
@@ -2760,17 +2832,23 @@ document.getElementById('rj-pdf').addEventListener('click', function(){
       (semP ? num(semP)+' protocolo(s) rejeitado(s) estão fora da análise por não terem '+
               'parecer escrito (vazio ou "ND"). ' : '')+
       'Os percentuais têm como base os '+num(comP.length)+' parecer(es) preenchido(s).')+
-    '<section class="rel-secao"><h2 class="rel-secao-tit">1. Motivos mais frequentes</h2>'+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">1. Resumo 80/20 (Pareto)</h2>'+
+    '<p class="rel-vazio" style="text-align:left">A regra de Pareto diz que a maior parte dos '+
+    'efeitos vem de uma minoria das causas. Aqui ela é <b>medida</b>, não suposta: os motivos '+
+    'entram em ordem de frequência e a coluna de acumulado mostra onde os 80% das rejeições '+
+    'se completam. O que estiver acima dessa linha é onde a orientação rende mais.</p>'+
+    secPareto+'</section>'+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">2. Motivos mais frequentes</h2>'+
     '<p class="rel-vazio" style="text-align:left">Pareceres com a mesma redação contam juntos; '+
     'números (valores, datas, protocolos) são ignorados na comparação, para que a mesma '+
     'exigência escrita com números diferentes caia num motivo só.</p>'+
     secMotivos+'</section>'+
-    '<section class="rel-secao"><h2 class="rel-secao-tit">2. Termos que mais se repetem</h2>'+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">3. Termos que mais se repetem</h2>'+
     '<p class="rel-vazio" style="text-align:left">Palavras e expressões contadas por '+
     '<b>número de pareceres</b> em que aparecem. Servem para achar o erro comum quando cada '+
     'parecer tem redação própria e o agrupamento do item 1 não os junta.</p>'+
     secTermos+'</section>'+
-    '<section class="rel-secao"><h2 class="rel-secao-tit">3. Reincidência por militar</h2>'+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">4. Reincidência por militar</h2>'+
     '<p class="rel-vazio" style="text-align:left">Mesmo nome e Prec-cp com mais de uma '+
     'rejeição na aba DEA 2026 — onde a orientação individual rende mais.</p>'+
     secReinc+'</section>'+

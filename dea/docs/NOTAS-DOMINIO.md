@@ -444,8 +444,18 @@ derruba protocolo. Lê a coluna **Parecer** dos protocolos com
 `sit_dea_classe === 'rejeitado'` na aba **DEA 2026** (`p.aba`, não o ano da Data
 Implantação) — é na aba DEA que o parecer é escrito. Respeita o segmento.
 
-Quatro seções: motivos agrupados, termos recorrentes, reincidência por militar
-(mesmo nome + Prec-cp, pela `chavePessoa`) e anexo com os pareceres na íntegra.
+Cinco seções: resumo 80/20, motivos agrupados, termos recorrentes, reincidência
+por militar (mesmo nome + Prec-cp, pela `chavePessoa`) e anexo com os pareceres
+na íntegra.
+
+O **resumo 80/20 (Pareto)**, acrescentado a pedido do usuário em 23/09/2026,
+**mede** a concentração em vez de pressupô-la: `rejPareto()` acumula os motivos
+em ordem de frequência, marca onde os 80% se completam e imprime também quanto
+os 20% do topo realmente explicam. Quando os motivos estão pulverizados — o
+corte dos 80% cai além de ~35% dos motivos distintos — o texto **diz que a
+concentração não se confirma** e manda o leitor para a seção de termos. Nunca
+afirmar "80% vêm de 20%" sem esse teste: com pareceres de redação livre o padrão
+pode simplesmente não existir.
 Duas decisões que sustentam o relatório e não devem ser desfeitas sem pensar:
 
 - **Agrupamento por texto normalizado** (`motivoChave`): sem acento, sem
