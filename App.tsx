@@ -81,18 +81,13 @@ const App: React.FC = () => {
         />
 
         {/* Text content over the image */}
-        <div className="relative z-10 flex flex-col justify-center min-h-[36vh] px-6 sm:px-10 lg:px-16 py-10">
+        <div className="relative z-10 flex flex-col items-center justify-center text-center min-h-[36vh] px-6 sm:px-10 lg:px-16 py-10">
           <h2 className="font-cormorant font-semibold text-3xl sm:text-4xl lg:text-5xl leading-[1.1]
-                         text-white mb-4 animate-fade-in-up drop-shadow-md"
+                         text-white animate-fade-in-up drop-shadow-md"
               style={{ animationDelay: '0.08s' }}>
-            Portal de consultas sobre<br />
+            Portal de consultas sobre{' '}
             <span className="italic">pagamento de pessoal</span>
           </h2>
-          <p className="text-sm text-white/85 leading-relaxed max-w-md animate-fade-in-up drop-shadow"
-             style={{ animationDelay: '0.16s' }}>
-            Acesse os sistemas, ferramentas e dados da Divisão de Pagamento de Pessoal
-            do Batalhão de Administração da Guarnição de Natal.
-          </p>
         </div>
       </section>
 
