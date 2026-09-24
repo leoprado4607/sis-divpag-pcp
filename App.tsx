@@ -60,44 +60,39 @@ const App: React.FC = () => {
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[52vh]">
+        {/* Background image with overlay (full width) */}
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: "url('/fundo-quartel.jpg')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center 55%',
+          }}
+        />
+        <div className="absolute inset-0 bg-army-green/65" />
+        {/* Decorative grid overlay */}
+        <div
+          className="absolute inset-0 opacity-10 pointer-events-none"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+          }}
+        />
 
-          {/* Left: text content */}
-          <div className="flex flex-col justify-center px-6 sm:px-10 lg:px-16 py-14 bg-army-cream relative z-10">
-            <h2 className="font-cormorant font-semibold text-3xl sm:text-4xl lg:text-5xl leading-[1.1]
-                           text-army-charcoal mb-4 animate-fade-in-up"
-                style={{ animationDelay: '0.08s' }}>
-              Portal de consultas sobre<br />
-              <span className="italic text-army-green">pagamento de pessoal</span>
-            </h2>
-            <p className="text-sm text-army-green/55 leading-relaxed max-w-md mb-8 animate-fade-in-up"
-               style={{ animationDelay: '0.16s' }}>
-              Acesse os sistemas, ferramentas e dados da Divisão de Pagamento de Pessoal
-              do Batalhão de Administração da Guarnição de Natal.
-            </p>
-          </div>
-
-          {/* Right: background image with overlay */}
-          <div className="relative hidden lg:block">
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage: "url('/fundo-quartel.jpg')",
-                backgroundSize: 'cover',
-                backgroundPosition: 'center 55%',
-              }}
-            />
-            <div className="absolute inset-0 bg-army-green/65" />
-            {/* Decorative grid overlay */}
-            <div
-              className="absolute inset-0 opacity-10 pointer-events-none"
-              style={{
-                backgroundImage:
-                  'linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)',
-                backgroundSize: '40px 40px',
-              }}
-            />
-          </div>
+        {/* Text content over the image */}
+        <div className="relative z-10 flex flex-col justify-center min-h-[36vh] px-6 sm:px-10 lg:px-16 py-10">
+          <h2 className="font-cormorant font-semibold text-3xl sm:text-4xl lg:text-5xl leading-[1.1]
+                         text-white mb-4 animate-fade-in-up drop-shadow-md"
+              style={{ animationDelay: '0.08s' }}>
+            Portal de consultas sobre<br />
+            <span className="italic">pagamento de pessoal</span>
+          </h2>
+          <p className="text-sm text-white/85 leading-relaxed max-w-md animate-fade-in-up drop-shadow"
+             style={{ animationDelay: '0.16s' }}>
+            Acesse os sistemas, ferramentas e dados da Divisão de Pagamento de Pessoal
+            do Batalhão de Administração da Guarnição de Natal.
+          </p>
         </div>
       </section>
 
