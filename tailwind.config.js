@@ -26,6 +26,7 @@ export default {
         sans: ['"DM Sans"', 'Inter', 'sans-serif'],
         cormorant: ['"Cormorant Garamond"', 'serif'],
         montserrat: ['Montserrat', 'sans-serif'],
+        playfair: ['"Playfair Display"', 'serif'],
       },
       colors: {
         army: {

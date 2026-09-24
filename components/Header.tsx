@@ -38,10 +38,10 @@ const Header: React.FC<HeaderProps> = ({ onBack }) => {
             />
           </div>
           <div className="leading-tight min-w-0">
-            <p className="text-[11px] sm:text-[15px] tracking-[0.12em] uppercase text-white font-semibold whitespace-nowrap">
+            <p className="font-playfair italic text-[15px] sm:text-[22px] text-white font-semibold whitespace-nowrap">
               Divisão de Pagamento de Pessoal
             </p>
-            <p className="font-cormorant italic text-[12px] sm:text-[15px] text-army-gold-light mt-0.5 whitespace-nowrap">
+            <p className="text-[9px] sm:text-[11px] uppercase tracking-[0.14em] font-medium text-army-gold-light mt-0.5 whitespace-nowrap">
               Base Administrativa da Guarnição de Natal
             </p>
           </div>
