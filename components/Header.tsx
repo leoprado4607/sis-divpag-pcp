@@ -41,6 +41,9 @@ const Header: React.FC<HeaderProps> = ({ onBack }) => {
             <p className="text-[11px] sm:text-[15px] tracking-[0.12em] uppercase text-white font-semibold whitespace-nowrap">
               Divisão de Pagamento de Pessoal
             </p>
+            <p className="font-cormorant italic text-[12px] sm:text-[15px] text-army-gold-light mt-0.5 whitespace-nowrap">
+              Base Administrativa da Guarnição de Natal
+            </p>
           </div>
         </div>
 
@@ -51,7 +54,7 @@ const Header: React.FC<HeaderProps> = ({ onBack }) => {
         <div className="hidden sm:flex items-center gap-2 bg-white/[0.07] border border-army-gold/25 px-3.5 py-[7px] flex-shrink-0">
           <span className="w-[7px] h-[7px] rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
           <span className="text-[.7rem] text-army-gold-light tracking-[0.07em] font-medium whitespace-nowrap">
-            {onBack ? 'Sub-sistema' : 'Sistema online · B Adm Gu Natal'}
+            {onBack ? 'Sub-sistema' : 'Sistema on-line'}
           </span>
         </div>
 
