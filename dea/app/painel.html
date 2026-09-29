@@ -200,6 +200,11 @@ a{color:var(--verde)}
 .grupo-meta{display:block; font-size:.76rem; color:var(--ink-2); margin-top:3px; font-variant-numeric:tabular-nums}
 .mud-nome,.mud-meta,.mud-tr{display:block}
 .grupo-dir{display:flex; align-items:center; gap:var(--s2); flex-wrap:wrap; justify-content:flex-end}
+/* tela estreita: selos e veredito descem para baixo do nome, sem espremê-lo */
+@media(max-width:700px){
+  .grupo-cab{grid-template-columns:auto 1fr}
+  .grupo-dir{grid-column:2; justify-content:flex-start}
+}
 .contagens{display:flex; gap:var(--s1); flex-wrap:wrap}
 .veredito{
   font-size:.7rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
