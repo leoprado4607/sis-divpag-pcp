@@ -280,6 +280,24 @@ Na aba, cada rejeitado destacado tem, para o administrador, **"Enviar para
 resolvidos"** (é o mesmo crédito do pago; grava só aquele protocolo) e **"Manter
 pendente"** (ver abaixo).
 
+### Também em grupo sem pagamento com protocolo em curso (29/09/2026)
+
+Pedido do usuário, para o 534106 já poder sair do grupo do 534041 antes do
+pagamento. Num grupo **sem pagamento** e com protocolo em **andamento** (abas
+"DEA pendente de análise CPEx" e "Entre anos — pendente de análise CPEx"), o
+rejeitado cujo valor é diferente de **todos os protocolos em andamento** do grupo
+fica destacado como **"a conferir"** (selo no cabeçalho e linha realçada), com os
+botões por protocolo "Enviar para resolvidos" e "Manter pendente". A referência
+passa a ser o pago quando o grupo tem pagamento (aba "Rejeitado em grupo pago").
+Retrato de 29/09/2026: 39 grupos (38 da Ativa), 53 rejeitados a conferir.
+
+- **Manter pendente** num protocolo só: ele vira grupo avulso em "DEA encerrado sem
+  pagamento" e **sai do grupo original**, que segue com os demais (ex.: o 534041
+  fica sozinho em "pendente de análise CPEx"). Se o grupo inteiro for mantido (botão
+  do grupo), ele continua onde está, com o selo.
+- **Enviar para resolvidos** num protocolo só: tira o destaque; o grupo continua
+  visível (só some quando todos os protocolos estão resolvidos).
+
 ## Mantidos pendentes (29/09/2026)
 
 O contrário do "resolvido manual": o administrador confirma que o protocolo é
