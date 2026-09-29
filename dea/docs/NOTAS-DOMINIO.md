@@ -354,7 +354,36 @@ Como funciona, e por quê:
 - Em dev com `DEA_DADOS_LOCAL`, a lista fica em `resolvidos-manuais.json`, ao lado
   do `dados.js` local.
 
-## Aba "Homologados para lançamento" (16/09/2026)
+## Aba "Homologados para lançamento"
+
+### Regra vigente desde 29/09/2026 (pedido do usuário)
+
+Houve mudança de termos nas colunas de situação das planilhas. O protocolo liberado
+pelo CPEx fica na aba DEA como **"Pagamento autorizado (CPEx) / Aguardando
+lançamento no SIPPES"** (`AUTORIZADO_CPEX`) e o Acompanhamento **já o dá como
+"Pago"** (`PAGO`) — mas ele **ainda não foi pago**: falta a OM lançar no
+SIPPES/SIAPPES. A aba passou a listar exatamente os protocolos com **esses dois
+termos juntos**, só das abas **DEA 2026 em diante** (`HL_ANO_MIN`; 2024 e 2025 já
+foram lançados, decisão do usuário). Retrato de 29/09/2026: 115 protocolos
+(DEA 2024: 523 e DEA 2025: 397 ficam de fora).
+
+- Depois do pagamento de fato, o administrador **registra o mês da folha** — por
+  protocolo ou marcando vários (lote) — com a **senha de administrador**; o
+  protocolo sai da lista e vai para **"Lançamentos registrados"** (na mesma aba),
+  onde o registro pode ser **desfeito**. Observação opcional.
+- Lista manual própria: `manual/lancados.json` no bucket privado (`{lancados, log}`,
+  com `mes_folha` "AAAA-MM"), anexada ao `dados.js` como `window.DEA_LANCADOS`
+  (em dev: `lancados-manuais.json`). Ações do `/api/dea`: `registrar-lancamento` e
+  `desfazer-lancamento`; o servidor recusa protocolo já registrado.
+- Calculado **no painel** a partir de `processos`; o `homologados_idx` e os
+  `agregados["hl_*"]` do `build_data.py` (regra anterior) deixaram de ser lidos pela
+  aba. O número "homologados" gravado no Histórico pelo pipeline segue a regra
+  anterior.
+- **As demais abas não mudam** (decisão do usuário): esses protocolos continuam
+  contando como pagos em grupos, "Rejeitado em grupo pago" e no aviso de pago em
+  outro BI, porque a situação efetiva vem do Acompanhamento ("Pago").
+
+### Regra anterior (16/09/2026)
 
 Processos das abas DEA com situação **"Pagamento autorizado (CPEx). Aguardando
 lançamento da OM no SIPPES"** ou **"Homologado pelo OD do CPEx. Efetuar

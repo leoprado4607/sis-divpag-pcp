@@ -38,8 +38,8 @@ interface GrupoResolver {
 }
 interface RegistroDesfazer { id: string; nome: string; prec_cp: string; ano: string; protocolos: string[] }
 type PedidoResolvido =
-  | { tipo: 'resolver' | 'manter'; grupo: GrupoResolver }
-  | { tipo: 'desfazer' | 'desfazer-pendente'; registro: RegistroDesfazer };
+  | { tipo: 'resolver' | 'manter' | 'lancar'; grupo: GrupoResolver }
+  | { tipo: 'desfazer' | 'desfazer-pendente' | 'desfazer-lancamento'; registro: RegistroDesfazer };
 
 // Textos e ação do /api/dea de cada pedido.
 const PEDIDOS = {
@@ -47,7 +47,25 @@ const PEDIDOS = {
   manter: { titulo: 'Manter pendente', botao: 'Manter pendente', acao: 'manter-pendente' },
   desfazer: { titulo: 'Desfazer resolvido manual', botao: 'Desfazer', acao: 'desfazer-resolvido' },
   'desfazer-pendente': { titulo: 'Desfazer mantido pendente', botao: 'Desfazer', acao: 'desfazer-pendente' },
+  lancar: { titulo: 'Registrar mês da folha', botao: 'Registrar', acao: 'registrar-lancamento' },
+  'desfazer-lancamento': { titulo: 'Desfazer lançamento registrado', botao: 'Desfazer', acao: 'desfazer-lancamento' },
 } as const;
+
+const TIPO_MARCAR: Record<string, 'resolver' | 'manter' | 'lancar'> = {
+  'dea-resolver': 'resolver', 'dea-manter-pendente': 'manter', 'dea-lancar': 'lancar',
+};
+const TIPO_DESFAZER: Record<string, 'desfazer' | 'desfazer-pendente' | 'desfazer-lancamento'> = {
+  'dea-desfazer-resolvido': 'desfazer', 'dea-desfazer-pendente': 'desfazer-pendente',
+  'dea-desfazer-lancamento': 'desfazer-lancamento',
+};
+
+// Mês anterior ao atual, "AAAA-MM": a folha costuma ser a do mês que passou.
+function mesAnterior(): string {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 
 function listaTexto(v: unknown): string[] {
   return Array.isArray(v) ? v.map((x) => String(x)).slice(0, 200) : [];
@@ -55,12 +73,12 @@ function listaTexto(v: unknown): string[] {
 
 // A mensagem vem do iframe do painel: só se aceita a do próprio iframe, na mesma origem.
 function lerPedido(data: any): PedidoResolvido | null {
-  if ((data?.tipo === 'dea-resolver' || data?.tipo === 'dea-manter-pendente') && data.grupo) {
+  if (TIPO_MARCAR[data?.tipo] && data.grupo) {
     const g = data.grupo;
     const protocolos = listaTexto(g.protocolos);
     if (!protocolos.length) return null;
     return {
-      tipo: data.tipo === 'dea-resolver' ? 'resolver' : 'manter',
+      tipo: TIPO_MARCAR[data.tipo],
       grupo: {
         protocolos, pagos_pessoa: listaTexto(g.pagos_pessoa), pagos_grupo: listaTexto(g.pagos_grupo),
         nome: String(g.nome || ''), prec_cp: String(g.prec_cp || ''), ano: String(g.ano || ''),
@@ -69,10 +87,10 @@ function lerPedido(data: any): PedidoResolvido | null {
       },
     };
   }
-  if ((data?.tipo === 'dea-desfazer-resolvido' || data?.tipo === 'dea-desfazer-pendente') && data.registro?.id) {
+  if (TIPO_DESFAZER[data?.tipo] && data.registro?.id) {
     const r = data.registro;
     return {
-      tipo: data.tipo === 'dea-desfazer-resolvido' ? 'desfazer' : 'desfazer-pendente',
+      tipo: TIPO_DESFAZER[data.tipo],
       registro: {
         id: String(r.id), nome: String(r.nome || ''), prec_cp: String(r.prec_cp || ''),
         ano: String(r.ano || ''), protocolos: listaTexto(r.protocolos),
@@ -127,6 +145,7 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [pedido, setPedido] = useState<PedidoResolvido | null>(null);
   const [motivo, setMotivo] = useState('');
+  const [mesFolha, setMesFolha] = useState('');
   const [senhaAcao, setSenhaAcao] = useState('');
   const [erroAcao, setErroAcao] = useState('');
   const [enviandoAcao, setEnviandoAcao] = useState(false);
@@ -139,6 +158,7 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
       if (!p) return;
       setPedido(p);
       setMotivo('');
+      setMesFolha(mesAnterior());
       setSenhaAcao('');
       setErroAcao('');
     };
@@ -152,13 +172,14 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
     if (!pedido || enviandoAcao) return;
     const marcar = pedido.tipo === 'resolver' || pedido.tipo === 'manter';
     if (marcar && motivo.trim().length < 5) { setErroAcao('Informe o motivo (mínimo de 5 caracteres).'); return; }
+    if (pedido.tipo === 'lancar' && !/^\d{4}-(0[1-9]|1[0-2])$/.test(mesFolha)) { setErroAcao('Informe o mês da folha.'); return; }
     if (!senhaAcao) { setErroAcao('Digite a senha de administrador.'); return; }
     setEnviandoAcao(true);
     setErroAcao('');
     try {
       const acao = PEDIDOS[pedido.tipo].acao;
       const corpo = 'grupo' in pedido
-        ? { acao, senha: senhaAcao, motivo: motivo.trim(), grupo: pedido.grupo }
+        ? { acao, senha: senhaAcao, motivo: motivo.trim(), grupo: pedido.grupo, ...(pedido.tipo === 'lancar' ? { mes_folha: mesFolha } : {}) }
         : { acao, senha: senhaAcao, motivo: motivo.trim(), id: pedido.registro.id };
       const r = await postDea(corpo);
       const d = await r.json().catch(() => ({}));
@@ -360,7 +381,17 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
             <h3 id="dea-pedido-titulo" className="text-lg font-bold text-slate-800">
               {PEDIDOS[pedido.tipo].titulo}
             </h3>
-            {'grupo' in pedido ? (
+            {pedido.tipo === 'lancar' ? (
+              <dl className="mt-3 text-sm text-slate-700 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                <dt className="font-semibold">Nome</dt><dd>{pedido.grupo.nome || '—'}</dd>
+                {pedido.grupo.prec_cp && <><dt className="font-semibold">Prec-cp</dt><dd>{pedido.grupo.prec_cp}</dd></>}
+                <dt className="font-semibold">Protocolos</dt>
+                <dd className="break-words">
+                  {pedido.grupo.protocolos.length > 1 ? `${pedido.grupo.protocolos.length}: ` : ''}
+                  {pedido.grupo.protocolos.join(', ')} ({pedido.grupo.total})
+                </dd>
+              </dl>
+            ) : 'grupo' in pedido ? (
               <dl className="mt-3 text-sm text-slate-700 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
                 <dt className="font-semibold">Nome</dt><dd>{pedido.grupo.nome || '—'}</dd>
                 <dt className="font-semibold">Prec-cp</dt><dd>{pedido.grupo.prec_cp}</dd>
@@ -379,7 +410,9 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
                 {pedido.registro.nome} · Prec-cp {pedido.registro.prec_cp} · {pedido.registro.ano}<br />
                 {pedido.tipo === 'desfazer'
                   ? `Protocolos ${pedido.registro.protocolos.join(', ')} voltarão a aparecer nas abas de grupos.`
-                  : `Protocolos ${pedido.registro.protocolos.join(', ')} perdem o selo "pendente confirmado"; o rejeitado de grupo pago volta para "Rejeitado em grupo pago".`}
+                  : pedido.tipo === 'desfazer-lancamento'
+                    ? `Protocolos ${pedido.registro.protocolos.join(', ')} voltarão a "Homologados para lançamento".`
+                    : `Protocolos ${pedido.registro.protocolos.join(', ')} perdem o selo "pendente confirmado"; o rejeitado de grupo pago volta para "Rejeitado em grupo pago".`}
               </p>
             )}
             {pedido.tipo === 'manter' && (
@@ -388,16 +421,34 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
                 "pendente confirmado" e sem o aviso de pago em outro BI.
               </p>
             )}
+            {pedido.tipo === 'lancar' && (
+              <>
+                <p className="mt-3 text-xs text-slate-500">
+                  Confirma que o pagamento foi feito de fato. O protocolo sai de "Homologados para lançamento" e fica em
+                  "Lançamentos registrados", onde pode ser desfeito.
+                </p>
+                <label className="block mt-4 text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="dea-mes-folha">
+                  Mês da folha de pagamento
+                </label>
+                <input
+                  id="dea-mes-folha"
+                  type="month"
+                  value={mesFolha}
+                  onChange={(e) => setMesFolha(e.target.value)}
+                  className="mt-1 w-full border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-army-green outline-none"
+                />
+              </>
+            )}
             <label className="block mt-4 text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="dea-motivo">
-              Motivo{'grupo' in pedido ? '' : ' (opcional)'}
+              {pedido.tipo === 'lancar' ? 'Observação (opcional)' : `Motivo${'grupo' in pedido ? '' : ' (opcional)'}`}
             </label>
             <textarea
               id="dea-motivo"
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               maxLength={500}
-              rows={3}
-              autoFocus
+              rows={pedido.tipo === 'lancar' ? 2 : 3}
+              autoFocus={pedido.tipo !== 'lancar'}
               placeholder={pedido.tipo === 'resolver' ? 'ex.: crédito pago no protocolo 123456, em outro Nr BI'
                 : pedido.tipo === 'manter' ? 'ex.: dívida diferente da paga no protocolo 123456; aguardando novo protocolo' : ''}
               className="mt-1 w-full border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-army-green outline-none"

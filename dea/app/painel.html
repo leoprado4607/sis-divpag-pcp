@@ -231,6 +231,8 @@ a{color:var(--verde)}
 .tbl-interna tr.a-conferir td{background:var(--critico-bg)}
 .acoes-linha{display:flex; gap:6px; flex-wrap:wrap}
 .acoes-linha .btn-exp{white-space:nowrap}
+.tbl-hl .selo{white-space:normal}
+.tbl-hl td.nome{min-width:190px}
 .selo-mantido{
   font-size:.66rem; padding:3px 8px; background:var(--neutro-bg); color:var(--verde);
   border:1px solid var(--verde); white-space:nowrap;
@@ -767,12 +769,26 @@ body.modo-relatorio .rodape{display:none !important}
       <h2 class="secao-tit">Homologados para lançamento</h2>
     </div>
     <p class="nota" id="notaHL"></p>
-    <p class="resumo-filtro" style="margin-top:var(--s4)">
-      <span><b id="hl-cont">0</b> protocolo(s) prontos para lançamento</span>
+    <div class="controles" style="margin-top:var(--s4)">
+      <div class="campo" style="flex:1 1 220px">
+        <label for="hl-busca">Protocolo, nome ou Prec-cp</label>
+        <input id="hl-busca" type="search" placeholder="ex.: 534041 ou MARCIO" autocomplete="off">
+      </div>
+      <button class="btn secundario" id="hl-limpar" type="button">Limpar</button>
+      <button class="btn" id="hl-pdf" type="button">Relatório PDF</button>
+    </div>
+    <p class="resumo-filtro">
+      <span><b id="hl-cont">0</b> protocolo(s) pendentes de lançamento</span>
       <span id="hl-soma"></span>
-      <button class="btn" id="hl-pdf" type="button" style="margin-left:auto">Relatório PDF</button>
     </p>
+    <div id="hl-acoes-lote" class="acoes-admin" hidden style="margin:0 0 var(--s3)">
+      <button class="btn" id="hl-lote" type="button" disabled>Registrar mês da folha dos selecionados</button>
+      <span class="dica" id="hl-sel-info">Marque os protocolos na tabela para registrar o mesmo mês de folha de uma vez.</span>
+    </div>
     <div id="hl-area"></div>
+    <h3 class="secao-tit" style="font-size:1.05rem;margin:var(--s5) 0 var(--s2)">Lançamentos registrados</h3>
+    <p class="resumo-filtro"><span><b id="hlr-cont">0</b> registro(s) · <b id="hlr-proto">0</b> protocolo(s)</span></p>
+    <div id="hlr-area"></div>
   </section>
 
   <!-- ============ CONSULTA ============ -->
@@ -942,7 +958,23 @@ function hidratarGrupos(lista){
 var GRUPOS = hidratarGrupos(D.grupos);
 var GRUPOS_EA = hidratarGrupos(D.grupos_entre_anos);
 var GRUPOS_PF = hidratarGrupos(D.grupos_pagos_fora);
-var HOMOL = (D.homologados_idx || []).map(function(i){ return P[i]; });
+/* ---------- pendentes de lançamento (29/09/2026, pedido do usuário) ----------
+   Com a mudança de termos nas planilhas, o protocolo liberado pelo CPEx fica na
+   DEA como "Pagamento autorizado (CPEx) / Aguardando lançamento no SIPPES" e o
+   Acompanhamento já o dá como "Pago" — mas ele ainda NÃO foi pago: falta a OM
+   lançar. Só das abas DEA 2026 em diante (2024 e 2025 já foram lançados). Sai da
+   lista quando o administrador registra o mês da folha (window.DEA_LANCADOS,
+   lista manual/lancados.json). O substituto do antigo homologados_idx. */
+var HL_ANO_MIN = 2026;
+function anoDaAba(p){ var m = /(\d{4})/.exec(p.aba || ''); return m ? +m[1] : 0; }
+var HOMOL = P.filter(function(p){
+  return p.sit_dea_cod === 'AUTORIZADO_CPEX' && p.sit_acomp_cod === 'PAGO' && anoDaAba(p) >= HL_ANO_MIN;
+}).sort(function(a,b){ return a.data_ord < b.data_ord ? -1 : a.data_ord > b.data_ord ? 1 : 0; });
+var LANCADOS = window.DEA_LANCADOS;
+var LAN_FALHOU = !Array.isArray(LANCADOS);
+if(LAN_FALHOU) LANCADOS = [];
+var LAN_PROTO = {};
+LANCADOS.forEach(function(r){ (r.protocolos||[]).forEach(function(p){ LAN_PROTO[String(p)] = r; }); });
 var HIST = (D.historico || []);
 var FILA = D.homolog || {disponivel:false, motivo:'', itens:[], novos:[], saidos:[], alerta:[], total:0};
 
@@ -1020,6 +1052,8 @@ if(RES_FALHOU) avisos.push('Não foi possível carregar a lista de grupos resolv
   'grupos já marcados como resolvidos podem estar aparecendo nas abas.');
 if(PEN_FALHOU) avisos.push('Não foi possível carregar a lista de protocolos mantidos pendentes: '+
   'eles podem estar aparecendo em "Rejeitado em grupo pago" e fora de "DEA encerrado sem pagamento".');
+if(LAN_FALHOU) avisos.push('Não foi possível carregar os lançamentos registrados: '+
+  'protocolos já lançados podem estar aparecendo em "Homologados para lançamento".');
 if(avisos.length){
   elAviso.textContent = avisos.join(' ') + ' Recarregue o painel.';
   elAviso.hidden = false;
@@ -1124,7 +1158,15 @@ function recortar(){
   V.RM = RESOLVIDOS.filter(function(r){ return segOK(segDoResolvido(r)); })
     .sort(function(a,b){ return a.em < b.em ? 1 : a.em > b.em ? -1 : 0; });
   V.PF = GRUPOS_PF.filter(porSeg);
-  V.HL = HOMOL.filter(porSeg);
+  V.HL = HOMOL.filter(function(p){ return porSeg(p) && !LAN_PROTO[String(p.protocolo)]; });
+  // Registro em lote pode juntar segmentos: vale se algum protocolo dele está no recorte.
+  V.HLR = LANCADOS.filter(function(r){
+    return (r.protocolos||[]).some(function(pr){
+      var p = P_DO_PROTO[String(pr)];
+      return p ? segOK(p.segmento) : segOK(segDoResolvido(r));
+    });
+  })
+    .sort(function(a,b){ return a.em < b.em ? 1 : a.em > b.em ? -1 : 0; });
   V.HIST = HIST.map(function(h){
     if(h.resumido) return h;   // entrada antiga: só contagens, não dá para recortar
     var a = (h.acomp||[]).filter(porSeg), d = (h.dea2026||[]).filter(porSeg),
@@ -1906,51 +1948,164 @@ document.getElementById('notaHist').innerHTML =
   'nada era guardado, e não há como reconstruir.';
 
 document.getElementById('notaHL').innerHTML =
-  'Processos das abas DEA com situação <b>"Pagamento autorizado (CPEx). Aguardando lançamento da OM '+
-  'no SIPPES"</b> ou <b>"Homologado pelo OD do CPEx. Efetuar lançamento no SIPPES até o final da 2ª '+
-  'corrida / SIAPPES Automático"</b> que <b>ainda não foram pagos</b> — no Acompanhamento constam '+
-  'como <b>"Processado o Pagamento"</b>, ou seja, o CPEx processou e cabe à OM lançar no '+
-  'SIPPES/SIAPPES. Os que já constam como <b>"Pago"</b> ficam de fora: estão encerrados.';
+  'Protocolos das abas <b>DEA '+HL_ANO_MIN+'</b> em diante com situação <b>"Pagamento autorizado (CPEx) / Aguardando '+
+  'lançamento no SIPPES"</b> na aba DEA e <b>"Pago"</b> no Acompanhamento. Por nomenclatura das planilhas eles já '+
+  'aparecem como pagos, mas <b>ainda não foram pagos</b>: falta a OM lançar no SIPPES/SIAPPES. '+
+  'Depois do pagamento de fato, o <b>administrador</b> registra o <b>mês da folha</b> (por protocolo ou marcando '+
+  'vários de uma vez, com a senha) e o protocolo sai da lista — fica em "Lançamentos registrados", onde o registro '+
+  'pode ser desfeito. As demais abas continuam tratando esses protocolos como pagos.';
+
+var hlEstado = {busca:''};
+var HL_SEL = {};
+var MESES_BR = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function hlFiltrados(){
+  var b = semAcento(hlEstado.busca).trim();
+  if(!b) return V.HL;
+  return V.HL.filter(function(p){
+    return String(p.protocolo).indexOf(b) !== -1 || p._busca.indexOf(b) !== -1 || String(p.prec_cp).indexOf(b) !== -1;
+  });
+}
+function mesFolhaBR(m){
+  var x = /^(\d{4})-(\d{2})$/.exec(m || '');
+  return x ? MESES_BR[+x[2]-1] + '/' + x[1] : (m || '—');
+}
+function pedirLancamento(protos){
+  var itens = protos.map(function(pr){ return P_DO_PROTO[pr]; }).filter(Boolean);
+  if(!itens.length) return;
+  var nomes = {}; itens.forEach(function(p){ nomes[p.nome] = 1; });
+  var um = itens.length === 1 ? itens[0] : null;
+  avisarPai({tipo:'dea-lancar', grupo:{
+    protocolos: itens.map(function(p){ return String(p.protocolo); }),
+    nome: um ? um.nome : Object.keys(nomes).length + ' pessoa(s)',
+    prec_cp: um ? um.prec_cp : '',
+    ano: um ? String(um.ano) : '',
+    nr_bi: um ? (um.nr_bi || '???') : '',
+    segmento: um ? (um.segmento || 'Ativa') : '',
+    aba: 'Homologados para lançamento',
+    total: brl(somaValor(itens)),
+    pagos_pessoa: [], pagos_grupo: []
+  }});
+}
+function atualizaSelHL(){
+  var n = Object.keys(HL_SEL).length;
+  var b = document.getElementById('hl-lote');
+  b.disabled = !n;
+  b.textContent = n ? 'Registrar mês da folha dos selecionados (' + n + ')' : 'Registrar mês da folha dos selecionados';
+}
 
 function renderHL(){
-  var lista = V.HL;
+  var lista = hlFiltrados();
   document.getElementById('hl-cont').textContent = num(lista.length);
   document.getElementById('hl-soma').textContent = lista.length
     ? 'Soma dos valores: ' + brl(somaValor(lista)) : '';
   document.getElementById('hl-pdf').hidden = !lista.length;
+  document.getElementById('hl-acoes-lote').hidden = !(ADMIN && lista.length);
+  // a seleção vale só para o que está na tela
+  var vis = {}; lista.forEach(function(p){ vis[String(p.protocolo)] = 1; });
+  Object.keys(HL_SEL).forEach(function(k){ if(!vis[k]) delete HL_SEL[k]; });
+  atualizaSelHL();
   var area = document.getElementById('hl-area');
 
   if(!lista.length){
     area.innerHTML = '<div class="cartao" style="padding:var(--s5)">'+
-      '<p class="vazio-msg">Nenhum protocolo pronto para lançamento neste recorte.</p>'+
-      (A.hl_ja_pagos ? '<p class="nota vazio">'+num(A.hl_ja_pagos)+' protocolo(s) liberados pelo '+
-        'CPEx ficaram de fora por já constarem como "Pago" no Acompanhamento.</p>' : '')+
-      '</div>';
+      '<p class="vazio-msg">Nenhum protocolo pendente de lançamento neste recorte.</p></div>';
+  } else {
+    area.innerHTML = '<div class="rolagem"><table class="tbl-hl"><thead><tr>'+
+        (ADMIN ? '<th scope="col"><input type="checkbox" id="hl-todos" aria-label="Selecionar todos"></th>' : '')+
+        '<th scope="col">Protocolo</th><th scope="col">Data</th><th scope="col">Ano</th>'+
+        '<th scope="col">Prec-cp</th><th scope="col">Nome</th>'+
+        '<th scope="col">Valor</th><th scope="col">Situação — DEA</th><th scope="col">Situação — Acomp.</th>'+
+        '<th scope="col">CODOM</th>'+(ADMIN ? '<th scope="col">Ação</th>' : '')+
+      '</tr></thead><tbody>'+
+      lista.map(function(p){
+        var pr = String(p.protocolo);
+        return '<tr>'+
+          (ADMIN ? '<td><input type="checkbox" data-hl-sel="'+esc(pr)+'"'+(HL_SEL[pr] ? ' checked' : '')+
+            ' aria-label="Selecionar '+esc(pr)+'"></td>' : '')+
+          '<td class="mono">'+esc(p.protocolo)+'</td>'+
+          '<td class="mono">'+esc(p.data)+'</td>'+
+          '<td class="mono">'+esc(p.ano)+'</td>'+
+          '<td class="mono">'+esc(p.prec_cp)+'</td>'+
+          '<td class="nome">'+esc(p.nome)+'</td>'+
+          '<td class="num">'+esc(p.valor_fmt)+'</td>'+
+          '<td><span class="selo andamento">'+esc(p.sit_dea)+'</span></td>'+
+          '<td><span class="selo pago">'+esc(p.sit_acomp)+'</span></td>'+
+          '<td class="mono">'+esc(p.codom)+'</td>'+
+          (ADMIN ? '<td><span class="acoes-linha"><button class="btn-exp" type="button" data-hl-lancar="'+esc(pr)+
+            '">Registrar mês da folha</button></span></td>' : '')+
+        '</tr>';
+      }).join('')+'</tbody></table></div>';
+    area.querySelectorAll('[data-hl-lancar]').forEach(function(b){
+      b.addEventListener('click', function(){ pedirLancamento([b.dataset.hlLancar]); });
+    });
+    area.querySelectorAll('[data-hl-sel]').forEach(function(c){
+      c.addEventListener('change', function(){
+        if(c.checked) HL_SEL[c.dataset.hlSel] = 1; else delete HL_SEL[c.dataset.hlSel];
+        atualizaSelHL();
+      });
+    });
+    var todos = document.getElementById('hl-todos');
+    if(todos) todos.addEventListener('change', function(){
+      area.querySelectorAll('[data-hl-sel]').forEach(function(c){
+        c.checked = todos.checked;
+        if(todos.checked) HL_SEL[c.dataset.hlSel] = 1; else delete HL_SEL[c.dataset.hlSel];
+      });
+      atualizaSelHL();
+    });
+  }
+  renderHLR();
+}
+
+function renderHLR(){
+  var lista = V.HLR;
+  document.getElementById('hlr-cont').textContent = num(lista.length);
+  document.getElementById('hlr-proto').textContent =
+    num(lista.reduce(function(s,r){ return s + (r.protocolos||[]).length; }, 0));
+  var alvo = document.getElementById('hlr-area');
+  if(LAN_FALHOU){
+    alvo.innerHTML = '<p class="vazio-msg">A lista de lançamentos registrados não pôde ser carregada. Recarregue o painel.</p>';
     return;
   }
-
-  area.innerHTML = '<div class="rolagem"><table><thead><tr>'+
-      '<th scope="col">Protocolo</th><th scope="col">Data</th><th scope="col">Ano</th>'+
-      '<th scope="col">Prec-cp</th><th scope="col">Nome</th>'+
-      '<th scope="col">Valor</th><th scope="col">Situação — aba DEA</th>'+
-      '<th scope="col">CODOM</th>'+
+  if(!lista.length){
+    alvo.innerHTML = '<p class="vazio-msg">Nenhum lançamento registrado.</p>';
+    return;
+  }
+  alvo.innerHTML = '<div class="rolagem"><table><thead><tr>'+
+      '<th scope="col">Mês da folha</th><th scope="col">Protocolos</th><th scope="col">Nome(s)</th>'+
+      '<th scope="col">Valor</th><th scope="col">Registrado em</th><th scope="col">Observação</th>'+
+      (ADMIN ? '<th scope="col"></th>' : '')+
     '</tr></thead><tbody>'+
-    lista.map(function(p){
+    lista.map(function(r, i){
+      var itens = (r.protocolos||[]).map(function(pr){ return P_DO_PROTO[String(pr)]; }).filter(Boolean);
+      var nomes = {}; itens.forEach(function(p){ nomes[p.nome] = 1; });
       return '<tr>'+
-        '<td class="mono">'+esc(p.protocolo)+'</td>'+
-        '<td class="mono">'+esc(p.data)+'</td>'+
-        '<td class="mono">'+esc(p.ano)+'</td>'+
-        '<td class="mono">'+esc(p.prec_cp)+'</td>'+
-        '<td>'+esc(p.nome)+'</td>'+
-        '<td class="num">'+esc(p.valor_fmt)+'</td>'+
-        '<td><span class="selo andamento">'+esc(p.sit_dea)+'</span></td>'+
-        '<td class="mono">'+esc(p.codom)+'</td>'+
+        '<td class="mono"><b>'+esc(mesFolhaBR(r.mes_folha))+'</b></td>'+
+        '<td class="mono">'+esc((r.protocolos||[]).join(', '))+'</td>'+
+        '<td>'+esc(Object.keys(nomes).join(' / ') || r.nome)+'</td>'+
+        '<td class="num">'+esc(itens.length ? brl(somaValor(itens)) : '—')+'</td>'+
+        '<td class="mono">'+esc(dataHoraBR(r.em))+'</td>'+
+        '<td class="parecer-txt">'+esc(r.motivo || '—')+'</td>'+
+        (ADMIN ? '<td><button class="btn-exp" type="button" data-desfazer-hl="'+i+'">Desfazer</button></td>' : '')+
       '</tr>';
-    }).join('')+'</tbody></table></div>'+
-    (A.hl_ja_pagos ? '<p class="nota vazio" style="margin-top:var(--s3)">Mais '+num(A.hl_ja_pagos)+
-      ' protocolo(s) liberados pelo CPEx não entram nesta lista por já constarem como "Pago" no '+
-      'Acompanhamento — estão encerrados.</p>' : '');
+    }).join('')+'</tbody></table></div>';
+  alvo.querySelectorAll('[data-desfazer-hl]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var r = lista[+b.dataset.desfazerHl];
+      avisarPai({tipo:'dea-desfazer-lancamento', registro:{
+        id: r.id, nome: r.nome, prec_cp: r.prec_cp || '', ano: 'folha de ' + mesFolhaBR(r.mes_folha), protocolos: r.protocolos
+      }});
+    });
+  });
 }
+
+document.getElementById('hl-busca').addEventListener('input', function(){ hlEstado.busca = this.value; renderHL(); });
+document.getElementById('hl-limpar').addEventListener('click', function(){
+  hlEstado = {busca:''}; document.getElementById('hl-busca').value = ''; renderHL();
+});
+document.getElementById('hl-lote').addEventListener('click', function(){
+  var sel = Object.keys(HL_SEL);
+  if(sel.length) pedirLancamento(sel);
+});
 
 /* =======================================================================
    2. ALTERAÇÕES DO DIA
@@ -2575,33 +2730,34 @@ document.getElementById('rp-pdf').addEventListener('click', function(){
 
 /* ---- 4. Homologados para lançamento ---- */
 document.getElementById('hl-pdf').addEventListener('click', function(){
-  var lista = V.HL;
+  var lista = hlFiltrados();
   var corpo = lista.length
     ? '<table class="rel-tab"><thead><tr><th>Protocolo</th><th>Data</th><th>Ano</th>'+
       '<th>Prec-cp</th><th>Nome</th><th class="num">Valor</th>'+
-      '<th>Situação (DEA)</th><th>CODOM</th></tr></thead><tbody>'+
+      '<th>Situação (DEA)</th><th>Situação (Acomp.)</th><th>CODOM</th></tr></thead><tbody>'+
       lista.map(function(p){
         return '<tr><td class="mono">'+esc(p.protocolo)+'</td>'+
           '<td class="mono">'+esc(p.data)+'</td><td class="mono">'+esc(p.ano)+'</td>'+
           '<td class="mono">'+esc(p.prec_cp)+'</td>'+
           '<td>'+esc(p.nome)+'</td><td class="num">'+esc(p.valor_fmt)+'</td>'+
           '<td>'+selo('andamento', p.sit_dea)+'</td>'+
+          '<td>'+selo('pago', p.sit_acomp)+'</td>'+
           '<td class="mono">'+esc(p.codom)+'</td></tr>';
       }).join('')+'</tbody></table>'
-    : '<p class="rel-vazio">Nenhum protocolo pronto para lançamento neste recorte.</p>';
+    : '<p class="rel-vazio">Nenhum protocolo pendente de lançamento neste recorte.</p>';
   abrirRelatorio(
     relCapa('Homologados para lançamento',
-      'Processos das abas DEA com situação "Pagamento autorizado (CPEx). Aguardando lançamento da '+
-      'OM no SIPPES" ou "Homologado pelo OD do CPEx. Efetuar lançamento no SIPPES até o final da 2ª '+
-      'corrida / SIAPPES Automático" que ainda não foram pagos — no Acompanhamento constam como '+
-      '"Processado o Pagamento". O CPEx processou; cabe à OM lançar no SIPPES/SIAPPES. Os que já '+
-      'constam como "Pago" não entram nesta relação.',
+      'Protocolos das abas DEA '+HL_ANO_MIN+' em diante com situação "Pagamento autorizado (CPEx) / Aguardando '+
+      'lançamento no SIPPES" na aba DEA e "Pago" no Acompanhamento: por nomenclatura já aparecem como pagos, '+
+      'mas ainda não foram pagos — falta a OM lançar no SIPPES/SIAPPES. Saem da relação quando o '+
+      'administrador registra o mês da folha em que foram pagos.',
       [['Protocolos', num(lista.length)],
        ['Valor a lançar', lista.length ? brl(somaValor(lista)) : '—'],
-       ['Excluídos por já constarem "Pago"', num(A.hl_ja_pagos)],
+       ['Lançamentos registrados', num(V.HLR.length)],
        ['Segmento', segTexto()]],
-      'Recorte deste relatório: segmento <b>'+esc(segTexto())+'</b>.')+
-    '<section class="rel-secao"><h2 class="rel-secao-tit">Prontos para lançamento no SIPPES/SIAPPES</h2>'+
+      'Recorte deste relatório: segmento <b>'+esc(segTexto())+'</b>'+
+        (hlEstado.busca ? ' · busca <b>'+esc(hlEstado.busca)+'</b>' : '')+'.')+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">Pendentes de lançamento no SIPPES/SIAPPES</h2>'+
     corpo+'</section>', true);
 });
 

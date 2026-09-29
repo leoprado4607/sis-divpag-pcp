@@ -41,6 +41,9 @@ export const DEA_RESOLVIDOS_PATH = 'manual/resolvidos.json';
 // Protocolos que o administrador confirmou como pendência própria ("Manter
 // pendente", 29/09/2026). Arquivo separado: não mexe nos resolvidos.
 export const DEA_PENDENTES_PATH = 'manual/pendentes.json';
+// Protocolos "Pagamento autorizado (CPEx)" + "Pago" que o administrador deu como
+// lançados, com o mês da folha (29/09/2026). Saem de "Homologados para lançamento".
+export const DEA_LANCADOS_PATH = 'manual/lancados.json';
 
 const COOKIE = 'dea_sessao';
 const SESSAO_MS = 8 * 60 * 60 * 1000; // 8h
@@ -234,18 +237,20 @@ interface Resolvido {
   aba: string;
   motivo: string;
   em: string;
+  mes_folha?: string; // só nos lançados: "AAAA-MM"
 }
 interface ArquivoResolvidos {
   resolvidos: Resolvido[];
-  log: Array<{ acao: 'resolver' | 'desfazer'; id: string; protocolos: string[]; nome: string; motivo: string; em: string }>;
+  log: Array<{ acao: 'resolver' | 'desfazer'; id: string; protocolos: string[]; nome: string; motivo: string; em: string; mes_folha?: string }>;
 }
 
 // As duas listas manuais têm o mesmo formato; muda o arquivo e a chave da lista
 // ("resolvidos" / "pendentes"), para o resolvidos.json continuar idêntico.
-type TipoManual = 'resolvidos' | 'pendentes';
+type TipoManual = 'resolvidos' | 'pendentes' | 'lancados';
 const MANUAL: Record<TipoManual, { path: string; local: string }> = {
   resolvidos: { path: DEA_RESOLVIDOS_PATH, local: 'resolvidos-manuais.json' },
   pendentes: { path: DEA_PENDENTES_PATH, local: 'pendentes-manuais.json' },
+  lancados: { path: DEA_LANCADOS_PATH, local: 'lancados-manuais.json' },
 };
 
 function storageCfg(): { url: string; key: string } | null {
@@ -323,10 +328,12 @@ function idGrupo(protocolos: string[]): string {
 }
 
 // Anexa as listas (só o necessário para exibir) e o papel ao dados.js entregue.
-function anexarAoDados(dados: Buffer, res: ArquivoResolvidos | null, pen: ArquivoResolvidos | null, admin: boolean): Buffer {
+function anexarAoDados(
+  dados: Buffer, res: ArquivoResolvidos | null, pen: ArquivoResolvidos | null, lan: ArquivoResolvidos | null, admin: boolean,
+): Buffer {
   // "<" escapado: o conteúdo vem de texto digitado (motivo, nome).
   const json = (arq: ArquivoResolvidos | null) => JSON.stringify(arq ? arq.resolvidos : null).replace(/</g, '\\u003c');
-  const js = `\nwindow.DEA_RESOLVIDOS=${json(res)};window.DEA_PENDENTES=${json(pen)};window.DEA_ADMIN=${admin};\n`;
+  const js = `\nwindow.DEA_RESOLVIDOS=${json(res)};window.DEA_PENDENTES=${json(pen)};window.DEA_LANCADOS=${json(lan)};window.DEA_ADMIN=${admin};\n`;
   return Buffer.concat([dados, Buffer.from(js, 'utf8')]);
 }
 
@@ -409,6 +416,8 @@ async function statusAtualizacao(cfg: GithubCfg) {
 //   POST /api/dea  {acao: 'desfazer-resolvido', senha, id, motivo?} (só admin + senha)
 //   POST /api/dea  {acao: 'manter-pendente', senha, motivo, grupo}  (só admin + senha)
 //   POST /api/dea  {acao: 'desfazer-pendente', senha, id, motivo?}  (só admin + senha)
+//   POST /api/dea  {acao: 'registrar-lancamento', senha, mes_folha, motivo?, grupo} (só admin + senha)
+//   POST /api/dea  {acao: 'desfazer-lancamento', senha, id, motivo?} (só admin + senha)
 // ---------------------------------------------------------------------------
 export async function handleDea(req: any, res: any): Promise<void> {
   const url = new URL(req.url || '/', 'http://local');
@@ -445,14 +454,15 @@ export async function handleDea(req: any, res: any): Promise<void> {
       if (!sessaoValida(req)) {
         return send(res, 401, '/* acesso restrito */', { 'Content-Type': 'application/javascript; charset=utf-8', ...HEADERS_PRIVADOS });
       }
-      const [dados, resolvidos, pendentes] = await Promise.all([
+      const [dados, resolvidos, pendentes, lancados] = await Promise.all([
         lerDadosJs(), lerManual('resolvidos').catch(() => null), lerManual('pendentes').catch(() => null),
+        lerManual('lancados').catch(() => null),
       ]);
       if (!dados) {
         // Sem corpo JS: o painel mostra o próprio aviso de "dados indisponíveis".
         return send(res, 503, '/* dados indisponíveis */', { 'Content-Type': 'application/javascript; charset=utf-8', ...HEADERS_PRIVADOS });
       }
-      const corpo = anexarAoDados(dados, resolvidos, pendentes, papelDaSessao(req) === 'admin');
+      const corpo = anexarAoDados(dados, resolvidos, pendentes, lancados, papelDaSessao(req) === 'admin');
       return send(res, 200, corpo, { 'Content-Type': 'application/javascript; charset=utf-8', ...HEADERS_PRIVADOS });
     }
 
@@ -511,17 +521,20 @@ export async function handleDea(req: any, res: any): Promise<void> {
         return sendJson(res, 202, { ok: true, disparadoEm: new Date().toISOString() });
       }
 
-      // Resolvidos manualmente e mantidos pendentes: mesmo fluxo, listas separadas.
+      // Resolvidos manualmente, mantidos pendentes e lançamentos registrados:
+      // mesmo fluxo, listas separadas.
       const ACOES_MANUAIS: Record<string, { tipo: TipoManual; marcar: boolean }> = {
         'resolver': { tipo: 'resolvidos', marcar: true },
         'desfazer-resolvido': { tipo: 'resolvidos', marcar: false },
         'manter-pendente': { tipo: 'pendentes', marcar: true },
         'desfazer-pendente': { tipo: 'pendentes', marcar: false },
+        'registrar-lancamento': { tipo: 'lancados', marcar: true },
+        'desfazer-lancamento': { tipo: 'lancados', marcar: false },
       };
       const acaoManual = ACOES_MANUAIS[String(body?.acao || '')];
       if (acaoManual) {
         const { tipo, marcar } = acaoManual;
-        const nomeLista = tipo === 'resolvidos' ? 'resolvidos' : 'mantidos pendentes';
+        const nomeLista = { resolvidos: 'resolvidos', pendentes: 'mantidos pendentes', lancados: 'lançamentos registrados' }[tipo];
         // Dupla trava: sessão de administrador E a senha de administrador digitada
         // de novo no momento da ação.
         if (papelDaSessao(req) !== 'admin') {
@@ -547,32 +560,41 @@ export async function handleDea(req: any, res: any): Promise<void> {
             return sendJson(res, 400, { error: 'Grupo inválido.' });
           }
           const motivo = texto(body?.motivo, 500);
-          if (motivo.length < 5) return sendJson(res, 400, { error: 'Informe o motivo (mínimo de 5 caracteres).' });
+          // Lançamento: exige o mês da folha ("AAAA-MM"); a observação é opcional.
+          const mesFolha = texto(body?.mes_folha, 7);
+          if (tipo === 'lancados') {
+            if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mesFolha)) return sendJson(res, 400, { error: 'Informe o mês da folha.' });
+          } else if (motivo.length < 5) {
+            return sendJson(res, 400, { error: 'Informe o motivo (mínimo de 5 caracteres).' });
+          }
           const id = idGrupo(protocolos);
           if (arq.resolvidos.some((x) => x.id === id)) {
             return sendJson(res, 409, { error: `Este grupo já está nos ${nomeLista}.` });
           }
-          // Um protocolo não pode estar nas duas listas (resolvido E mantido pendente),
-          // nem em dois registros de mantido pendente.
-          const outro: TipoManual = tipo === 'resolvidos' ? 'pendentes' : 'resolvidos';
-          const arqOutro = await lerManual(outro);
-          if (!arqOutro) return sendJson(res, 503, { error: 'Não foi possível conferir a outra lista manual. Tente de novo.' });
-          const naOutra = protocolos.filter((p) => arqOutro.resolvidos.some((x) => (x.protocolos || []).includes(p)));
-          if (naOutra.length) {
-            const rotulo = outro === 'resolvidos' ? 'Resolvidos manualmente' : 'Mantidos pendentes';
-            return sendJson(res, 409, { error: `Protocolo(s) ${naOutra.join(', ')} já consta(m) em "${rotulo}". Desfaça lá antes.` });
+          // Um protocolo não pode estar nas duas listas (resolvido E mantido pendente).
+          if (tipo !== 'lancados') {
+            const outro: TipoManual = tipo === 'resolvidos' ? 'pendentes' : 'resolvidos';
+            const arqOutro = await lerManual(outro);
+            if (!arqOutro) return sendJson(res, 503, { error: 'Não foi possível conferir a outra lista manual. Tente de novo.' });
+            const naOutra = protocolos.filter((p) => arqOutro.resolvidos.some((x) => (x.protocolos || []).includes(p)));
+            if (naOutra.length) {
+              const rotulo = outro === 'resolvidos' ? 'Resolvidos manualmente' : 'Mantidos pendentes';
+              return sendJson(res, 409, { error: `Protocolo(s) ${naOutra.join(', ')} já consta(m) em "${rotulo}". Desfaça lá antes.` });
+            }
           }
-          if (tipo === 'pendentes') {
+          // Nem em dois registros da mesma lista de mantidos ou de lançados.
+          if (tipo !== 'resolvidos') {
             const ja = protocolos.filter((p) => arq.resolvidos.some((x) => (x.protocolos || []).includes(p)));
-            if (ja.length) return sendJson(res, 409, { error: `Protocolo(s) ${ja.join(', ')} já mantido(s) pendente(s).` });
+            if (ja.length) return sendJson(res, 409, { error: `Protocolo(s) ${ja.join(', ')} já consta(m) nos ${nomeLista}.` });
           }
           const reg: Resolvido = {
             id, protocolos, motivo, em,
             nome: texto(g.nome, 200), prec_cp: texto(g.prec_cp, 30), ano: texto(g.ano, 40),
             nr_bi: texto(g.nr_bi, 60), segmento: texto(g.segmento, 20), aba: texto(g.aba, 80),
+            ...(tipo === 'lancados' ? { mes_folha: mesFolha } : {}),
           };
           arq.resolvidos.push(reg);
-          arq.log.push({ acao: 'resolver', id, protocolos, nome: reg.nome, motivo, em });
+          arq.log.push({ acao: 'resolver', id, protocolos, nome: reg.nome, motivo, em, ...(reg.mes_folha ? { mes_folha: reg.mes_folha } : {}) });
           await gravarManual(tipo, arq);
           return sendJson(res, 200, { ok: true, id });
         }

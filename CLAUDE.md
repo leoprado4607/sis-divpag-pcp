@@ -64,6 +64,7 @@ Pacote portado em [dea/](dea/) — leia [dea/LEIA-PRIMEIRO.md](dea/LEIA-PRIMEIRO
 - Em dev, `DEA_DADOS_LOCAL` aponta para um `dados.js` fora do repositório.
 - **Resolvidos manualmente:** o admin (sessão admin + senha redigitada) tira do painel um grupo sem pagamento; a lista fica em `manual/resolvidos.json` no bucket privado e o `/api/dea` a anexa ao `dados.js`. O painel não faz requisições (CSP `connect-src 'none'`): os botões falam com o `DeaDashboard.tsx` por `postMessage`. Detalhes em [dea/docs/NOTAS-DOMINIO.md](dea/docs/NOTAS-DOMINIO.md).
 - **Mantidos pendentes:** o oposto — o admin confirma que um protocolo é pendência sem relação com outro pago (botão "Manter pendente"); lista separada em `manual/pendentes.json` (`window.DEA_PENDENTES`), sem tocar nos resolvidos. A aba "Rejeitado em grupo pago" mostra o rejeitado de valor diferente num grupo com pagamento.
+- **Homologados para lançamento:** protocolos da DEA 2026+ com "Pagamento autorizado (CPEx)…" na DEA e "Pago" no Acompanhamento (ainda não pagos de fato). O admin registra o mês da folha (senha) e o protocolo sai; lista em `manual/lancados.json` (`window.DEA_LANCADOS`).
 
 ## Banco de dados (Supabase)
 
