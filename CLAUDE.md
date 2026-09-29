@@ -63,6 +63,7 @@ Pacote portado em [dea/](dea/) — leia [dea/LEIA-PRIMEIRO.md](dea/LEIA-PRIMEIRO
 - Atualização **só manual** (sem agendamento): o admin (login com `DEA_ADMIN_PASSWORD`) clica em "Atualizar" → `/api/dea` dispara a GitHub Action [dea-atualizar.yml](.github/workflows/dea-atualizar.yml) via `workflow_dispatch` (token `DEA_GITHUB_TOKEN`) → `supabase_sync.py baixar` → `atualizar.py` (intocado) → `supabase_sync.py enviar`. A barra acompanha o status e recarrega o iframe ao terminar.
 - Em dev, `DEA_DADOS_LOCAL` aponta para um `dados.js` fora do repositório.
 - **Resolvidos manualmente:** o admin (sessão admin + senha redigitada) tira do painel um grupo sem pagamento; a lista fica em `manual/resolvidos.json` no bucket privado e o `/api/dea` a anexa ao `dados.js`. O painel não faz requisições (CSP `connect-src 'none'`): os botões falam com o `DeaDashboard.tsx` por `postMessage`. Detalhes em [dea/docs/NOTAS-DOMINIO.md](dea/docs/NOTAS-DOMINIO.md).
+- **Mantidos pendentes:** o oposto — o admin confirma que um protocolo é pendência sem relação com outro pago (botão "Manter pendente"); lista separada em `manual/pendentes.json` (`window.DEA_PENDENTES`), sem tocar nos resolvidos. A aba "Rejeitado em grupo pago" mostra o rejeitado de valor diferente num grupo com pagamento.
 
 ## Banco de dados (Supabase)
 

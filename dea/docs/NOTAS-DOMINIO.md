@@ -251,6 +251,60 @@ Calculado **no painel** (`marcarPagosPessoa()`, a partir de `processos`), sem
 mudança no `build_data.py`. O nome é comparado como no `_slug` do pipeline
 (`chavePessoa()`). A classificação e os contadores não mudam.
 
+**Limite de R$ 2.000,00 (pedido do usuário, 29/09/2026):** o pago de outro BI só
+entra no aviso quando o valor dele difere em **até R$ 2.000,00** de algum protocolo
+do grupo (`LIMITE_OUTRO_BI`). Acima disso é outra dívida e o aviso não aparece.
+Retrato de 29/09/2026: 17 grupos sem pagamento tinham o aviso; com o limite, 13.
+
+## Rejeitado em grupo pago (29/09/2026)
+
+Caso que originou a regra: protocolo 534106 (R$ 433,17, rejeitado — "refazer o
+protocolo, código de saque AEL e não AEA") no mesmo nome, Prec-cp e Nr BI do 534041
+(R$ 1.299,50, aprovado aguardando pagamento). Pela chave nome + Prec-cp + Nr BI os
+dois são um grupo só; quando o 534041 for pago, o grupo vira "resolvido" e **some de
+todas as abas** — escondendo um rejeitado que parece ser outra dívida.
+
+Regra (pedido do usuário): num grupo com protocolo pago (de ano único ou de "Pago em
+outro ano"), o protocolo **rejeitado** cujo valor é **diferente de todos os pagos do
+grupo** (diferença de 1 centavo ou mais) vai para a aba **"Rejeitado em grupo pago"**,
+para conferência. Rejeitado com o **mesmo valor** do pago continua sendo a tentativa
+corrigida e não aparece. Ficam de fora os protocolos já **resolvidos manualmente** e os
+**mantidos pendentes**. Calculado no painel (`aConferir()`), sem mudança no
+`build_data.py`; os contadores de `agregados` e do Histórico não mudam.
+
+Retrato de 29/09/2026: 220 grupos (182 da Ativa, 101 deles vindos de "Pago em outro
+ano"), 321 rejeitados a conferir; nenhum já estava nos resolvidos manuais. O 534106
+ainda não aparece ali — o 534041 não foi pago; está em "DEA pendente de análise CPEx".
+
+Na aba, cada rejeitado destacado tem, para o administrador, **"Enviar para
+resolvidos"** (é o mesmo crédito do pago; grava só aquele protocolo) e **"Manter
+pendente"** (ver abaixo).
+
+## Mantidos pendentes (29/09/2026)
+
+O contrário do "resolvido manual": o administrador confirma que o protocolo é
+**pendência própria, sem relação** com outro protocolo pago — do mesmo Nr BI (aba
+"Rejeitado em grupo pago") ou de outro Nr BI (o aviso "pago em outro BI"). O botão
+**"Manter pendente"** aparece por protocolo em "Rejeitado em grupo pago" e por grupo
+nas quatro abas de grupos sem pagamento; pede **motivo** e a **senha de administrador
+de novo**, como o "Enviar para resolvidos".
+
+- Lista **separada**: `manual/pendentes.json` no bucket privado (`{pendentes, log}`),
+  anexada ao `dados.js` como `window.DEA_PENDENTES`. **Não toca** no
+  `manual/resolvidos.json`, que mantém o formato e os registros de antes. Em dev com
+  `DEA_DADOS_LOCAL`, fica em `pendentes-manuais.json`.
+- Um protocolo **não pode estar nas duas listas**: o servidor recusa marcar como
+  mantido um protocolo resolvido, e vice-versa ("desfaça lá antes"); também recusa
+  manter duas vezes o mesmo protocolo.
+- Efeito no painel: o grupo cujos protocolos estão **todos** mantidos ganha o selo
+  **"pendente confirmado"**, perde o aviso "pago em outro BI" e não mostra os botões
+  (desfaz-se na aba "Mantidos pendentes"). O rejeitado **vindo de grupo pago** vira
+  grupo avulso de 1 (`GRUPOS_AVULSOS`) e entra em "DEA encerrado sem pagamento" (ou em
+  "pendente de análise CPEx", se voltar a andar); se for **pago** depois, sai sozinho.
+- A aba **"Mantidos pendentes"** lista as marcações com a situação atual de cada
+  protocolo e, para o administrador, **"Desfazer"** (pede a senha).
+- O contador de "DEA encerrado sem pagamento" passa a incluir os avulsos.
+
 ## Resolvidos manualmente (21/09/2026)
 
 O administrador pode tirar do painel um grupo sem pagamento que ele conferiu

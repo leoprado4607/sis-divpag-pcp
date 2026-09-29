@@ -21,6 +21,8 @@ import { ArrowLeft, Lock, LogOut, Loader2, RefreshCw } from 'lucide-react';
 // O botão "Enviar para resolvidos" (e o "Desfazer") do painel manda um
 // postMessage para cá; esta casca pede o motivo e a senha de administrador,
 // chama o /api/dea e recarrega o iframe.
+// "Manter pendente" (e o "Desfazer" da aba "Mantidos pendentes") segue o mesmo
+// caminho, gravando noutra lista (manual/pendentes.json).
 
 interface GrupoResolver {
   protocolos: string[];
@@ -32,11 +34,20 @@ interface GrupoResolver {
   aba: string;
   total: string;
   pagos_pessoa: string[];
+  pagos_grupo: string[];
 }
 interface RegistroDesfazer { id: string; nome: string; prec_cp: string; ano: string; protocolos: string[] }
 type PedidoResolvido =
-  | { tipo: 'resolver'; grupo: GrupoResolver }
-  | { tipo: 'desfazer'; registro: RegistroDesfazer };
+  | { tipo: 'resolver' | 'manter'; grupo: GrupoResolver }
+  | { tipo: 'desfazer' | 'desfazer-pendente'; registro: RegistroDesfazer };
+
+// Textos e ação do /api/dea de cada pedido.
+const PEDIDOS = {
+  resolver: { titulo: 'Enviar para resolvidos', botao: 'Enviar para resolvidos', acao: 'resolver' },
+  manter: { titulo: 'Manter pendente', botao: 'Manter pendente', acao: 'manter-pendente' },
+  desfazer: { titulo: 'Desfazer resolvido manual', botao: 'Desfazer', acao: 'desfazer-resolvido' },
+  'desfazer-pendente': { titulo: 'Desfazer mantido pendente', botao: 'Desfazer', acao: 'desfazer-pendente' },
+} as const;
 
 function listaTexto(v: unknown): string[] {
   return Array.isArray(v) ? v.map((x) => String(x)).slice(0, 200) : [];
@@ -44,24 +55,24 @@ function listaTexto(v: unknown): string[] {
 
 // A mensagem vem do iframe do painel: só se aceita a do próprio iframe, na mesma origem.
 function lerPedido(data: any): PedidoResolvido | null {
-  if (data?.tipo === 'dea-resolver' && data.grupo) {
+  if ((data?.tipo === 'dea-resolver' || data?.tipo === 'dea-manter-pendente') && data.grupo) {
     const g = data.grupo;
     const protocolos = listaTexto(g.protocolos);
     if (!protocolos.length) return null;
     return {
-      tipo: 'resolver',
+      tipo: data.tipo === 'dea-resolver' ? 'resolver' : 'manter',
       grupo: {
-        protocolos, pagos_pessoa: listaTexto(g.pagos_pessoa),
+        protocolos, pagos_pessoa: listaTexto(g.pagos_pessoa), pagos_grupo: listaTexto(g.pagos_grupo),
         nome: String(g.nome || ''), prec_cp: String(g.prec_cp || ''), ano: String(g.ano || ''),
         nr_bi: String(g.nr_bi || ''), segmento: String(g.segmento || ''), aba: String(g.aba || ''),
         total: String(g.total || ''),
       },
     };
   }
-  if (data?.tipo === 'dea-desfazer-resolvido' && data.registro?.id) {
+  if ((data?.tipo === 'dea-desfazer-resolvido' || data?.tipo === 'dea-desfazer-pendente') && data.registro?.id) {
     const r = data.registro;
     return {
-      tipo: 'desfazer',
+      tipo: data.tipo === 'dea-desfazer-resolvido' ? 'desfazer' : 'desfazer-pendente',
       registro: {
         id: String(r.id), nome: String(r.nome || ''), prec_cp: String(r.prec_cp || ''),
         ano: String(r.ano || ''), protocolos: listaTexto(r.protocolos),
@@ -139,14 +150,16 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
 
   const confirmarPedido = async () => {
     if (!pedido || enviandoAcao) return;
-    if (pedido.tipo === 'resolver' && motivo.trim().length < 5) { setErroAcao('Informe o motivo (mínimo de 5 caracteres).'); return; }
+    const marcar = pedido.tipo === 'resolver' || pedido.tipo === 'manter';
+    if (marcar && motivo.trim().length < 5) { setErroAcao('Informe o motivo (mínimo de 5 caracteres).'); return; }
     if (!senhaAcao) { setErroAcao('Digite a senha de administrador.'); return; }
     setEnviandoAcao(true);
     setErroAcao('');
     try {
-      const corpo = pedido.tipo === 'resolver'
-        ? { acao: 'resolver', senha: senhaAcao, motivo: motivo.trim(), grupo: pedido.grupo }
-        : { acao: 'desfazer-resolvido', senha: senhaAcao, motivo: motivo.trim(), id: pedido.registro.id };
+      const acao = PEDIDOS[pedido.tipo].acao;
+      const corpo = 'grupo' in pedido
+        ? { acao, senha: senhaAcao, motivo: motivo.trim(), grupo: pedido.grupo }
+        : { acao, senha: senhaAcao, motivo: motivo.trim(), id: pedido.registro.id };
       const r = await postDea(corpo);
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { setErroAcao(d?.error || 'Não foi possível concluir.'); return; }
@@ -345,9 +358,9 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
             onKeyDown={(e) => e.key === 'Escape' && fecharPedido()}
           >
             <h3 id="dea-pedido-titulo" className="text-lg font-bold text-slate-800">
-              {pedido.tipo === 'resolver' ? 'Enviar grupo para resolvidos' : 'Desfazer resolvido manual'}
+              {PEDIDOS[pedido.tipo].titulo}
             </h3>
-            {pedido.tipo === 'resolver' ? (
+            {'grupo' in pedido ? (
               <dl className="mt-3 text-sm text-slate-700 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
                 <dt className="font-semibold">Nome</dt><dd>{pedido.grupo.nome || '—'}</dd>
                 <dt className="font-semibold">Prec-cp</dt><dd>{pedido.grupo.prec_cp}</dd>
@@ -357,15 +370,26 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
                 {pedido.grupo.pagos_pessoa.length > 0 && (
                   <><dt className="font-semibold">Pago em outro BI</dt><dd>{pedido.grupo.pagos_pessoa.join(', ')}</dd></>
                 )}
+                {pedido.grupo.pagos_grupo.length > 0 && (
+                  <><dt className="font-semibold">Pago no grupo</dt><dd>{pedido.grupo.pagos_grupo.join(', ')}</dd></>
+                )}
               </dl>
             ) : (
               <p className="mt-3 text-sm text-slate-700">
                 {pedido.registro.nome} · Prec-cp {pedido.registro.prec_cp} · {pedido.registro.ano}<br />
-                Protocolos {pedido.registro.protocolos.join(', ')} voltarão a aparecer nas abas de grupos.
+                {pedido.tipo === 'desfazer'
+                  ? `Protocolos ${pedido.registro.protocolos.join(', ')} voltarão a aparecer nas abas de grupos.`
+                  : `Protocolos ${pedido.registro.protocolos.join(', ')} perdem o selo "pendente confirmado"; o rejeitado de grupo pago volta para "Rejeitado em grupo pago".`}
+              </p>
+            )}
+            {pedido.tipo === 'manter' && (
+              <p className="mt-3 text-xs text-slate-500">
+                Confirma que é pendência própria, sem relação com outro protocolo pago. Ele segue nas abas de pendência com o selo
+                "pendente confirmado" e sem o aviso de pago em outro BI.
               </p>
             )}
             <label className="block mt-4 text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="dea-motivo">
-              Motivo{pedido.tipo === 'desfazer' ? ' (opcional)' : ''}
+              Motivo{'grupo' in pedido ? '' : ' (opcional)'}
             </label>
             <textarea
               id="dea-motivo"
@@ -374,7 +398,8 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
               maxLength={500}
               rows={3}
               autoFocus
-              placeholder={pedido.tipo === 'resolver' ? 'ex.: crédito pago no protocolo 123456, em outro Nr BI' : ''}
+              placeholder={pedido.tipo === 'resolver' ? 'ex.: crédito pago no protocolo 123456, em outro Nr BI'
+                : pedido.tipo === 'manter' ? 'ex.: dívida diferente da paga no protocolo 123456; aguardando novo protocolo' : ''}
               className="mt-1 w-full border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-army-green outline-none"
             />
             <label className="block mt-3 text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="dea-senha-acao">
@@ -399,7 +424,7 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
                 disabled={enviandoAcao}
                 className="px-4 py-2 rounded-xl bg-army-green text-white text-sm font-bold hover:bg-green-900 disabled:opacity-60"
               >
-                {enviandoAcao ? 'Enviando…' : pedido.tipo === 'resolver' ? 'Enviar para resolvidos' : 'Desfazer'}
+                {enviandoAcao ? 'Enviando…' : PEDIDOS[pedido.tipo].botao}
               </button>
             </div>
           </div>

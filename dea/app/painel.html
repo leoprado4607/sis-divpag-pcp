@@ -222,6 +222,18 @@ a{color:var(--verde)}
 }
 .acoes-admin{display:flex; gap:var(--s3); align-items:center; flex-wrap:wrap; margin-top:var(--s4)}
 .acoes-admin .dica{font-size:.72rem; color:var(--ink-3)}
+/* rejeitado de valor diferente em grupo pago e "mantido pendente" — 29/09/2026 */
+.tbl-interna tr.a-conferir td{background:var(--critico-bg)}
+.acoes-linha{display:flex; gap:6px; flex-wrap:wrap}
+.acoes-linha .btn-exp{white-space:nowrap}
+.selo-mantido{
+  font-size:.66rem; padding:3px 8px; background:var(--neutro-bg); color:var(--verde);
+  border:1px solid var(--verde); white-space:nowrap;
+}
+.aviso-mantido{
+  font-size:.78rem; color:var(--ink); background:var(--neutro-bg);
+  border-left:3px solid var(--verde); padding:10px 14px; margin-bottom:var(--s3); max-width:90ch;
+}
 
 /* ---------- tabelas ---------- */
 .rolagem{overflow-x:auto; border:1px solid var(--line); background:var(--surface)}
@@ -500,11 +512,13 @@ body.modo-relatorio .rodape{display:none !important}
     <button class="aba urgente" role="tab" id="t-entreanos" aria-controls="p-entreanos" aria-selected="false" type="button">Entre anos — encerrado sem pagamento<span class="cnt" id="c-entreanos">0</span></button>
     <button class="aba" role="tab" id="t-eacpex" aria-controls="p-eacpex" aria-selected="false" type="button">Entre anos — pendente de análise CPEx<span class="cnt" id="c-eacpex">0</span></button>
     <button class="aba" role="tab" id="t-pagofora" aria-controls="p-pagofora" aria-selected="false" type="button">Pago em outro ano<span class="cnt" id="c-pagofora">0</span></button>
+    <button class="aba" role="tab" id="t-rejpago" aria-controls="p-rejpago" aria-selected="false" type="button">Rejeitado em grupo pago<span class="cnt" id="c-rejpago">0</span></button>
     <button class="aba" role="tab" id="t-diff" aria-controls="p-diff" aria-selected="false" type="button">Alterações do dia<span class="cnt" id="c-diff">0</span></button>
     <button class="aba" role="tab" id="t-fila" aria-controls="p-fila" aria-selected="false" type="button">Fila de homologação<span class="cnt" id="c-fila">0</span></button>
     <button class="aba" role="tab" id="t-historico" aria-controls="p-historico" aria-selected="false" type="button">Histórico<span class="cnt" id="c-historico">0</span></button>
     <button class="aba" role="tab" id="t-homologados" aria-controls="p-homologados" aria-selected="false" type="button">Homologados para lançamento<span class="cnt" id="c-homologados">0</span></button>
     <button class="aba" role="tab" id="t-resolvidos" aria-controls="p-resolvidos" aria-selected="false" type="button">Resolvidos manualmente<span class="cnt" id="c-resolvidos">0</span></button>
+    <button class="aba" role="tab" id="t-mantidos" aria-controls="p-mantidos" aria-selected="false" type="button">Mantidos pendentes<span class="cnt" id="c-mantidos">0</span></button>
     <button class="aba" role="tab" id="t-consulta" aria-controls="p-consulta" aria-selected="false" type="button">Consulta de processos<span class="cnt" id="c-consulta">0</span></button>
     <button class="aba" role="tab" id="t-geral" aria-controls="p-geral" aria-selected="false" type="button">Visão geral</button>
   </div>
@@ -649,6 +663,34 @@ body.modo-relatorio .rodape{display:none !important}
     <div class="grupos" id="pf-lista"></div>
   </section>
 
+  <!-- ============ REJEITADO EM GRUPO PAGO ============ -->
+  <section class="painel" id="p-rejpago" role="tabpanel" aria-labelledby="t-rejpago" hidden>
+    <div class="secao-cab">
+      <h2 class="secao-tit">Rejeitado de valor diferente em grupo com pagamento</h2>
+    </div>
+    <p class="nota" id="notaRP"></p>
+
+    <div class="controles" style="margin-top:var(--s4)">
+      <div class="campo">
+        <label for="rp-ano">Ano</label>
+        <select id="rp-ano"><option value="">Todos</option></select>
+      </div>
+      <div class="campo" style="flex:1 1 220px">
+        <label for="rp-busca">Nome ou Prec-cp</label>
+        <input id="rp-busca" type="search" placeholder="ex.: MARCIO ou 411648310" autocomplete="off">
+      </div>
+      <div class="campo" style="flex:0 1 180px">
+        <label for="rp-protocolo">Protocolo</label>
+        <input id="rp-protocolo" type="search" inputmode="numeric" placeholder="ex.: 454407" autocomplete="off">
+      </div>
+      <button class="btn secundario" id="rp-limpar" type="button">Limpar</button>
+      <button class="btn" id="rp-pdf" type="button">Relatório PDF</button>
+    </div>
+
+    <p class="resumo-filtro"><span><b id="rp-cont">0</b> grupo(s) · <b id="rp-proto">0</b> protocolo(s) rejeitado(s) a conferir</span></p>
+    <div class="grupos" id="rp-lista"></div>
+  </section>
+
   <!-- ============ DIFF ============ -->
   <section class="painel" id="p-diff" role="tabpanel" aria-labelledby="t-diff" hidden>
     <div class="secao-cab">
@@ -737,6 +779,16 @@ body.modo-relatorio .rodape{display:none !important}
     <p class="nota" id="notaRM"></p>
     <p class="resumo-filtro" style="margin-top:var(--s4)"><span><b id="rm-cont">0</b> grupo(s) · <b id="rm-proto">0</b> protocolo(s)</span></p>
     <div id="rm-lista"></div>
+  </section>
+
+  <!-- ============ MANTIDOS PENDENTES ============ -->
+  <section class="painel" id="p-mantidos" role="tabpanel" aria-labelledby="t-mantidos" hidden>
+    <div class="secao-cab">
+      <h2 class="secao-tit">Mantidos pendentes</h2>
+    </div>
+    <p class="nota" id="notaMP"></p>
+    <p class="resumo-filtro" style="margin-top:var(--s4)"><span><b id="mp-cont">0</b> marcação(ões) · <b id="mp-proto">0</b> protocolo(s)</span></p>
+    <div id="mp-lista"></div>
   </section>
 
   <section class="painel" id="p-consulta" role="tabpanel" aria-labelledby="t-consulta" hidden>
@@ -894,7 +946,10 @@ var FILA = D.homolog || {disponivel:false, motivo:'', itens:[], novos:[], saidos
    protocolo rejeitado fica sozinho num grupo "sem pagamento" enquanto a pessoa
    já recebeu. Não muda a classificação (o pagamento pode ser de outra dívida):
    só avisa, listando os protocolos pagos do mesmo nome e Prec-cp no(s) ano(s)
-   do grupo que estão FORA dele. Nome comparado como no _slug do build_data.py. */
+   do grupo que estão FORA dele. Nome comparado como no _slug do build_data.py.
+   Desde 29/09/2026 (pedido do usuário) só conta o pago cujo valor difere em até
+   R$ 2.000,00 de algum protocolo do grupo: acima disso é outra dívida. */
+var LIMITE_OUTRO_BI = 2000;
 function chavePessoa(nome, prec){
   return semAcento(nome).replace(/[^a-z0-9]+/g,' ').trim() + '|' + prec;
 }
@@ -911,6 +966,10 @@ function marcarPagosPessoa(lista){
       (PAGOS_PESSOA[chavePessoa(p.nome, p.prec_cp)] || []).forEach(function(q){
         var pr = String(q.protocolo);
         if(vistos[pr] || g._protos.indexOf(pr) !== -1 || anos.indexOf(String(q.ano)) === -1) return;
+        var perto = g.itens.some(function(x){
+          return Math.abs((q.valor||0) - (x.valor||0)) <= LIMITE_OUTRO_BI + 0.005;
+        });
+        if(!perto) return;
         vistos[pr] = 1; fora.push(q);
       });
     });
@@ -937,11 +996,74 @@ function resolvidoManual(g){
 function segDoResolvido(r){
   return r.segmento || (/^96/.test(r.prec_cp) ? 'Veteranos' : /^98/.test(r.prec_cp) ? 'Pensionistas' : 'Ativa');
 }
-if(RES_FALHOU){
-  elAviso.textContent = 'Não foi possível carregar a lista de grupos resolvidos manualmente: '+
-    'grupos já marcados como resolvidos podem estar aparecendo nas abas. Recarregue o painel.';
+/* ---------- mantidos pendentes (29/09/2026) ----------
+   O contrário do "resolvido manual": o administrador confirma que o protocolo
+   é pendência própria, sem relação com outro protocolo pago (do mesmo Nr BI ou
+   de outro). Lista separada (manual/pendentes.json), anexada ao dados.js como
+   window.DEA_PENDENTES. Não toca nos resolvidos. */
+var PENDENTES = window.DEA_PENDENTES;
+var PEN_FALHOU = !Array.isArray(PENDENTES);
+if(PEN_FALHOU) PENDENTES = [];
+var PEN_PROTO = {};
+PENDENTES.forEach(function(r){ (r.protocolos||[]).forEach(function(p){ PEN_PROTO[String(p)] = r; }); });
+function mantidoManual(g){
+  return g._protos.length > 0 && g._protos.every(function(p){ return PEN_PROTO[p]; });
+}
+
+var avisos = [];
+if(RES_FALHOU) avisos.push('Não foi possível carregar a lista de grupos resolvidos manualmente: '+
+  'grupos já marcados como resolvidos podem estar aparecendo nas abas.');
+if(PEN_FALHOU) avisos.push('Não foi possível carregar a lista de protocolos mantidos pendentes: '+
+  'eles podem estar aparecendo em "Rejeitado em grupo pago" e fora de "DEA encerrado sem pagamento".');
+if(avisos.length){
+  elAviso.textContent = avisos.join(' ') + ' Recarregue o painel.';
   elAviso.hidden = false;
 }
+
+/* ---------- rejeitado de valor diferente em grupo pago (29/09/2026) ----------
+   Grupo com protocolo pago some das abas de pendência. Mas o rejeitado cujo
+   valor é DIFERENTE de todos os pagos do grupo pode ser outra dívida no mesmo
+   Nr BI (ex.: 534106, R$ 433,17, rejeitado junto do 534041, R$ 1.299,50): ele
+   volta para conferência na aba "Rejeitado em grupo pago". Valor igual ao pago
+   continua sendo a tentativa corrigida. Saem da conferência os protocolos já
+   resolvidos à mão e os mantidos pendentes (esses viram grupo avulso). */
+function temPago(g){ return g.itens.some(function(p){ return p.sit_efetiva_classe === 'pago'; }); }
+function aConferir(g){
+  var pagos = g.itens.filter(function(p){ return p.sit_efetiva_classe === 'pago'; });
+  if(!pagos.length) return [];
+  return g.itens.filter(function(p){
+    var pr = String(p.protocolo);
+    return p.sit_efetiva_classe === 'rejeitado' && !RES_PROTO[pr] && !PEN_PROTO[pr] &&
+      pagos.every(function(q){ return Math.abs((q.valor||0) - (p.valor||0)) >= 0.005; });
+  }).map(function(p){ return String(p.protocolo); });
+}
+var GRUPOS_COM_PAGO = GRUPOS.filter(temPago).concat(GRUPOS_PF.filter(temPago));
+GRUPOS_COM_PAGO.forEach(function(g){ g._conferir = aConferir(g); });
+
+// Protocolo mantido pendente cujo grupo tem pagamento: vira grupo avulso de 1 e
+// entra em "DEA encerrado sem pagamento" (ou "pendente de análise CPEx", se
+// voltar a andar). Se for pago depois, sai sozinho. Mantido de grupo SEM
+// pagamento não precisa disso: o próprio grupo já aparece, com o selo.
+var GRUPO_DO_PROTO = {};
+GRUPOS_COM_PAGO.forEach(function(g){ g._protos.forEach(function(p){ GRUPO_DO_PROTO[p] = g; }); });
+var P_DO_PROTO = {};
+P.forEach(function(p){ P_DO_PROTO[String(p.protocolo)] = p; });
+var GRUPOS_AVULSOS = Object.keys(PEN_PROTO).filter(function(pr){
+  var p = P_DO_PROTO[pr];
+  return GRUPO_DO_PROTO[pr] && p && p.sit_efetiva_classe !== 'pago';
+}).map(function(pr){
+  var p = P_DO_PROTO[pr];
+  return {
+    id: 'M' + pr, prec_cp: p.prec_cp, segmento: p.segmento || 'Ativa', ano: p.ano,
+    nome: p.nome, nomes: [p.nome], qtd: 1, protocolos: [pr], itens: [p],
+    nr_bi: p.nr_bi || '???', valor_total: p.valor || 0,
+    status: p.sit_efetiva_classe === 'excluido' ? 'atencao' : 'risco',
+    sem_acomp: p.tem_acomp ? 0 : 1, incerto: !p.tem_acomp,
+    _busca: semAcento(p.nome) + ' ' + p.prec_cp, _protos: [pr],
+    _origem: GRUPO_DO_PROTO[pr]
+  };
+});
+marcarPagosPessoa(GRUPOS_AVULSOS);
 
 /* ---------- recorte por segmento (vale para todas as abas) ---------- */
 var SEG = {Ativa:true, Veteranos:false, Pensionistas:false};
@@ -961,8 +1083,14 @@ function recortar(){
   // pagamento" (V.G) e "pendente de análise CPEx" (V.GC).
   // Os resolvidos manualmente pelo administrador também saem (21/09/2026).
   function pend(g){ return porSeg(g) && naoPago(g) && !resolvidoManual(g); }
-  V.G  = GRUPOS.filter(function(g){ return pend(g) && !emCurso(g); });
-  V.GC = GRUPOS.filter(function(g){ return pend(g) && emCurso(g); });
+  // Os avulsos (mantido pendente vindo de grupo pago) entram junto (29/09/2026).
+  var anoUnico = GRUPOS.concat(GRUPOS_AVULSOS);
+  V.G  = anoUnico.filter(function(g){ return pend(g) && !emCurso(g); });
+  V.GC = anoUnico.filter(function(g){ return pend(g) && emCurso(g); });
+  V.RP = GRUPOS_COM_PAGO.filter(function(g){ return porSeg(g) && g._conferir.length; })
+    .sort(function(a,b){ return b.ano - a.ano || (a.prec_cp < b.prec_cp ? -1 : 1); });
+  V.MP = PENDENTES.filter(function(r){ return segOK(segDoResolvido(r)); })
+    .sort(function(a,b){ return a.em < b.em ? 1 : a.em > b.em ? -1 : 0; });
   // "Entre anos" segue a mesma divisão (21/09/2026): V.EA encerrados, V.EC em curso.
   V.EA = GRUPOS_EA.filter(function(g){ return pend(g) && !emCurso(g); });
   V.EC = GRUPOS_EA.filter(function(g){ return pend(g) && emCurso(g); });
@@ -1035,7 +1163,7 @@ document.getElementById('rod-fonte').textContent = META.fonte + ' · retrato de 
 document.getElementById('rod-org').textContent = META.organizacao;
 
 /* ---------- abas ---------- */
-var ABAS = ['grupos','cpex','entreanos','eacpex','pagofora','diff','fila','historico','homologados','resolvidos','consulta','geral'];
+var ABAS = ['grupos','cpex','entreanos','eacpex','pagofora','rejpago','diff','fila','historico','homologados','resolvidos','mantidos','consulta','geral'];
 function mostrarAba(id){
   ABAS.forEach(function(a){
     var t = document.getElementById('t-'+a), p = document.getElementById('p-'+a);
@@ -1063,6 +1191,8 @@ function renderBadges(){
   document.getElementById('c-historico').textContent = num(V.HIST.length);
   document.getElementById('c-homologados').textContent = num(V.HL.length);
   document.getElementById('c-resolvidos').textContent = RES_FALHOU ? '—' : num(V.RM.length);
+  document.getElementById('c-rejpago').textContent = num(V.RP.length);
+  document.getElementById('c-mantidos').textContent = PEN_FALHOU ? '—' : num(V.MP.length);
   document.getElementById('c-consulta').textContent = num(V.P.length);
   document.getElementById('t-homologados').classList.toggle('urgente', V.HL.length > 0);
 }
@@ -1096,7 +1226,7 @@ var gEstado = {ano:'', busca:'', protocolo:''};
 
 (function(){
   var anos = A.anos.slice().sort(function(a,b){ return b-a; });
-  ['g-ano', 'gc-ano', 'e-ano', 'ec-ano', 'pf-ano'].forEach(function(id){
+  ['g-ano', 'gc-ano', 'e-ano', 'ec-ano', 'pf-ano', 'rp-ano'].forEach(function(id){
     var sel = document.getElementById(id);
     anos.forEach(function(a){
       var o = document.createElement('option'); o.value = a; o.textContent = a; sel.appendChild(o);
@@ -1134,7 +1264,8 @@ function contagensDea(g, mk){
 
 function desenharGrupos(lista, pref, modo){
   document.getElementById(pref+'-cont').textContent = num(lista.length);
-  document.getElementById(pref+'-proto').textContent = num(lista.reduce(function(s,g){ return s+g.qtd; },0));
+  document.getElementById(pref+'-proto').textContent = num(lista.reduce(function(s,g){
+    return s + (modo === 'rp' ? g._conferir.length : g.qtd); },0));
   var alvo = document.getElementById(pref+'-lista');
 
   if(!lista.length){
@@ -1153,6 +1284,10 @@ function desenharGrupos(lista, pref, modo){
     if(modo === 'pf'){
       cls  = post ? 'resolvido' : 'atencao';
       verd = (post || (g.origem === 'entre_anos' && pf.sentido === 'misto')) ?'Pago em '+esc(pf.anos_txt) : 'Pagamento anterior';
+    } else if(modo === 'rp'){
+      cls = 'atencao'; verd = 'A conferir';
+      cont.push('<span class="selo-aviso" title="Rejeitado com valor diferente do protocolo pago do grupo">'+
+        'a conferir: '+esc(g._conferir.join(', '))+'</span>');
     } else if(modo === 'cpex' || modo === 'eacpex'){
       cls = 'atencao'; verd = 'Em análise';
     } else if(g.resolvido_por === 'ano_posterior'){
@@ -1160,7 +1295,10 @@ function desenharGrupos(lista, pref, modo){
       verd = 'Pago em '+esc(pf.anos_txt);
       cont.push('<span class="selo pago">crédito pago em '+esc(pf.anos_txt)+'</span>');
     }
-    var avisoPessoa = (modo !== 'pf' && g.pagos_pessoa && g.pagos_pessoa.length)
+    // Mantido pendente pelo administrador: sem o aviso de pago em outro BI (29/09/2026).
+    var mant = modo !== 'pf' && modo !== 'rp' && mantidoManual(g);
+    if(mant) cont.push('<span class="selo-mantido" title="O administrador confirmou que é pendência sem relação com outro protocolo pago">pendente confirmado</span>');
+    var avisoPessoa = (modo !== 'pf' && modo !== 'rp' && !mant && g.pagos_pessoa && g.pagos_pessoa.length)
       ? '<span class="selo-aviso" title="Há protocolo pago do mesmo nome e Prec-cp no ano, fora deste grupo (outro Nr BI)">'+
           'pago em outro BI: '+esc(g.pagos_pessoa.map(function(q){ return q.protocolo; }).join(', '))+'</span>'
       : '';
@@ -1197,8 +1335,13 @@ function desenharGrupos(lista, pref, modo){
       if(!aberto && !corpo.dataset.pronto){
         corpo.innerHTML = corpoGrupo(g, modo);
         corpo.dataset.pronto = '1';
-        var bRes = corpo.querySelector('[data-resolver]');
-        if(bRes) bRes.addEventListener('click', function(){ pedirResolver(g, modo); });
+        // data-proto: ação só sobre aquele protocolo (aba "Rejeitado em grupo pago")
+        corpo.querySelectorAll('[data-resolver]').forEach(function(b){
+          b.addEventListener('click', function(){ pedirResolver(g, modo, b.dataset.proto ? [b.dataset.proto] : null); });
+        });
+        corpo.querySelectorAll('[data-manter]').forEach(function(b){
+          b.addEventListener('click', function(){ pedirManter(g, modo, b.dataset.proto ? [b.dataset.proto] : null); });
+        });
       }
       art.dataset.aberto = aberto ? '0' : '1';
       corpo.hidden = aberto;
@@ -1208,6 +1351,19 @@ function desenharGrupos(lista, pref, modo){
 }
 
 function explicacaoGrupo(g, modo){
+  if(modo === 'rp'){
+    return 'Um protocolo deste grupo (mesmo nome, Prec-cp e Nr BI) foi pago, mas os destacados foram rejeitados '+
+      'com valor diferente do pago — podem ser outra dívida, que o pagamento não quitou. Confira cada um: se o crédito '+
+      'é o mesmo do pago, envie para resolvidos; se é outra pendência, mantenha pendente (ele passa a figurar sozinho '+
+      'em "DEA encerrado sem pagamento").';
+  }
+  if(g._origem){
+    var pagosOrig = g._origem.itens.filter(function(p){ return p.sit_efetiva_classe === 'pago'; })
+      .map(function(p){ return p.protocolo+' ('+p.valor_fmt+')'; }).join(', ');
+    return 'Protocolo de um grupo do mesmo nome, Prec-cp e Nr BI em que outro protocolo, de valor diferente, foi pago ('+
+      pagosOrig+'). O administrador confirmou que é pendência própria, sem relação com esse pagamento — por isso aparece '+
+      'aqui sozinho.';
+  }
   var expl = modo === 'cpex'
     ? 'Nenhum protocolo deste grupo consta como pago, mas ao menos um ainda está em curso no fluxo do CPEx — o crédito ainda pode sair. Acompanhe até o pagamento; se o protocolo em curso for rejeitado ou excluído, o grupo passa para "DEA encerrado sem pagamento".'
     : modo === 'eacpex'
@@ -1244,8 +1400,16 @@ function explicacaoGrupo(g, modo){
 
 function corpoGrupo(g, modo){
   var expl = explicacaoGrupo(g, modo);
+  var rp = modo === 'rp', mant = modo !== 'pf' && !rp && mantidoManual(g);
   var linhas = g.itens.map(function(p){
-    return '<tr>'+
+    var pr = String(p.protocolo), conf = rp && g._conferir.indexOf(pr) !== -1;
+    var acaoLinha = (rp && ADMIN)
+      ? '<td>'+(conf
+          ? '<span class="acoes-linha"><button class="btn-exp" type="button" data-resolver data-proto="'+esc(pr)+'">Enviar para resolvidos</button>'+
+            '<button class="btn-exp" type="button" data-manter data-proto="'+esc(pr)+'">Manter pendente</button></span>'
+          : '')+'</td>'
+      : '';
+    return '<tr'+(conf ? ' class="a-conferir"' : '')+'>'+
       '<td class="mono">'+esc(p.protocolo)+'</td>'+
       '<td class="mono">'+esc(p.data)+'</td>'+
       ((modo==='ea' || g.anos) ? '<td class="mono">'+esc(p.ano)+'</td>' : '')+
@@ -1256,6 +1420,7 @@ function corpoGrupo(g, modo){
           ? '<span class="selo '+esc(p.sit_acomp_classe)+'">'+esc(p.sit_acomp)+'</span>'
           : '<span class="selo ausente" title="Ainda não avaliado, aprovado/rejeitado ou homologado pelo CPEx">aguardando CPEx</span>')+'</td>'+
       '<td class="parecer-txt">'+esc(p.parecer||'—')+'</td>'+
+      acaoLinha+
     '</tr>';
   }).join('');
 
@@ -1280,9 +1445,13 @@ function corpoGrupo(g, modo){
   }
 
   var avisoPessoa = '';
-  if(modo !== 'pf' && g.pagos_pessoa && g.pagos_pessoa.length){
+  if(mant){
+    var reg = PEN_PROTO[g._protos[0]];
+    avisoPessoa = '<div class="aviso-mantido"><b>Mantido pendente pelo administrador</b> em '+esc(dataHoraBR(reg.em))+
+      ': '+esc(reg.motivo)+'. Para desfazer, use a aba "Mantidos pendentes".</div>';
+  } else if(modo !== 'pf' && !rp && g.pagos_pessoa && g.pagos_pessoa.length){
     avisoPessoa = '<div class="aviso-pessoa"><b>Há protocolo pago para este nome e Prec-cp no mesmo ano</b>, '+
-      'fora deste grupo porque o Nr BI é outro. Pode ser a correção paga deste crédito — ou outra dívida. '+
+      'fora deste grupo porque o Nr BI é outro, com valor a até R$ 2.000,00 de diferença. Pode ser a correção paga deste crédito — ou outra dívida. '+
       'Confira a competência antes de tratar o grupo como pendência.'+
       '<div class="rolagem"><table class="tbl-interna"><thead><tr>'+
         '<th scope="col">Protocolo</th><th scope="col">Data</th><th scope="col">Valor</th>'+
@@ -1301,9 +1470,14 @@ function corpoGrupo(g, modo){
   }
 
   // Só o administrador vê o botão; o servidor exige, além da sessão, a senha.
-  var acoes = (ADMIN && modo !== 'pf')
+  // Em "Rejeitado em grupo pago" as ações ficam em cada linha; o grupo mantido
+  // pendente não tem ação aqui (desfaz-se na aba "Mantidos pendentes").
+  var acoes = (ADMIN && modo !== 'pf' && !rp && !mant)
     ? '<div class="acoes-admin"><button class="btn secundario" type="button" data-resolver>Enviar para resolvidos</button>'+
-      '<span class="dica">Tira o grupo do painel. Pede a senha de administrador e o motivo; pode ser desfeito na aba "Resolvidos manualmente".</span></div>'
+      '<button class="btn secundario" type="button" data-manter>Manter pendente</button>'+
+      '<span class="dica">"Enviar para resolvidos" tira o grupo do painel; "Manter pendente" confirma que é pendência sem relação '+
+      'com outro protocolo pago e tira o aviso de pago em outro BI. Os dois pedem a senha de administrador e o motivo e podem ser desfeitos '+
+      'nas abas "Resolvidos manualmente" e "Mantidos pendentes".</span></div>'
     : '';
 
   return '<p class="grupo-expl">'+esc(expl)+'</p>'+ avisoPessoa +
@@ -1312,6 +1486,7 @@ function corpoGrupo(g, modo){
       ((modo==='ea' || g.anos) ? '<th scope="col">Ano</th>' : '')+'<th scope="col">Valor</th>'+
       '<th scope="col">Nr BI</th><th scope="col">Situação — DEA</th>'+
       '<th scope="col">Situação — Acompanhamento</th><th scope="col">Parecer</th>'+
+      ((rp && ADMIN) ? '<th scope="col">Ação</th>' : '')+
     '</tr></thead><tbody>'+linhas+'</tbody></table></div>' + extraPF + acoes;
 }
 
@@ -1320,7 +1495,8 @@ function corpoGrupo(g, modo){
    postMessage para a ferramenta (DeaDashboard), que pede a senha, chama o
    /api/dea e recarrega o painel. */
 var NOME_ABA = {ano:'DEA encerrado sem pagamento', cpex:'DEA pendente de análise CPEx',
-                ea:'Entre anos — encerrado sem pagamento', eacpex:'Entre anos — pendente de análise CPEx'};
+                ea:'Entre anos — encerrado sem pagamento', eacpex:'Entre anos — pendente de análise CPEx',
+                rp:'Rejeitado em grupo pago'};
 function avisarPai(msg){
   if(window.parent === window){
     window.alert('Abra o painel pela ferramenta "Exercícios Anteriores" para usar esta ação.');
@@ -1328,18 +1504,35 @@ function avisarPai(msg){
   }
   window.parent.postMessage(msg, window.location.origin);
 }
-function pedirResolver(g, modo){
-  avisarPai({tipo:'dea-resolver', grupo:{
-    protocolos: g._protos.slice(),
+// protos: só parte do grupo (um rejeitado da aba "Rejeitado em grupo pago");
+// sem ele, o grupo inteiro.
+function dadosPedido(g, modo, protos){
+  var alvo = protos || g._protos.slice();
+  var total = protos
+    ? g.itens.filter(function(p){ return alvo.indexOf(String(p.protocolo)) !== -1; })
+        .reduce(function(t,p){ return t + (p.valor||0); }, 0)
+    : g.valor_total;
+  return {
+    protocolos: alvo,
     nome: (g.nomes||[]).join(' / '),
     prec_cp: g.prec_cp,
     ano: g.anos_txt || String(g.ano),
     nr_bi: g.nr_bi || '???',
     segmento: g.segmento || 'Ativa',
     aba: NOME_ABA[modo] || '',
-    total: brl(g.valor_total),
-    pagos_pessoa: (g.pagos_pessoa||[]).map(function(q){ return q.protocolo; })
-  }});
+    total: brl(total),
+    pagos_pessoa: (modo === 'rp' ? [] : (g.pagos_pessoa||[])).map(function(q){ return q.protocolo; }),
+    pagos_grupo: modo === 'rp'
+      ? g.itens.filter(function(p){ return p.sit_efetiva_classe === 'pago'; })
+          .map(function(p){ return p.protocolo+' ('+p.valor_fmt+')'; })
+      : []
+  };
+}
+function pedirResolver(g, modo, protos){
+  avisarPai({tipo:'dea-resolver', grupo: dadosPedido(g, modo, protos)});
+}
+function pedirManter(g, modo, protos){
+  avisarPai({tipo:'dea-manter-pendente', grupo: dadosPedido(g, modo, protos)});
 }
 
 function pintaGrupos(){ desenharGrupos(gruposFiltrados(), 'g', 'ano'); }
@@ -1479,6 +1672,35 @@ document.getElementById('pf-limpar').addEventListener('click', function(){
   pintaPF();
 });
 pintaPF();
+
+/* =======================================================================
+   1c-a. REJEITADO EM GRUPO PAGO (29/09/2026)
+   ======================================================================= */
+document.getElementById('notaRP').innerHTML =
+  'Grupos do <b>mesmo nome</b>, <b>Prec-cp</b> e <b>Nr BI</b> em que algum protocolo foi <b>pago</b>, mas há '+
+  'protocolo <b>rejeitado com valor diferente</b> do pago. Nas outras abas o grupo pago some inteiro; aqui o '+
+  'rejeitado de outro valor volta para conferência, porque pode ser outra dívida que o pagamento não quitou. '+
+  'Rejeitado com o <b>mesmo valor</b> do pago é a tentativa corrigida e não aparece. Estão incluídos os grupos '+
+  'que atravessam a virada do ano (os da aba <b>Pago em outro ano</b>). '+
+  'Para cada protocolo destacado, o administrador escolhe: <b>Enviar para resolvidos</b> (é o mesmo crédito do '+
+  'pago) ou <b>Manter pendente</b> (é outra pendência: ele passa a figurar sozinho em <b>DEA encerrado sem '+
+  'pagamento</b>). Os dois saem desta aba.';
+
+var rpEstado = {ano:'', busca:'', protocolo:''};
+function rpFiltrados(){ return filtrarGrupos(V.RP, rpEstado); }
+function pintaRP(){ desenharGrupos(rpFiltrados(), 'rp', 'rp'); }
+
+document.getElementById('rp-ano').addEventListener('change', function(){ rpEstado.ano = this.value; pintaRP(); });
+document.getElementById('rp-busca').addEventListener('input', function(){ rpEstado.busca = this.value; pintaRP(); });
+document.getElementById('rp-protocolo').addEventListener('input', function(){ rpEstado.protocolo = this.value; pintaRP(); });
+document.getElementById('rp-limpar').addEventListener('click', function(){
+  rpEstado = {ano:'', busca:'', protocolo:''};
+  document.getElementById('rp-ano').value = '';
+  document.getElementById('rp-busca').value = '';
+  document.getElementById('rp-protocolo').value = '';
+  pintaRP();
+});
+pintaRP();
 
 /* =======================================================================
    1c-bis. HISTÓRICO DE ATUALIZAÇÕES
@@ -2024,7 +2246,9 @@ function riscoDe(lista){ return lista.filter(function(g){ return g.status === 'r
 // Num documento ela é legenda — escrita uma vez, na folha de rosto — e não um
 // parágrafo repetido dezenas de vezes.
 function relLegenda(modo){
-  var itens = modo === 'pf'
+  var itens = modo === 'rp'
+    ? [['atencao','A conferir','Algum protocolo do grupo foi pago, mas o protocolo marcado "a conferir" foi rejeitado com valor diferente do pago. Pode ser outra dívida: confira se o pagamento o quitou.']]
+    : modo === 'pf'
     ? [['resolvido','Pagamento posterior','O pagamento veio depois de todas as tentativas não pagas do grupo: o crédito saiu e o grupo deixa de ser pendência.'],
        ['atencao','Pagamento anterior ou misto','O pagamento veio antes de alguma tentativa não paga do grupo. Não comprova a quitação dessas tentativas: confira a competência de cada processo.']]
     : (modo === 'cpex' || modo === 'eacpex')
@@ -2069,8 +2293,9 @@ function relTabela(g, modo){
     '<th class="num">Valor</th><th>Nr BI</th><th>Situação (DEA)</th>'+
     '<th>Situação (Acomp.)</th></tr>';
   var linhas = g.itens.map(function(p){
+    var conf = modo === 'rp' && g._conferir.indexOf(String(p.protocolo)) !== -1;
     var tr = '<tr>'+
-      '<td class="mono">'+esc(p.protocolo)+'</td>'+
+      '<td class="mono">'+esc(p.protocolo)+(conf ? ' <span class="selo-aviso">a conferir</span>' : '')+'</td>'+
       '<td class="mono">'+esc(p.data)+'</td>'+
       ((modo==='ea' || g.anos) ? '<td class="mono">'+esc(p.ano)+'</td>' : '')+
       '<td class="num">'+esc(p.valor_fmt)+'</td>'+
@@ -2108,13 +2333,17 @@ function relGrupo(g, modo){
   if(modo === 'pf'){
     cls  = post ? 'resolvido' : 'atencao';
     verd = (post || (g.origem === 'entre_anos' && pf.sentido === 'misto')) ? 'Pago em '+pf.anos_txt : 'Pagamento anterior';
+  } else if(modo === 'rp'){
+    cls = 'atencao'; verd = 'A conferir';
   } else if(modo === 'cpex' || modo === 'eacpex'){
     cls = 'atencao'; verd = 'Em análise';
   } else if(g.resolvido_por === 'ano_posterior'){
     verd = 'Pago em '+pf.anos_txt;
   }
   var cont = contagensDea(g, selo);
-  if(modo !== 'pf' && g.pagos_pessoa && g.pagos_pessoa.length){
+  var mant = modo !== 'pf' && modo !== 'rp' && mantidoManual(g);
+  if(mant) cont.push('<span class="selo-mantido">pendente confirmado</span>');
+  if(modo !== 'pf' && modo !== 'rp' && !mant && g.pagos_pessoa && g.pagos_pessoa.length){
     cont.push('<span class="selo-aviso">pago em outro BI: '+esc(g.pagos_pessoa.map(function(q){
       return q.protocolo+' (BI '+(q.nr_bi || '???')+', '+q.valor_fmt+')';
     }).join('; '))+'</span>');
@@ -2275,6 +2504,28 @@ document.getElementById('pf-pdf').addEventListener('click', function(){
     relLegenda('pf')+
     '<section class="rel-secao"><h2 class="rel-secao-tit">Grupos</h2>'+
     relLista(lista, 'pf', 'Nenhum grupo corresponde aos filtros.')+'</section>');
+});
+
+/* ---- 3a. Rejeitado em grupo pago ---- */
+document.getElementById('rp-pdf').addEventListener('click', function(){
+  var lista = rpFiltrados();
+  var nConf = lista.reduce(function(a,g){ return a + g._conferir.length; }, 0);
+  var vConf = lista.reduce(function(a,g){
+    return a + g.itens.filter(function(p){ return g._conferir.indexOf(String(p.protocolo)) !== -1; })
+      .reduce(function(t,p){ return t + (p.valor||0); }, 0);
+  }, 0);
+  abrirRelatorio(
+    relCapa('Rejeitado em grupo pago',
+      'Grupos do mesmo nome, Prec-cp e Nr BI em que algum protocolo foi pago, mas há protocolo '+
+      'rejeitado com valor diferente do pago — pode ser outra dívida que o pagamento não quitou.',
+      [['Grupos no relatório', num(lista.length)],
+       ['Rejeitados a conferir', num(nConf)],
+       ['Valor a conferir', brl(vConf)],
+       ['Grupos no recorte', num(V.RP.length)]],
+      relFiltros(rpEstado, true))+
+    relLegenda('rp')+
+    '<section class="rel-secao"><h2 class="rel-secao-tit">Grupos</h2>'+
+    relLista(lista, 'rp', 'Nenhum grupo corresponde aos filtros.')+'</section>');
 });
 
 /* ---- 4. Homologados para lançamento ---- */
@@ -2915,10 +3166,72 @@ function renderRM(){
   });
 }
 
+/* =======================================================================
+   MANTIDOS PENDENTES (29/09/2026)
+   ======================================================================= */
+document.getElementById('notaMP').innerHTML =
+  'Protocolos que o <b>administrador</b> conferiu e confirmou como <b>pendência própria</b>, sem relação com '+
+  'outro protocolo pago — do mesmo Nr BI (vindos de <b>Rejeitado em grupo pago</b>) ou de outro Nr BI (o aviso '+
+  '"pago em outro BI"). Seguem nas abas de pendência com o selo <b>pendente confirmado</b> e sem aquele aviso; '+
+  'o vindo de grupo pago aparece sozinho em <b>DEA encerrado sem pagamento</b>. Se o protocolo for pago depois, '+
+  'sai das abas de pendência. Esta lista não altera os <b>Resolvidos manualmente</b>. '+
+  (ADMIN ? 'Como administrador, você pode <b>desfazer</b> a marcação; a senha é pedida de novo.'
+         : 'Só o administrador pode marcar ou desfazer.');
+
+function renderMP(){
+  var lista = V.MP;
+  document.getElementById('mp-cont').textContent = num(lista.length);
+  document.getElementById('mp-proto').textContent =
+    num(lista.reduce(function(s,r){ return s + (r.protocolos||[]).length; }, 0));
+  var alvo = document.getElementById('mp-lista');
+  if(PEN_FALHOU){
+    alvo.innerHTML = '<p class="vazio-msg">A lista de mantidos pendentes não pôde ser carregada. Recarregue o painel.</p>';
+    return;
+  }
+  if(!lista.length){
+    alvo.innerHTML = '<p class="vazio-msg">Nenhum protocolo foi mantido pendente.</p>';
+    return;
+  }
+  alvo.innerHTML = '<div class="rolagem"><table><thead><tr>'+
+      '<th scope="col">Marcado em</th><th scope="col">Nome</th><th scope="col">Prec-cp</th>'+
+      '<th scope="col">Ano</th><th scope="col">Nr BI</th><th scope="col">Protocolos</th>'+
+      '<th scope="col">Situação atual</th><th scope="col">Aba de origem</th><th scope="col">Motivo</th>'+
+      (ADMIN ? '<th scope="col"></th>' : '')+
+    '</tr></thead><tbody>'+
+    lista.map(function(r, i){
+      var sits = (r.protocolos||[]).map(function(pr){
+        var p = P_DO_PROTO[String(pr)];
+        return p ? '<span class="selo '+esc(p.sit_efetiva_classe)+'">'+esc(p.sit_efetiva)+'</span>' : '—';
+      }).join(' ');
+      return '<tr>'+
+        '<td class="mono">'+esc(dataHoraBR(r.em))+'</td>'+
+        '<td>'+esc(r.nome)+'</td>'+
+        '<td class="mono">'+esc(r.prec_cp)+'</td>'+
+        '<td class="mono">'+esc(r.ano)+'</td>'+
+        '<td>'+esc(r.nr_bi)+'</td>'+
+        '<td class="mono">'+esc((r.protocolos||[]).join(', '))+'</td>'+
+        '<td>'+sits+'</td>'+
+        '<td>'+esc(r.aba)+'</td>'+
+        '<td class="parecer-txt">'+esc(r.motivo)+'</td>'+
+        (ADMIN ? '<td><button class="btn-exp" type="button" data-desfazer-mp="'+i+'">Desfazer</button></td>' : '')+
+      '</tr>';
+    }).join('')+'</tbody></table></div>';
+  alvo.querySelectorAll('[data-desfazer-mp]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var r = lista[+b.dataset.desfazerMp];
+      avisarPai({tipo:'dea-desfazer-pendente', registro:{
+        id: r.id, nome: r.nome, prec_cp: r.prec_cp, ano: r.ano, protocolos: r.protocolos
+      }});
+    });
+  });
+}
+
 function aplicarSegmento(){
   recortar();
   renderBadges();
   renderRM();
+  renderMP();
+  pintaRP();
   pintaGrupos();
   pintaCP();
   pintaEA();
