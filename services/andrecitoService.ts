@@ -62,6 +62,11 @@ const MAX_DOC_CHARS = 6000;
 // MAX_OUTPUT_TOKENS: respostas jurídicas detalhadas com múltiplos artigos e fontes
 // facilmente ultrapassam 2048 tokens — teto aumentado para evitar JSON truncado.
 const MAX_OUTPUT_TOKENS = 4096;
+// Teto do corpo enviado ao /api/gemini. A Vercel recusa (413) bodies acima de
+// 4,5 MB e o próprio proxy aceita até 4 MB (MAX_BODY_BYTES em api/_gemini.ts);
+// a folga cobre o systemInstruction, o schema e o escape do JSON. PDFs sem texto
+// extraível vão inteiros em base64 e são os que estouram esse limite.
+const MAX_PAYLOAD_BYTES = 3.5 * 1024 * 1024;
 
 // Temperatura da IA: 0.15 era fria demais para análise jurídica (respostas
 // repetitivas e rasas). 0.35 dá mais contexto interpretativo sem perder fidelidade
@@ -719,12 +724,23 @@ export const andrecitoService = {
       .sort((a, b) => b.score - a.score)
       .map(s => s.entry);
 
+    // Respeita o teto de tamanho do corpo: entra por ordem de relevância e pula o
+    // que não couber (um PDF grande em base64 não impede os menores seguintes).
+    const encoder = new TextEncoder();
+    const omittedDocs: string[] = [];
+    let payloadBytes = 64 * 1024; // reserva para instruções, schema e consulta
     selected.forEach(e => {
+      const size = encoder.encode(JSON.stringify(e.parts)).length;
+      if (payloadBytes + size > MAX_PAYLOAD_BYTES) {
+        omittedDocs.push(e.doc.name);
+        return;
+      }
+      payloadBytes += size;
       usedDocsMap.set(e.doc.id, e.doc);
       parts.push(...e.parts);
     });
 
-    if (parts.length === 0) {
+    if (usedDocsMap.size === 0) {
       const names = documents.map(d => d.name).join(', ');
       parts.push({ text: `Os seguintes documentos foram selecionados como escopo: ${names}.\nConsiderando os assuntos de legislação militar e pagamento de pessoal do Exército e o nome dos arquivos, analise a seguinte consulta.` });
     }
@@ -857,6 +873,10 @@ REGRA OBRIGATÓRIA PARA fontesUtilizadas: liste TODOS os arquivos citados ou usa
 
       let finalResponse = (parsedOk ? answer : responseText)
         || "Desculpe, não consegui obter uma resposta estratégica agora.";
+
+      if (omittedDocs.length > 0) {
+        finalResponse += `\n\n> ⚠️ ${omittedDocs.length} documento(s) ficaram de fora desta análise por excederem o tamanho máximo da consulta (PDFs digitalizados, sem texto extraível): ${omittedDocs.join(', ')}. Para incluí-los, refaça a consulta selecionando menos documentos.`;
+      }
 
       if (usedDocsMap.size > 0) {
         const citedDocs: AndrecitoDocument[] = [];

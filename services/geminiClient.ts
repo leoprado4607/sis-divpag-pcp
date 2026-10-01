@@ -21,7 +21,9 @@ export async function callGemini(payload: GeminiPayload): Promise<string> {
   });
 
   if (!res.ok) {
-    let message = `Erro ${res.status} ao consultar a IA.`;
+    let message = res.status === 413
+      ? 'A consulta ficou grande demais para envio. Selecione menos documentos e tente novamente.'
+      : `Erro ${res.status} ao consultar a IA.`;
     try {
       const data = await res.json();
       if (data?.error) message = data.error;
