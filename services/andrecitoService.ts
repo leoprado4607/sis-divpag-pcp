@@ -727,12 +727,12 @@ export const andrecitoService = {
     // Respeita o teto de tamanho do corpo: entra por ordem de relevância e pula o
     // que não couber (um PDF grande em base64 não impede os menores seguintes).
     const encoder = new TextEncoder();
-    const omittedDocs: string[] = [];
+    const omittedDocs: AndrecitoDocument[] = [];
     let payloadBytes = 64 * 1024; // reserva para instruções, schema e consulta
     selected.forEach(e => {
       const size = encoder.encode(JSON.stringify(e.parts)).length;
       if (payloadBytes + size > MAX_PAYLOAD_BYTES) {
-        omittedDocs.push(e.doc.name);
+        omittedDocs.push(e.doc);
         return;
       }
       payloadBytes += size;
@@ -875,11 +875,11 @@ REGRA OBRIGATÓRIA PARA fontesUtilizadas: liste TODOS os arquivos citados ou usa
         || "Desculpe, não consegui obter uma resposta estratégica agora.";
 
       if (omittedDocs.length > 0) {
-        finalResponse += `\n\n> ⚠️ ${omittedDocs.length} documento(s) ficaram de fora desta análise por excederem o tamanho máximo da consulta (PDFs digitalizados, sem texto extraível): ${omittedDocs.join(', ')}. Para incluí-los, refaça a consulta selecionando menos documentos.`;
+        finalResponse += `\n\n> ⚠️ ${omittedDocs.length} documento(s) ficaram de fora desta análise por excederem o tamanho máximo da consulta (PDFs digitalizados, sem texto extraível). Eles estão em "Fontes Consultadas", marcados como "não analisado", para download e conferência manual. Para incluí-los na análise, refaça a consulta selecionando menos documentos.`;
       }
 
+      const citedDocs: AndrecitoDocument[] = [];
       if (usedDocsMap.size > 0) {
-        const citedDocs: AndrecitoDocument[] = [];
 
         // Normaliza para comparação: minúsculas, sem acentos, sem extensão e com
         // espaços colapsados — o modelo às vezes normaliza espaços duplos do nome
@@ -906,12 +906,18 @@ REGRA OBRIGATÓRIA PARA fontesUtilizadas: liste TODOS os arquivos citados ou usa
           if (inDeclared || inProse) citedDocs.push(doc);
         });
 
-        if (citedDocs.length > 0) {
-          finalResponse += "\n\n---\n**Fontes Consultadas:**\n";
-          citedDocs.forEach(d => {
-            finalResponse += `- [${d.name}](${d.url})\n`;
-          });
-        }
+      }
+
+      // Os documentos que não couberam no envio também vão para download, marcados
+      // no próprio texto do link (o PDF exportado reaproveita só nome e URL).
+      if (citedDocs.length > 0 || omittedDocs.length > 0) {
+        finalResponse += "\n\n---\n**Fontes Consultadas:**\n";
+        citedDocs.forEach(d => {
+          finalResponse += `- [${d.name}](${d.url})\n`;
+        });
+        omittedDocs.forEach(d => {
+          finalResponse += `- [${d.name} (não analisado)](${d.url})\n`;
+        });
       }
       return finalResponse;
     } catch (e: any) {
