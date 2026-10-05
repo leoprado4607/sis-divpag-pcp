@@ -356,6 +356,15 @@ Como funciona, e por quê:
 
 ## Aba "Homologados para lançamento"
 
+### Acréscimo de 05/10/2026 (pedido do usuário)
+
+Além do par abaixo, a aba lista também os protocolos com **"Homologado pelo OD do
+CPEx / Lançar no SIPPES"** (`HOMOLOGADO`) na aba DEA **e** **"Processado o
+Pagamento"** (`PGTO_PROCESSADO`) no Acompanhamento — mesmo recorte de ano
+(`HL_ANO_MIN`), mesmo registro do mês da folha. No código: `HL_PARES` no
+`painel.html`. Esses protocolos já não contavam como pagos nas demais abas
+(`PGTO_PROCESSADO` é classe "andamento"), e isso não muda.
+
 ### Regra vigente desde 29/09/2026 (pedido do usuário)
 
 Houve mudança de termos nas colunas de situação das planilhas. O protocolo liberado

@@ -964,11 +964,16 @@ var GRUPOS_PF = hidratarGrupos(D.grupos_pagos_fora);
    Acompanhamento já o dá como "Pago" — mas ele ainda NÃO foi pago: falta a OM
    lançar. Só das abas DEA 2026 em diante (2024 e 2025 já foram lançados). Sai da
    lista quando o administrador registra o mês da folha (window.DEA_LANCADOS,
-   lista manual/lancados.json). O substituto do antigo homologados_idx. */
+   lista manual/lancados.json). O substituto do antigo homologados_idx.
+   Desde 05/10/2026 (pedido do usuário) entra também o par "Homologado pelo OD do
+   CPEx / Lançar no SIPPES" na DEA + "Processado o Pagamento" no Acompanhamento. */
 var HL_ANO_MIN = 2026;
+var HL_PARES = [['AUTORIZADO_CPEX','PAGO'], ['HOMOLOGADO','PGTO_PROCESSADO']];
 function anoDaAba(p){ var m = /(\d{4})/.exec(p.aba || ''); return m ? +m[1] : 0; }
 var HOMOL = P.filter(function(p){
-  return p.sit_dea_cod === 'AUTORIZADO_CPEX' && p.sit_acomp_cod === 'PAGO' && anoDaAba(p) >= HL_ANO_MIN;
+  return anoDaAba(p) >= HL_ANO_MIN && HL_PARES.some(function(c){
+    return p.sit_dea_cod === c[0] && p.sit_acomp_cod === c[1];
+  });
 }).sort(function(a,b){ return a.data_ord < b.data_ord ? -1 : a.data_ord > b.data_ord ? 1 : 0; });
 var LANCADOS = window.DEA_LANCADOS;
 var LAN_FALHOU = !Array.isArray(LANCADOS);
@@ -1949,8 +1954,9 @@ document.getElementById('notaHist').innerHTML =
 
 document.getElementById('notaHL').innerHTML =
   'Protocolos das abas <b>DEA '+HL_ANO_MIN+'</b> em diante com situação <b>"Pagamento autorizado (CPEx) / Aguardando '+
-  'lançamento no SIPPES"</b> na aba DEA e <b>"Pago"</b> no Acompanhamento. Por nomenclatura das planilhas eles já '+
-  'aparecem como pagos, mas <b>ainda não foram pagos</b>: falta a OM lançar no SIPPES/SIAPPES. '+
+  'lançamento no SIPPES"</b> na aba DEA e <b>"Pago"</b> no Acompanhamento, ou <b>"Homologado pelo OD do CPEx / Lançar '+
+  'no SIPPES"</b> na aba DEA e <b>"Processado o Pagamento"</b> no Acompanhamento. Eles <b>ainda não foram pagos</b>: '+
+  'falta a OM lançar no SIPPES/SIAPPES. '+
   'Depois do pagamento de fato, o <b>administrador</b> registra o <b>mês da folha</b> (por protocolo ou marcando '+
   'vários de uma vez, com a senha) e o protocolo sai da lista — fica em "Lançamentos registrados", onde o registro '+
   'pode ser desfeito. As demais abas continuam tratando esses protocolos como pagos.';
@@ -2748,8 +2754,9 @@ document.getElementById('hl-pdf').addEventListener('click', function(){
   abrirRelatorio(
     relCapa('Homologados para lançamento',
       'Protocolos das abas DEA '+HL_ANO_MIN+' em diante com situação "Pagamento autorizado (CPEx) / Aguardando '+
-      'lançamento no SIPPES" na aba DEA e "Pago" no Acompanhamento: por nomenclatura já aparecem como pagos, '+
-      'mas ainda não foram pagos — falta a OM lançar no SIPPES/SIAPPES. Saem da relação quando o '+
+      'lançamento no SIPPES" na aba DEA e "Pago" no Acompanhamento, ou "Homologado pelo OD do CPEx / Lançar no '+
+      'SIPPES" na aba DEA e "Processado o Pagamento" no Acompanhamento: ainda não foram pagos — falta a OM '+
+      'lançar no SIPPES/SIAPPES. Saem da relação quando o '+
       'administrador registra o mês da folha em que foram pagos.',
       [['Protocolos', num(lista.length)],
        ['Valor a lançar', lista.length ? brl(somaValor(lista)) : '—'],
