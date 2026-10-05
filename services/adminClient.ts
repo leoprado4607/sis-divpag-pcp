@@ -8,7 +8,11 @@ import { getAdminToken } from './adminAuth';
 // ao usuário e NÃO devem virar gravação local silenciosa.
 export class AdminUnavailableError extends Error {}
 
-export async function adminRequest<T = any>(action: string, payload: Record<string, any> = {}): Promise<T> {
+// 429 (limite de requisições por minuto): espera o Retry-After e tenta de novo,
+// para que operações em lote (ex.: "Indexar pendentes") não falhem em cascata.
+const MAX_RATE_RETRIES = 3;
+
+export async function adminRequest<T = any>(action: string, payload: Record<string, any> = {}, attempt = 0): Promise<T> {
   let res: Response;
   try {
     res = await fetch('/api/admin', {
@@ -21,6 +25,12 @@ export async function adminRequest<T = any>(action: string, payload: Record<stri
     });
   } catch (e: any) {
     throw new AdminUnavailableError(e?.message || 'Backend administrativo inacessível.');
+  }
+
+  if (res.status === 429 && attempt < MAX_RATE_RETRIES) {
+    const waitSec = Math.min(Number(res.headers.get('Retry-After')) || 10, 60);
+    await new Promise(r => setTimeout(r, waitSec * 1000));
+    return adminRequest<T>(action, payload, attempt + 1);
   }
 
   let data: any = {};

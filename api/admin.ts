@@ -21,6 +21,23 @@ function sanitizeFileName(name: string): string {
   return (name || 'arquivo').replace(/[^a-zA-Z0-9.\-_]/g, '_');
 }
 
+// O Postgres não aceita o caractere nulo em TEXT ("unsupported Unicode escape
+// sequence"), e o pdf.js o devolve em alguns PDFs.
+function stripNul(s: string): string {
+  return s.replace(/\u0000/g, '');
+}
+
+// Buckets do acervo: o atual e o "pdfs", onde estão os documentos mais antigos.
+const ACERVO_BUCKETS = [DOCUMENTS_BUCKET, 'pdfs'];
+
+function storageLocation(url: string): { bucket: string; path: string } | null {
+  for (const bucket of ACERVO_BUCKETS) {
+    const parts = url.split(`/public/${bucket}/`);
+    if (parts.length >= 2) return { bucket, path: decodeURIComponent(parts[1]) };
+  }
+  return null;
+}
+
 // Comparação em tempo constante: evita que um atacante deduza a senha de admin
 // medindo o tempo de resposta (timing attack) numa comparação de strings comum.
 function safeEqual(a: string, b: string): boolean {
@@ -155,7 +172,7 @@ export default async function handler(req: any, res: any) {
       // Guardado uma vez por documento e lido por todos na consulta: PDFs com texto
       // vêm extraídos pelo navegador (pdf.js); os digitalizados são transcritos aqui.
       case 'saveDocumentText': {
-        const content = typeof body.content === 'string' ? body.content.slice(0, MAX_STORED_TEXT_CHARS) : '';
+        const content = typeof body.content === 'string' ? stripNul(body.content).slice(0, MAX_STORED_TEXT_CHARS) : '';
         if (!body.id || !content.trim()) {
           return res.status(400).json({ error: 'Documento ou texto ausente.' });
         }
@@ -173,15 +190,14 @@ export default async function handler(req: any, res: any) {
         if (doc.mime_type !== 'application/pdf') {
           return res.status(400).json({ error: 'Só PDFs podem ser transcritos.' });
         }
-        // Lê do NOSSO bucket pelo caminho (não busca URL arbitrária).
-        const parts = String(doc.url).split(`/public/${DOCUMENTS_BUCKET}/`);
-        if (parts.length < 2) return res.status(400).json({ error: 'Arquivo fora do storage do acervo.' });
-        const { data: file, error: dlErr } = await db.storage.from(DOCUMENTS_BUCKET)
-          .download(decodeURIComponent(parts[1]));
+        // Lê dos NOSSOS buckets pelo caminho (não busca URL arbitrária).
+        const loc = storageLocation(String(doc.url));
+        if (!loc) return res.status(400).json({ error: 'Arquivo fora do storage do acervo.' });
+        const { data: file, error: dlErr } = await db.storage.from(loc.bucket).download(loc.path);
         if (dlErr || !file) throw dlErr || new Error('Falha ao baixar o arquivo do storage.');
 
         const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || '';
-        const content = (await transcribePdf(apiKey, file, doc.mime_type)).slice(0, MAX_STORED_TEXT_CHARS);
+        const content = stripNul(await transcribePdf(apiKey, file, doc.mime_type)).slice(0, MAX_STORED_TEXT_CHARS);
         if (content.replace(/\[Pag \d+\]|\[ilegível\]|\s/g, '').length < 50) {
           return res.status(422).json({ error: 'Nenhum texto legível encontrado no documento.' });
         }
