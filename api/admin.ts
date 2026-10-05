@@ -16,6 +16,8 @@ import { getAdminSupabase, DOCUMENTS_BUCKET } from './_supabaseAdmin.js';
 // Teto do texto guardado por documento (~1 MB): cobre normas extensas inteiras e
 // mantém a leitura de dezenas de documentos por consulta leve.
 const MAX_STORED_TEXT_CHARS = 1_000_000;
+// Só tenta a transcrição de novo se a primeira terminou antes disso.
+const TRANSCRIBE_RETRY_WINDOW_MS = 120_000;
 
 function sanitizeFileName(name: string): string {
   return (name || 'arquivo').replace(/[^a-zA-Z0-9.\-_]/g, '_');
@@ -197,8 +199,15 @@ export default async function handler(req: any, res: any) {
         if (dlErr || !file) throw dlErr || new Error('Falha ao baixar o arquivo do storage.');
 
         const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || '';
-        const content = stripNul(await transcribePdf(apiKey, file, doc.mime_type)).slice(0, MAX_STORED_TEXT_CHARS);
-        if (content.replace(/\[Pag \d+\]|\[ilegível\]|\s/g, '').length < 50) {
+        const legible = (s: string) => s.replace(/\[Pag \d+\]|\[ilegível\]|\s/g, '').length >= 50;
+        const startedAt = Date.now();
+        let content = stripNul(await transcribePdf(apiKey, file, doc.mime_type)).slice(0, MAX_STORED_TEXT_CHARS);
+        // O Gemini às vezes devolve vazio para um PDF que transcreve bem na tentativa
+        // seguinte. Repete uma vez, se ainda houver folga no maxDuration (300 s).
+        if (!legible(content) && Date.now() - startedAt < TRANSCRIBE_RETRY_WINDOW_MS) {
+          content = stripNul(await transcribePdf(apiKey, file, doc.mime_type)).slice(0, MAX_STORED_TEXT_CHARS);
+        }
+        if (!legible(content)) {
           return res.status(422).json({ error: 'Nenhum texto legível encontrado no documento.' });
         }
         const { error } = await db.from('document_texts').upsert({
