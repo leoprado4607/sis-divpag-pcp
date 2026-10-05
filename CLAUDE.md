@@ -35,7 +35,7 @@ SPA React + Tailwind hospedada na Vercel. Não há Next.js nem roteador de URL �
 Três endpoints Vercel (Node.js):
 
 - **`/api/gemini`** — Proxy seguro para Google Gemini. Mantém `API_KEY` no servidor. Tem rate-limit por IP (Upstash Redis ou em memória) e cache de respostas em memória (1h, max 200 entradas). Loga cada consulta na tabela `andrecito_logs` do Supabase.
-- **`/api/admin`** — Operações de escrita do Andrecito (CRUD de categorias/docs, upload com Signed URL, analytics). Requer header `x-admin-token` validado contra `ADMIN_PASSWORD` com `timingSafeEqual`.
+- **`/api/admin`** — Operações de escrita do Andrecito (CRUD de categorias/docs, upload com Signed URL, analytics, texto indexado: `saveDocumentText` e `transcribeDocument`, que transcreve PDF digitalizado com Gemini — `maxDuration` 300s no `vercel.json`). Requer header `x-admin-token` validado contra `ADMIN_PASSWORD` com `timingSafeEqual`.
 
 - **`/api/dea`** — Login do Painel DEA (senhas em `DEA_PASSWORD`/`DEA_ADMIN_PASSWORD`, validadas no servidor) e cookie de sessão HMAC com o papel (leitor/admin) assinado. Admin pode disparar e acompanhar a atualização. Também atende `/dea/painel` e `/dea/dados.js` (rewrites no `vercel.json`), que só respondem com sessão válida.
 
@@ -45,7 +45,7 @@ Helpers internos (prefixo `_`): `_gemini.ts`, `_ratelimit.ts`, `_http.ts`, `_sup
 
 ### Camada de serviços (`services/`)
 
-- **`andrecitoService.ts`** — Serviço principal do Andrecito: busca categorias/documentos, extrai texto de PDFs (pdf.js carregado sob demanda), cache de texto em localStorage (TTL 1 dia), pontuação de relevância por token antes de enviar ao Gemini, e fallback local completo quando Supabase ou `/api/admin` estão indisponíveis.
+- **`andrecitoService.ts`** — Serviço principal do Andrecito: busca categorias/documentos, texto de cada documento (ordem: tabela `document_texts` → cache em localStorage, TTL 1 dia → pdf.js sob demanda → PDF em base64), pontuação de relevância por token antes de enviar ao Gemini, teto de 3,5 MB por consulta (limite de body da Vercel; o que não cabe sai em "Fontes Consultadas" como "não analisado"), e fallback local completo quando Supabase ou `/api/admin` estão indisponíveis.
 - **`geminiClient.ts`** — `callGemini()`: faz POST para `/api/gemini`.
 - **`adminClient.ts`** — `adminRequest()`: faz POST para `/api/admin` com o token. Lança `AdminUnavailableError` em 404/503 para ativar fallback local.
 - **`supabaseClient.ts`** — Cria o cliente anon do Supabase (leitura pública, RLS).
@@ -70,7 +70,9 @@ Pacote portado em [dea/](dea/) — leia [dea/LEIA-PRIMEIRO.md](dea/LEIA-PRIMEIRO
 
 Schema atual: [andrecito_schema.sql](andrecito_schema.sql)
 
-Tabelas: `categories`, `subcategories`, `documents`, `andrecito_logs`.
+Tabelas: `categories`, `subcategories`, `documents`, `document_texts`, `andrecito_logs`.
+
+`document_texts` guarda o texto de cada PDF, indexado uma vez pelo admin (upload ou botão "Indexar pendentes"): `source = 'pdfjs'` (extraído no navegador) ou `'gemini'` (PDF digitalizado transcrito no servidor).
 
 Storage bucket: `documents` (público para leitura; uploads via Signed Upload URL gerada pelo `/api/admin`).
 

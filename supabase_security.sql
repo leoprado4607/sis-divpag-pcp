@@ -18,7 +18,7 @@ DO $$
 DECLARE t TEXT;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
-    'categories', 'subcategories', 'documents',
+    'categories', 'subcategories', 'documents', 'document_texts',
     'general_subjects', 'specific_subjects', 'notes'
   ] LOOP
     -- Só age se a tabela existir

@@ -125,6 +125,59 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
     setTimeout(() => setCacheMsg(''), 4000);
   };
 
+  // Texto indexado no Supabase (id → 'pdfjs' | 'gemini'); ausente = pendente.
+  const [textStatus, setTextStatus] = useState<Map<string, string>>(new Map());
+  const [textStatusError, setTextStatusError] = useState('');
+  const [indexingIds, setIndexingIds] = useState<Set<string>>(new Set());
+  const [bulkIndex, setBulkIndex] = useState<{ done: number; total: number } | null>(null);
+
+  const fetchTextStatus = async () => {
+    try {
+      setTextStatus(await andrecitoService.getTextIndexStatus());
+      setTextStatusError('');
+    } catch (e: any) {
+      setTextStatusError(e?.message || 'Falha ao ler o status do texto indexado.');
+    }
+  };
+
+  const indexOne = async (doc: AndrecitoDocument): Promise<string | null> => {
+    setIndexingIds(prev => new Set(prev).add(doc.id));
+    try {
+      const source = await andrecitoService.indexDocumentText(doc);
+      setTextStatus(prev => new Map(prev).set(doc.id, source));
+      return null;
+    } catch (err: any) {
+      return `${doc.name}: ${err?.message || 'erro desconhecido'}`;
+    } finally {
+      setIndexingIds(prev => { const s = new Set(prev); s.delete(doc.id); return s; });
+    }
+  };
+
+  const handleIndexDocument = async (doc: AndrecitoDocument) => {
+    const error = await indexOne(doc);
+    if (error) alert(`Falha ao indexar:\n${error}`);
+  };
+
+  const pendingPdfs = documents.filter(d => d.mime_type === 'application/pdf' && !textStatus.has(d.id));
+
+  // Um por vez: a transcrição de um PDF digitalizado pode levar mais de um minuto.
+  const handleIndexPending = async () => {
+    const queue = pendingPdfs;
+    if (queue.length === 0) return;
+    if (!confirm(`Indexar o texto de ${queue.length} documento(s)? PDFs digitalizados são transcritos pela IA e podem levar cerca de 1 minuto cada.`)) return;
+    const errors: string[] = [];
+    setBulkIndex({ done: 0, total: queue.length });
+    for (let i = 0; i < queue.length; i++) {
+      const error = await indexOne(queue[i]);
+      if (error) errors.push(error);
+      setBulkIndex({ done: i + 1, total: queue.length });
+    }
+    setBulkIndex(null);
+    alert(errors.length
+      ? `Indexação concluída com ${errors.length} falha(s):\n${errors.join('\n')}`
+      : `Todos os ${queue.length} documento(s) foram indexados.`);
+  };
+
   useEffect(() => {
     fetchAllData();
   }, []);
@@ -145,6 +198,7 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
       setCategories(cats);
       setSubcategories(subs);
       setDocuments(docs);
+      await fetchTextStatus();
     } catch (e) {
       console.error(e);
     } finally {
@@ -649,6 +703,28 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                             <p className="text-[10px] text-army-green font-bold text-center mt-2">{cacheMsg}</p>
                         )}
                     </div>
+                    <div className="mt-4 pt-4 border-t border-slate-100">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Texto para a IA</p>
+                        {textStatusError ? (
+                            <p className="text-[10px] text-red-600 font-bold">{textStatusError}</p>
+                        ) : (
+                            <>
+                                <p className="text-[11px] text-slate-500 mb-3">
+                                    {pendingPdfs.length > 0
+                                        ? `${pendingPdfs.length} PDF(s) sem texto indexado. Indexe para que entrem inteiros nas consultas.`
+                                        : 'Todos os PDFs têm texto indexado.'}
+                                </p>
+                                <button
+                                    onClick={handleIndexPending}
+                                    disabled={!!bulkIndex || pendingPdfs.length === 0}
+                                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white bg-army-green hover:bg-green-900 transition-all disabled:opacity-50"
+                                >
+                                    <RefreshCw size={14} className={bulkIndex ? 'animate-spin' : ''} />
+                                    {bulkIndex ? `Indexando ${bulkIndex.done}/${bulkIndex.total}...` : `Indexar pendentes (${pendingPdfs.length})`}
+                                </button>
+                            </>
+                        )}
+                    </div>
                     </div>
                 </div>
             </div>
@@ -689,7 +765,8 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                                 <th className="px-6 py-4 w-1/4">Localização</th>
                                 <th className="px-6 py-4 w-32">Tamanho</th>
                                 <th className="px-6 py-4 w-32">Data Upload</th>
-                                <th className="px-6 py-4 w-24 text-center">Ações</th>
+                                <th className="px-6 py-4 w-36">Texto</th>
+                                <th className="px-6 py-4 w-28 text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -721,20 +798,45 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                                                 {new Date(doc.created_at).toLocaleDateString('pt-BR')}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <button 
+                                        <td className="px-6 py-4">
+                                            {indexingIds.has(doc.id) ? (
+                                                <span className="text-[10px] font-bold text-army-gold uppercase">Indexando...</span>
+                                            ) : textStatus.get(doc.id) === 'gemini' ? (
+                                                <span className="text-[10px] font-bold text-army-green uppercase" title="PDF digitalizado, transcrito pela IA">Transcrito (IA)</span>
+                                            ) : textStatus.has(doc.id) ? (
+                                                <span className="text-[10px] font-bold text-army-green uppercase">Indexado</span>
+                                            ) : doc.mime_type === 'application/pdf' ? (
+                                                <span className="text-[10px] font-bold text-red-500 uppercase">Pendente</span>
+                                            ) : (
+                                                <span className="text-[10px] text-slate-400">-</span>
+                                            )}
+                                        </td>
+                                        <td className="px-2 py-4">
+                                            <div className="flex items-center justify-center">
+                                            {doc.mime_type === 'application/pdf' && (
+                                                <button
+                                                    onClick={() => handleIndexDocument(doc)}
+                                                    disabled={indexingIds.has(doc.id) || !!bulkIndex}
+                                                    className="p-2 text-slate-300 hover:text-army-green hover:bg-slate-100 rounded-lg transition-all disabled:opacity-40"
+                                                    title={textStatus.has(doc.id) ? 'Reindexar o texto do documento' : 'Indexar o texto do documento'}
+                                                >
+                                                    <RefreshCw size={16} className={indexingIds.has(doc.id) ? 'animate-spin' : ''} />
+                                                </button>
+                                            )}
+                                            <button
                                                 onClick={() => handleDeleteDocument(doc)}
                                                 className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                                                 title="Excluir Arquivo Permanentemente"
                                             >
                                                 <Trash2 size={18} />
                                             </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
                             }) : (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-20 text-center text-slate-400 italic text-sm">
+                                    <td colSpan={6}className="px-6 py-20 text-center text-slate-400 italic text-sm">
                                         <div className="flex flex-col items-center gap-3">
                                             <Database size={48} className="opacity-10" />
                                             <p>Nenhum documento encontrado.</p>

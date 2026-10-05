@@ -379,13 +379,13 @@ const urlToBase64 = async (url: string): Promise<string> => {
   }
 };
 
-const extractTextFromPdfUrl = async (url: string): Promise<string> => {
+const extractTextFromPdfUrl = async (url: string, pageLimit = 30): Promise<string> => {
   try {
     const pdfjsLib = await ensurePdfJs();
     if (!pdfjsLib) return "";
     const loadingTask = pdfjsLib.getDocument(url);
     const pdf = await loadingTask.promise;
-    const maxPages = Math.min(pdf.numPages, 30);
+    const maxPages = Math.min(pdf.numPages, pageLimit);
 
     // Processa as páginas em paralelo em vez de uma a uma (await sequencial),
     // reduzindo drasticamente o tempo de extração em PDFs com várias páginas.
@@ -403,6 +403,38 @@ const extractTextFromPdfUrl = async (url: string): Promise<string> => {
     console.error("Erro PDF.js:", error);
     return "";
   }
+};
+
+// Um PDF digitalizado devolve só os marcadores [Pag N] e, às vezes, um carimbo ou
+// cabeçalho com camada de texto. Exige uma média mínima de caracteres por página
+// para considerar que o pdf.js extraiu o documento de verdade.
+const isUsefulText = (text: string | null | undefined): text is string => {
+  if (!text) return false;
+  const pages = Math.max(1, (text.match(/\[Pag \d+\]/g) || []).length);
+  const chars = text.replace(/\[Pag \d+\]/g, '').replace(/\s+/g, '').length;
+  return chars >= 50 && chars / pages >= 100;
+};
+
+// --- TEXTO INDEXADO NO SUPABASE (tabela document_texts) ---
+// Extraído uma única vez por documento (pelo admin) e lido por todas as consultas.
+// Tabela ausente ou erro de rede → mapa vazio, e a consulta segue pelo caminho antigo.
+const MAX_STORED_TEXT_CHARS = 1_000_000;
+
+const fetchStoredTexts = async (ids: string[]): Promise<Map<string, string>> => {
+  const map = new Map<string, string>();
+  if (!supabase || ids.length === 0) return map;
+  try {
+    // Lotes de 100 ids para não estourar o tamanho da URL do filtro "in".
+    for (let i = 0; i < ids.length; i += 100) {
+      const { data, error } = await supabase.from('document_texts')
+        .select('document_id, content').in('document_id', ids.slice(i, i + 100));
+      if (error) throw error;
+      (data || []).forEach((r: any) => map.set(r.document_id, r.content));
+    }
+  } catch (e) {
+    console.warn('Texto indexado indisponível, extraindo no navegador:', e);
+  }
+  return map;
 };
 
 // Upload "mock" local: usado quando não há Supabase configurado ou quando o
@@ -629,14 +661,14 @@ export const andrecitoService = {
         mime_type: file.type, category_id: categoryId, subcategory_id: subcategoryId,
       });
 
-      // 4. Best-effort: extrai e cacheia o texto para baratear futuras consultas IA.
+      // 4. Best-effort: indexa o texto (extração ou transcrição) para as consultas.
+      //    Se falhar, o documento fica "pendente" e pode ser indexado pelo painel.
       try {
-        const pdfText = await extractTextFromPdfUrl(publicUrl);
-        if (pdfText && pdfText.length > 50) {
-          const { data } = await supabase.from('documents').select('id').eq('url', publicUrl).single();
-          if (data?.id) cacheText(data.id, pdfText);
-        }
-      } catch { /* cache é opcional */ }
+        const { data } = await supabase.from('documents').select('*').eq('url', publicUrl).single();
+        if (data?.id) await andrecitoService.indexDocumentText(data);
+      } catch (e) {
+        console.warn(`Indexação de ${file.name} ficou pendente:`, e);
+      }
     } catch (err) {
       if (err instanceof AdminUnavailableError) {
         // Backend indisponível → cai para o upload mock local.
@@ -646,8 +678,34 @@ export const andrecitoService = {
     }
   },
 
+  // Situação do texto indexado de cada documento: id → 'pdfjs' | 'gemini'.
+  // Documento ausente do mapa = pendente. Não traz o conteúdo (listagem leve).
+  async getTextIndexStatus(): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+    if (!supabase) throw new Error('Indexação indisponível no modo local (Supabase não configurado).');
+    const { data, error } = await supabase.from('document_texts').select('document_id, source');
+    if (error) throw new Error(`Tabela document_texts indisponível: ${error.message}`);
+    (data || []).forEach((r: any) => map.set(r.document_id, r.source));
+    return map;
+  },
+
+  // Indexa o texto de um documento no Supabase: tenta o pdf.js no navegador e, se
+  // o PDF for digitalizado (sem texto útil), pede a transcrição ao servidor.
+  async indexDocumentText(doc: AndrecitoDocument): Promise<'pdfjs' | 'gemini'> {
+    if (doc.mime_type !== 'application/pdf') throw new Error('Só PDFs são indexados.');
+    const text = await extractTextFromPdfUrl(doc.url, 1000);
+    if (isUsefulText(text)) {
+      await adminRequest('saveDocumentText', { id: doc.id, content: text.slice(0, MAX_STORED_TEXT_CHARS) });
+      cacheText(doc.id, text);
+      return 'pdfjs';
+    }
+    await adminRequest('transcribeDocument', { id: doc.id });
+    return 'gemini';
+  },
+
   async queryGemini(query: string, documents: AndrecitoDocument[], userType?: string): Promise<string> {
     const usedDocsMap = new Map<string, AndrecitoDocument>();
+    const storedTexts = await fetchStoredTexts(documents.map(d => d.id));
 
     // Âncora inicial (query-sandwich): colocar a consulta ANTES dos documentos
     // direciona a atenção do modelo para o que é relevante durante a leitura.
@@ -662,14 +720,15 @@ export const andrecitoService = {
 
     const docPromises = documents.map(async (doc): Promise<DocEntry | null> => {
       try {
-        let text = getCachedText(doc.id);
+        // Ordem: texto indexado no Supabase → cache local → extração pelo pdf.js.
+        let text = storedTexts.get(doc.id) || getCachedText(doc.id);
         if (!text) {
           // Se for mock/URL blob local, tenta extrair imediatamente, senão busca
           text = await extractTextFromPdfUrl(doc.url);
-          if (text && text.length > 50) cacheText(doc.id, text);
+          if (isUsefulText(text)) cacheText(doc.id, text);
         }
 
-        if (text && text.length > 50) {
+        if (isUsefulText(text)) {
           // Limita o texto por documento para conter o custo de tokens de entrada.
           const capped = text.length > MAX_DOC_CHARS
             ? text.slice(0, MAX_DOC_CHARS) + '\n[...documento truncado para análise...]'

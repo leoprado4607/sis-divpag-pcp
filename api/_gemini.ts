@@ -1,7 +1,7 @@
 // Lógica compartilhada do proxy Gemini (lado servidor) — usada tanto pela função
 // serverless do Vercel (api/gemini.ts) quanto pelo plugin de dev do Vite.
 // Arquivos iniciados por "_" não viram rotas no Vercel — é só um módulo auxiliar.
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, createPartFromUri } from '@google/genai';
 
 export interface GeminiRequest {
   model?: string;
@@ -30,6 +30,59 @@ export async function runGemini(apiKey: string, payload: GeminiRequest): Promise
     ...(payload.config ? { config: payload.config } : {}),
   });
   return response.text || '';
+}
+
+// --- TRANSCRIÇÃO DE PDF DIGITALIZADO ---
+// Feita UMA vez por documento (pelo /api/admin) para que PDFs sem camada de texto
+// passem a ir às consultas como texto, e não inteiros em base64. O arquivo é lido
+// do storage aqui no servidor, então não esbarra no limite de body da Vercel.
+// Até 15 MB vai inline; acima disso usa a Files API (limite de ~20 MB por request).
+const TRANSCRIBE_MODEL = 'gemini-2.5-flash';
+const INLINE_PDF_MAX_BYTES = 15 * 1024 * 1024;
+
+const TRANSCRIBE_PROMPT = `Transcreva INTEGRALMENTE o texto deste documento, página por página, na ordem original.
+- Antes do conteúdo de cada página, escreva o marcador [Pag N] (N = número da página).
+- Preserve títulos, numeração de artigos, incisos, parágrafos, alíneas, tabelas (em linhas de texto) e valores exatamente como aparecem.
+- Não resuma, não comente, não traduza e não acrescente nada que não esteja no documento.
+- Trechos ilegíveis: escreva [ilegível].`;
+
+export async function transcribePdf(apiKey: string, data: Blob, mimeType = 'application/pdf'): Promise<string> {
+  if (!apiKey) throw new Error('Chave de API do Gemini não configurada no servidor.');
+  const ai = new GoogleGenAI({ apiKey });
+
+  let filePart: any;
+  let uploadedName: string | undefined;
+  if (data.size <= INLINE_PDF_MAX_BYTES) {
+    const base64 = Buffer.from(await data.arrayBuffer()).toString('base64');
+    filePart = { inlineData: { mimeType, data: base64 } };
+  } else {
+    const file = await ai.files.upload({ file: data, config: { mimeType } });
+    uploadedName = file.name;
+    // PDFs grandes passam por processamento antes de poderem ser usados.
+    let state = file.state;
+    for (let i = 0; i < 60 && state === 'PROCESSING' && file.name; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      state = (await ai.files.get({ name: file.name })).state;
+    }
+    if (state === 'FAILED' || !file.uri) throw new Error('O Gemini não conseguiu processar o arquivo.');
+    filePart = createPartFromUri(file.uri, file.mimeType || mimeType);
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: TRANSCRIBE_MODEL,
+      contents: [{ role: 'user', parts: [filePart, { text: TRANSCRIBE_PROMPT }] }],
+      config: {
+        temperature: 0,
+        maxOutputTokens: 65536,
+        // Transcrição não precisa de raciocínio: todo o orçamento vai para o texto.
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    });
+    return (response.text || '').trim();
+  } finally {
+    if (uploadedName) await ai.files.delete({ name: uploadedName }).catch(() => {});
+  }
 }
 
 // --- VERIFICAÇÃO DE ORIGEM ---

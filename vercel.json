@@ -61,6 +61,9 @@
   "functions": {
     "api/dea.ts": {
       "includeFiles": "dea/app/painel.html"
+    },
+    "api/admin.ts": {
+      "maxDuration": 300
     }
   }
 }

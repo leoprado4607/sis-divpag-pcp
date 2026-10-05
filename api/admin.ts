@@ -8,10 +8,14 @@
 //   SUPABASE_SERVICE_ROLE_KEY    (Settings → API → service_role secret)
 //   ADMIN_PASSWORD               (senha que o admin digita no login)
 import { timingSafeEqual } from 'node:crypto';
-import { isRequestAllowed, getClientIp } from './_gemini.js';
+import { isRequestAllowed, getClientIp, transcribePdf } from './_gemini.js';
 import { checkRateLimitAsync } from './_ratelimit.js';
 import { readJsonBody } from './_http.js';
 import { getAdminSupabase, DOCUMENTS_BUCKET } from './_supabaseAdmin.js';
+
+// Teto do texto guardado por documento (~1 MB): cobre normas extensas inteiras e
+// mantém a leitura de dezenas de documentos por consulta leve.
+const MAX_STORED_TEXT_CHARS = 1_000_000;
 
 function sanitizeFileName(name: string): string {
   return (name || 'arquivo').replace(/[^a-zA-Z0-9.\-_]/g, '_');
@@ -145,6 +149,47 @@ export default async function handler(req: any, res: any) {
         });
         if (error) throw error;
         return res.status(200).json({ ok: true });
+      }
+
+      // --- TEXTO INDEXADO DOS DOCUMENTOS (tabela document_texts) ---
+      // Guardado uma vez por documento e lido por todos na consulta: PDFs com texto
+      // vêm extraídos pelo navegador (pdf.js); os digitalizados são transcritos aqui.
+      case 'saveDocumentText': {
+        const content = typeof body.content === 'string' ? body.content.slice(0, MAX_STORED_TEXT_CHARS) : '';
+        if (!body.id || !content.trim()) {
+          return res.status(400).json({ error: 'Documento ou texto ausente.' });
+        }
+        const { error } = await db.from('document_texts').upsert({
+          document_id: body.id, content, source: 'pdfjs', updated_at: new Date().toISOString(),
+        });
+        if (error) throw error;
+        return res.status(200).json({ ok: true, chars: content.length });
+      }
+
+      case 'transcribeDocument': {
+        const { data: doc, error: docErr } = await db.from('documents')
+          .select('id, name, url, mime_type').eq('id', body.id).single();
+        if (docErr || !doc) return res.status(404).json({ error: 'Documento não encontrado.' });
+        if (doc.mime_type !== 'application/pdf') {
+          return res.status(400).json({ error: 'Só PDFs podem ser transcritos.' });
+        }
+        // Lê do NOSSO bucket pelo caminho (não busca URL arbitrária).
+        const parts = String(doc.url).split(`/public/${DOCUMENTS_BUCKET}/`);
+        if (parts.length < 2) return res.status(400).json({ error: 'Arquivo fora do storage do acervo.' });
+        const { data: file, error: dlErr } = await db.storage.from(DOCUMENTS_BUCKET)
+          .download(decodeURIComponent(parts[1]));
+        if (dlErr || !file) throw dlErr || new Error('Falha ao baixar o arquivo do storage.');
+
+        const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || '';
+        const content = (await transcribePdf(apiKey, file, doc.mime_type)).slice(0, MAX_STORED_TEXT_CHARS);
+        if (content.replace(/\[Pag \d+\]|\[ilegível\]|\s/g, '').length < 50) {
+          return res.status(422).json({ error: 'Nenhum texto legível encontrado no documento.' });
+        }
+        const { error } = await db.from('document_texts').upsert({
+          document_id: doc.id, content, source: 'gemini', updated_at: new Date().toISOString(),
+        });
+        if (error) throw error;
+        return res.status(200).json({ ok: true, chars: content.length });
       }
 
       case 'getAnalytics': {

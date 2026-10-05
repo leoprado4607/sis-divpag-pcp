@@ -77,3 +77,20 @@ ALTER TABLE public.andrecito_logs ADD COLUMN IF NOT EXISTS city TEXT;
 
 -- RLS habilitado: nenhuma policy pública — acesso apenas via service_role (API admin)
 ALTER TABLE public.andrecito_logs ENABLE ROW LEVEL SECURITY;
+
+-- 6. Texto indexado de cada documento (extraído uma única vez e compartilhado
+-- por todas as consultas). source = 'pdfjs' (PDF com texto, extraído no navegador
+-- do admin) ou 'gemini' (PDF digitalizado, transcrito pelo /api/admin).
+-- Seguro rodar várias vezes.
+CREATE TABLE IF NOT EXISTS public.document_texts (
+    document_id UUID PRIMARY KEY REFERENCES public.documents(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'pdfjs',
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Leitura pública (o PDF de origem já é público); escrita só via service_role.
+ALTER TABLE public.document_texts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "public_read_document_texts" ON public.document_texts;
+CREATE POLICY "public_read_document_texts" ON public.document_texts
+    FOR SELECT TO anon, authenticated USING (true);
