@@ -23,6 +23,8 @@ import { ArrowLeft, Lock, LogOut, Loader2, RefreshCw } from 'lucide-react';
 // chama o /api/dea e recarrega o iframe.
 // "Manter pendente" (e o "Desfazer" da aba "Mantidos pendentes") segue o mesmo
 // caminho, gravando noutra lista (manual/pendentes.json).
+// "Lançado no SIPPES" (Homologados para lançamento) pede o mês/ano de referência
+// e o operador, sem senha (basta a sessão de administrador); manual/sippes.json.
 
 interface GrupoResolver {
   protocolos: string[];
@@ -35,10 +37,11 @@ interface GrupoResolver {
   total: string;
   pagos_pessoa: string[];
   pagos_grupo: string[];
+  sippes: { mes_ref: string; operador: string } | null; // lançamento no SIPPES já registrado
 }
 interface RegistroDesfazer { id: string; nome: string; prec_cp: string; ano: string; protocolos: string[] }
 type PedidoResolvido =
-  | { tipo: 'resolver' | 'manter' | 'lancar'; grupo: GrupoResolver }
+  | { tipo: 'resolver' | 'manter' | 'lancar' | 'sippes'; grupo: GrupoResolver }
   | { tipo: 'desfazer' | 'desfazer-pendente' | 'desfazer-lancamento'; registro: RegistroDesfazer };
 
 // Textos e ação do /api/dea de cada pedido.
@@ -48,22 +51,26 @@ const PEDIDOS = {
   desfazer: { titulo: 'Desfazer resolvido manual', botao: 'Desfazer', acao: 'desfazer-resolvido' },
   'desfazer-pendente': { titulo: 'Desfazer mantido pendente', botao: 'Desfazer', acao: 'desfazer-pendente' },
   lancar: { titulo: 'Registrar mês da folha', botao: 'Registrar', acao: 'registrar-lancamento' },
+  sippes: { titulo: 'Lançado no SIPPES', botao: 'Registrar', acao: 'registrar-sippes' },
   'desfazer-lancamento': { titulo: 'Desfazer lançamento registrado', botao: 'Desfazer', acao: 'desfazer-lancamento' },
 } as const;
 
-const TIPO_MARCAR: Record<string, 'resolver' | 'manter' | 'lancar'> = {
-  'dea-resolver': 'resolver', 'dea-manter-pendente': 'manter', 'dea-lancar': 'lancar',
+const TIPO_MARCAR: Record<string, 'resolver' | 'manter' | 'lancar' | 'sippes'> = {
+  'dea-resolver': 'resolver', 'dea-manter-pendente': 'manter', 'dea-lancar': 'lancar', 'dea-sippes': 'sippes',
 };
+const MES_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+const OPERADOR_MAX = 15;
 const TIPO_DESFAZER: Record<string, 'desfazer' | 'desfazer-pendente' | 'desfazer-lancamento'> = {
   'dea-desfazer-resolvido': 'desfazer', 'dea-desfazer-pendente': 'desfazer-pendente',
   'dea-desfazer-lancamento': 'desfazer-lancamento',
 };
 
 // Mês anterior ao atual, "AAAA-MM": a folha costuma ser a do mês que passou.
-function mesAnterior(): string {
+// Com recuo 0, o mês atual (referência do lançamento no SIPPES).
+function mesAnterior(recuo = 1): string {
   const d = new Date();
   d.setDate(1);
-  d.setMonth(d.getMonth() - 1);
+  d.setMonth(d.getMonth() - recuo);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
@@ -77,13 +84,16 @@ function lerPedido(data: any): PedidoResolvido | null {
     const g = data.grupo;
     const protocolos = listaTexto(g.protocolos);
     if (!protocolos.length) return null;
+    const sip = g.sippes && MES_RE.test(String(g.sippes.mes_ref))
+      ? { mes_ref: String(g.sippes.mes_ref), operador: String(g.sippes.operador || '').slice(0, OPERADOR_MAX) }
+      : null;
     return {
       tipo: TIPO_MARCAR[data.tipo],
       grupo: {
         protocolos, pagos_pessoa: listaTexto(g.pagos_pessoa), pagos_grupo: listaTexto(g.pagos_grupo),
         nome: String(g.nome || ''), prec_cp: String(g.prec_cp || ''), ano: String(g.ano || ''),
         nr_bi: String(g.nr_bi || ''), segmento: String(g.segmento || ''), aba: String(g.aba || ''),
-        total: String(g.total || ''),
+        total: String(g.total || ''), sippes: sip,
       },
     };
   }
@@ -146,6 +156,7 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
   const [pedido, setPedido] = useState<PedidoResolvido | null>(null);
   const [motivo, setMotivo] = useState('');
   const [mesFolha, setMesFolha] = useState('');
+  const [operador, setOperador] = useState('');
   const [senhaAcao, setSenhaAcao] = useState('');
   const [erroAcao, setErroAcao] = useState('');
   const [enviandoAcao, setEnviandoAcao] = useState(false);
@@ -158,7 +169,10 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
       if (!p) return;
       setPedido(p);
       setMotivo('');
-      setMesFolha(mesAnterior());
+      // Mês da folha e "Lançado no SIPPES" partem do mês de referência já lançado no SIPPES.
+      const sip = 'grupo' in p ? p.grupo.sippes : null;
+      setMesFolha(sip?.mes_ref || mesAnterior(p.tipo === 'sippes' ? 0 : 1));
+      setOperador(p.tipo === 'sippes' ? sip?.operador || '' : '');
       setSenhaAcao('');
       setErroAcao('');
     };
@@ -172,13 +186,18 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
     if (!pedido || enviandoAcao) return;
     const marcar = pedido.tipo === 'resolver' || pedido.tipo === 'manter';
     if (marcar && motivo.trim().length < 5) { setErroAcao('Informe o motivo (mínimo de 5 caracteres).'); return; }
-    if (pedido.tipo === 'lancar' && !/^\d{4}-(0[1-9]|1[0-2])$/.test(mesFolha)) { setErroAcao('Informe o mês da folha.'); return; }
-    if (!senhaAcao) { setErroAcao('Digite a senha de administrador.'); return; }
+    if (pedido.tipo === 'lancar' && !MES_RE.test(mesFolha)) { setErroAcao('Informe o mês da folha.'); return; }
+    if (pedido.tipo === 'sippes') {
+      if (!MES_RE.test(mesFolha)) { setErroAcao('Informe o mês/ano de referência.'); return; }
+      if (!operador.trim()) { setErroAcao('Informe o nome do operador.'); return; }
+    } else if (!senhaAcao) { setErroAcao('Digite a senha de administrador.'); return; }
     setEnviandoAcao(true);
     setErroAcao('');
     try {
       const acao = PEDIDOS[pedido.tipo].acao;
-      const corpo = 'grupo' in pedido
+      const corpo = pedido.tipo === 'sippes'
+        ? { acao, grupo: pedido.grupo, mes_ref: mesFolha, operador: operador.trim() }
+        : 'grupo' in pedido
         ? { acao, senha: senhaAcao, motivo: motivo.trim(), grupo: pedido.grupo, ...(pedido.tipo === 'lancar' ? { mes_folha: mesFolha } : {}) }
         : { acao, senha: senhaAcao, motivo: motivo.trim(), id: pedido.registro.id };
       const r = await postDea(corpo);
@@ -381,7 +400,7 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
             <h3 id="dea-pedido-titulo" className="text-lg font-bold text-slate-800">
               {PEDIDOS[pedido.tipo].titulo}
             </h3>
-            {pedido.tipo === 'lancar' ? (
+            {pedido.tipo === 'lancar' || pedido.tipo === 'sippes' ? (
               <dl className="mt-3 text-sm text-slate-700 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
                 <dt className="font-semibold">Nome</dt><dd>{pedido.grupo.nome || '—'}</dd>
                 {pedido.grupo.prec_cp && <><dt className="font-semibold">Prec-cp</dt><dd>{pedido.grupo.prec_cp}</dd></>}
@@ -439,6 +458,39 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
                 />
               </>
             )}
+            {pedido.tipo === 'sippes' && (
+              <>
+                <p className="mt-3 text-xs text-slate-500">
+                  Registra que o pagamento foi lançado no SIPPES. O protocolo continua em "Homologados para lançamento" até
+                  o registro do mês da folha, depois do pagamento de fato.
+                </p>
+                <label className="block mt-4 text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="dea-mes-ref">
+                  Mês/ano de referência do pagamento
+                </label>
+                <input
+                  id="dea-mes-ref"
+                  type="month"
+                  value={mesFolha}
+                  onChange={(e) => setMesFolha(e.target.value)}
+                  className="mt-1 w-full border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-army-green outline-none"
+                />
+                <label className="block mt-3 text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="dea-operador">
+                  Operador que realizou o registro
+                </label>
+                <input
+                  id="dea-operador"
+                  type="text"
+                  value={operador}
+                  maxLength={OPERADOR_MAX}
+                  autoFocus
+                  onChange={(e) => setOperador(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && confirmarPedido()}
+                  className="mt-1 w-full border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-army-green outline-none"
+                />
+                <p className="mt-1 text-right text-xs text-slate-400">{operador.length}/{OPERADOR_MAX}</p>
+              </>
+            )}
+            {pedido.tipo !== 'sippes' && (<>
             <label className="block mt-4 text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="dea-motivo">
               {pedido.tipo === 'lancar' ? 'Observação (opcional)' : `Motivo${'grupo' in pedido ? '' : ' (opcional)'}`}
             </label>
@@ -465,6 +517,7 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
               onKeyDown={(e) => e.key === 'Enter' && confirmarPedido()}
               className="mt-1 w-full border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-army-green outline-none"
             />
+            </>)}
             {erroAcao && <p role="alert" className="mt-3 text-sm font-semibold text-red-600">{erroAcao}</p>}
             <div className="mt-5 flex justify-end gap-3">
               <button onClick={fecharPedido} disabled={enviandoAcao} className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700">

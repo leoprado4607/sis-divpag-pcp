@@ -377,13 +377,27 @@ foram lançados, decisão do usuário). Retrato de 29/09/2026: 115 protocolos
 (DEA 2024: 523 e DEA 2025: 397 ficam de fora).
 
 - Depois do pagamento de fato, o administrador **registra o mês da folha** — por
-  protocolo ou marcando vários (lote) — com a **senha de administrador**; o
+  protocolo (o registro em lote saiu em 05/10/2026) — com a **senha de administrador**; o
   protocolo sai da lista e vai para **"Lançamentos registrados"** (na mesma aba),
   onde o registro pode ser **desfeito**. Observação opcional.
 - Lista manual própria: `manual/lancados.json` no bucket privado (`{lancados, log}`,
   com `mes_folha` "AAAA-MM"), anexada ao `dados.js` como `window.DEA_LANCADOS`
   (em dev: `lancados-manuais.json`). Ações do `/api/dea`: `registrar-lancamento` e
   `desfazer-lancamento`; o servidor recusa protocolo já registrado.
+- **"Lançado no SIPPES"** (05/10/2026, pedido do usuário): etapa anterior ao mês
+  da folha. Botão acima de "Registrar mês da folha", em cada protocolo: o
+  administrador informa o **mês/ano de referência** do pagamento e o **nome do
+  operador** (até 15 caracteres) que lançou no SIPPES. O protocolo **continua** em
+  "Homologados para lançamento"; o botão fica **verde** (cinza enquanto não lançado)
+  e mostra os dados ao passar o mouse. Clicar de novo corrige o registro (substitui).
+  Basta a sessão de administrador — **sem** redigitar a senha (decisão do usuário).
+  Lista própria `manual/sippes.json` (`{sippes, log}`, um registro por protocolo;
+  `mes_folha` = mês de referência, `operador`), anexada como `window.DEA_SIPPES`
+  (em dev: `sippes-manuais.json`); ação `registrar-sippes` do `/api/dea`. Ao
+  registrar o mês da folha, o campo vem preenchido com o mês de referência e o
+  registro em `lancados.json` ganha `sippes` (cópia de mês ref. e operador),
+  exibido em "Lançamentos registrados". Registros de `lancados.json` anteriores
+  não foram alterados.
 - Calculado **no painel** a partir de `processos`; o `homologados_idx` e os
   `agregados["hl_*"]` do `build_data.py` (regra anterior) deixaram de ser lidos pela
   aba. O número "homologados" gravado no Histórico pelo pipeline segue a regra

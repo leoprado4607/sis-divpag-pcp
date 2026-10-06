@@ -44,6 +44,10 @@ export const DEA_PENDENTES_PATH = 'manual/pendentes.json';
 // Protocolos "Pagamento autorizado (CPEx)" + "Pago" que o administrador deu como
 // lançados, com o mês da folha (29/09/2026). Saem de "Homologados para lançamento".
 export const DEA_LANCADOS_PATH = 'manual/lancados.json';
+// Protocolos de "Homologados para lançamento" que o operador já lançou no SIPPES,
+// com o mês/ano de referência do pagamento e o nome do operador (05/10/2026).
+// Não tiram o protocolo da lista: isso continua com o registro do mês da folha.
+export const DEA_SIPPES_PATH = 'manual/sippes.json';
 
 const COOKIE = 'dea_sessao';
 const SESSAO_MS = 8 * 60 * 60 * 1000; // 8h
@@ -237,20 +241,27 @@ interface Resolvido {
   aba: string;
   motivo: string;
   em: string;
-  mes_folha?: string; // só nos lançados: "AAAA-MM"
+  mes_folha?: string; // nos lançados: mês da folha; no SIPPES: mês de referência ("AAAA-MM")
+  operador?: string;  // só no SIPPES: quem lançou (até 15 caracteres)
+  // Só nos lançados: o lançamento no SIPPES de cada protocolo, copiado no registro.
+  sippes?: Array<{ protocolo: string; mes_ref: string; operador: string; em: string }>;
 }
 interface ArquivoResolvidos {
   resolvidos: Resolvido[];
-  log: Array<{ acao: 'resolver' | 'desfazer'; id: string; protocolos: string[]; nome: string; motivo: string; em: string; mes_folha?: string }>;
+  log: Array<{
+    acao: 'resolver' | 'desfazer' | 'alterar'; id: string; protocolos: string[]; nome: string; motivo: string; em: string;
+    mes_folha?: string; operador?: string;
+  }>;
 }
 
 // As duas listas manuais têm o mesmo formato; muda o arquivo e a chave da lista
 // ("resolvidos" / "pendentes"), para o resolvidos.json continuar idêntico.
-type TipoManual = 'resolvidos' | 'pendentes' | 'lancados';
+type TipoManual = 'resolvidos' | 'pendentes' | 'lancados' | 'sippes';
 const MANUAL: Record<TipoManual, { path: string; local: string }> = {
   resolvidos: { path: DEA_RESOLVIDOS_PATH, local: 'resolvidos-manuais.json' },
   pendentes: { path: DEA_PENDENTES_PATH, local: 'pendentes-manuais.json' },
   lancados: { path: DEA_LANCADOS_PATH, local: 'lancados-manuais.json' },
+  sippes: { path: DEA_SIPPES_PATH, local: 'sippes-manuais.json' },
 };
 
 function storageCfg(): { url: string; key: string } | null {
@@ -329,11 +340,12 @@ function idGrupo(protocolos: string[]): string {
 
 // Anexa as listas (só o necessário para exibir) e o papel ao dados.js entregue.
 function anexarAoDados(
-  dados: Buffer, res: ArquivoResolvidos | null, pen: ArquivoResolvidos | null, lan: ArquivoResolvidos | null, admin: boolean,
+  dados: Buffer, res: ArquivoResolvidos | null, pen: ArquivoResolvidos | null, lan: ArquivoResolvidos | null,
+  sip: ArquivoResolvidos | null, admin: boolean,
 ): Buffer {
   // "<" escapado: o conteúdo vem de texto digitado (motivo, nome).
   const json = (arq: ArquivoResolvidos | null) => JSON.stringify(arq ? arq.resolvidos : null).replace(/</g, '\\u003c');
-  const js = `\nwindow.DEA_RESOLVIDOS=${json(res)};window.DEA_PENDENTES=${json(pen)};window.DEA_LANCADOS=${json(lan)};window.DEA_ADMIN=${admin};\n`;
+  const js = `\nwindow.DEA_RESOLVIDOS=${json(res)};window.DEA_PENDENTES=${json(pen)};window.DEA_LANCADOS=${json(lan)};window.DEA_SIPPES=${json(sip)};window.DEA_ADMIN=${admin};\n`;
   return Buffer.concat([dados, Buffer.from(js, 'utf8')]);
 }
 
@@ -454,15 +466,15 @@ export async function handleDea(req: any, res: any): Promise<void> {
       if (!sessaoValida(req)) {
         return send(res, 401, '/* acesso restrito */', { 'Content-Type': 'application/javascript; charset=utf-8', ...HEADERS_PRIVADOS });
       }
-      const [dados, resolvidos, pendentes, lancados] = await Promise.all([
+      const [dados, resolvidos, pendentes, lancados, sippes] = await Promise.all([
         lerDadosJs(), lerManual('resolvidos').catch(() => null), lerManual('pendentes').catch(() => null),
-        lerManual('lancados').catch(() => null),
+        lerManual('lancados').catch(() => null), lerManual('sippes').catch(() => null),
       ]);
       if (!dados) {
         // Sem corpo JS: o painel mostra o próprio aviso de "dados indisponíveis".
         return send(res, 503, '/* dados indisponíveis */', { 'Content-Type': 'application/javascript; charset=utf-8', ...HEADERS_PRIVADOS });
       }
-      const corpo = anexarAoDados(dados, resolvidos, pendentes, lancados, papelDaSessao(req) === 'admin');
+      const corpo = anexarAoDados(dados, resolvidos, pendentes, lancados, sippes, papelDaSessao(req) === 'admin');
       return send(res, 200, corpo, { 'Content-Type': 'application/javascript; charset=utf-8', ...HEADERS_PRIVADOS });
     }
 
@@ -521,6 +533,40 @@ export async function handleDea(req: any, res: any): Promise<void> {
         return sendJson(res, 202, { ok: true, disparadoEm: new Date().toISOString() });
       }
 
+      // "Lançado no SIPPES" (05/10/2026): um protocolo por vez, só com a sessão de
+      // administrador (sem redigitar a senha). Marcar de novo substitui o registro.
+      if (body?.acao === 'registrar-sippes') {
+        if (papelDaSessao(req) !== 'admin') {
+          return sendJson(res, 403, { error: 'Apenas o administrador pode registrar o lançamento no SIPPES.' });
+        }
+        const rl = await checkRateLimitAsync('dea-resolver:' + getClientIp(req), RESOLVER_MAX, RESOLVER_JANELA_MS);
+        if (!rl.allowed) {
+          return sendJson(res, 429, { error: 'Muitas tentativas. Aguarde alguns minutos.' }, { 'Retry-After': String(rl.retryAfterSec) });
+        }
+        const g = body?.grupo || {};
+        const protocolo = Array.isArray(g.protocolos) && g.protocolos.length === 1 ? texto(g.protocolos[0], 30) : '';
+        if (!/^\d{1,30}$/.test(protocolo)) return sendJson(res, 400, { error: 'Protocolo inválido.' });
+        const mesRef = texto(body?.mes_ref, 7);
+        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mesRef)) return sendJson(res, 400, { error: 'Informe o mês/ano de referência.' });
+        const operador = texto(body?.operador, 15);
+        if (!operador) return sendJson(res, 400, { error: 'Informe o nome do operador.' });
+        const arq = await lerManual('sippes');
+        if (!arq) return sendJson(res, 503, { error: 'Não foi possível ler a lista do SIPPES. Tente de novo.' });
+        const em = new Date().toISOString();
+        const id = idGrupo([protocolo]);
+        const existia = arq.resolvidos.some((x) => x.id === id);
+        const reg: Resolvido = {
+          id, protocolos: [protocolo], motivo: '', em,
+          nome: texto(g.nome, 200), prec_cp: texto(g.prec_cp, 30), ano: texto(g.ano, 40),
+          nr_bi: texto(g.nr_bi, 60), segmento: texto(g.segmento, 20), aba: texto(g.aba, 80),
+          mes_folha: mesRef, operador,
+        };
+        arq.resolvidos = arq.resolvidos.filter((x) => x.id !== id).concat(reg);
+        arq.log.push({ acao: existia ? 'alterar' : 'resolver', id, protocolos: [protocolo], nome: reg.nome, motivo: '', em, mes_folha: mesRef, operador });
+        await gravarManual('sippes', arq);
+        return sendJson(res, 200, { ok: true, id });
+      }
+
       // Resolvidos manualmente, mantidos pendentes e lançamentos registrados:
       // mesmo fluxo, listas separadas.
       const ACOES_MANUAIS: Record<string, { tipo: TipoManual; marcar: boolean }> = {
@@ -534,7 +580,7 @@ export async function handleDea(req: any, res: any): Promise<void> {
       const acaoManual = ACOES_MANUAIS[String(body?.acao || '')];
       if (acaoManual) {
         const { tipo, marcar } = acaoManual;
-        const nomeLista = { resolvidos: 'resolvidos', pendentes: 'mantidos pendentes', lancados: 'lançamentos registrados' }[tipo];
+        const nomeLista = { resolvidos: 'resolvidos', pendentes: 'mantidos pendentes', lancados: 'lançamentos registrados', sippes: 'lançados no SIPPES' }[tipo];
         // Dupla trava: sessão de administrador E a senha de administrador digitada
         // de novo no momento da ação.
         if (papelDaSessao(req) !== 'admin') {
@@ -587,11 +633,20 @@ export async function handleDea(req: any, res: any): Promise<void> {
             const ja = protocolos.filter((p) => arq.resolvidos.some((x) => (x.protocolos || []).includes(p)));
             if (ja.length) return sendJson(res, 409, { error: `Protocolo(s) ${ja.join(', ')} já consta(m) nos ${nomeLista}.` });
           }
+          // Lançamento: guarda junto o lançamento no SIPPES dos protocolos, se houver.
+          let sippes: Resolvido['sippes'];
+          if (tipo === 'lancados') {
+            const arqSip = await lerManual('sippes').catch(() => null);
+            sippes = (arqSip?.resolvidos || [])
+              .filter((x) => protocolos.includes(String(x.protocolos?.[0])))
+              .map((x) => ({ protocolo: String(x.protocolos[0]), mes_ref: x.mes_folha || '', operador: x.operador || '', em: x.em }));
+          }
           const reg: Resolvido = {
             id, protocolos, motivo, em,
             nome: texto(g.nome, 200), prec_cp: texto(g.prec_cp, 30), ano: texto(g.ano, 40),
             nr_bi: texto(g.nr_bi, 60), segmento: texto(g.segmento, 20), aba: texto(g.aba, 80),
             ...(tipo === 'lancados' ? { mes_folha: mesFolha } : {}),
+            ...(sippes?.length ? { sippes } : {}),
           };
           arq.resolvidos.push(reg);
           arq.log.push({ acao: 'resolver', id, protocolos, nome: reg.nome, motivo, em, ...(reg.mes_folha ? { mes_folha: reg.mes_folha } : {}) });

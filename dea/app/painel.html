@@ -233,6 +233,10 @@ a{color:var(--verde)}
 .acoes-linha .btn-exp{white-space:nowrap}
 .tbl-hl .selo{white-space:normal}
 .tbl-hl td.nome{min-width:190px}
+/* "Lançado no SIPPES" (05/10/2026): cinza enquanto não lançado, verde depois */
+.tbl-hl .acoes-linha{flex-direction:column; align-items:stretch}
+.btn-exp.btn-sippes{background:var(--neutro-bg); color:var(--neutro); border-color:var(--line-forte)}
+.btn-exp.btn-sippes.lancado{background:var(--ok); color:#fff; border-color:var(--ok)}
 .selo-mantido{
   font-size:.66rem; padding:3px 8px; background:var(--neutro-bg); color:var(--verde);
   border:1px solid var(--verde); white-space:nowrap;
@@ -781,10 +785,6 @@ body.modo-relatorio .rodape{display:none !important}
       <span><b id="hl-cont">0</b> protocolo(s) pendentes de lançamento</span>
       <span id="hl-soma"></span>
     </p>
-    <div id="hl-acoes-lote" class="acoes-admin" hidden style="margin:0 0 var(--s3)">
-      <button class="btn" id="hl-lote" type="button" disabled>Registrar mês da folha dos selecionados</button>
-      <span class="dica" id="hl-sel-info">Marque os protocolos na tabela para registrar o mesmo mês de folha de uma vez.</span>
-    </div>
     <div id="hl-area"></div>
     <h3 class="secao-tit" style="font-size:1.05rem;margin:var(--s5) 0 var(--s2)">Lançamentos registrados</h3>
     <p class="resumo-filtro"><span><b id="hlr-cont">0</b> registro(s) · <b id="hlr-proto">0</b> protocolo(s)</span></p>
@@ -980,6 +980,13 @@ var LAN_FALHOU = !Array.isArray(LANCADOS);
 if(LAN_FALHOU) LANCADOS = [];
 var LAN_PROTO = {};
 LANCADOS.forEach(function(r){ (r.protocolos||[]).forEach(function(p){ LAN_PROTO[String(p)] = r; }); });
+/* "Lançado no SIPPES" (05/10/2026, pedido do usuário): o operador lançou o
+   pagamento no SIPPES (mês/ano de referência + nome). O protocolo continua em
+   "Homologados para lançamento" até o registro do mês da folha. Lista
+   manual/sippes.json (window.DEA_SIPPES), um registro por protocolo. */
+var SIPPES = Array.isArray(window.DEA_SIPPES) ? window.DEA_SIPPES : [];
+var SIP_PROTO = {};
+SIPPES.forEach(function(r){ (r.protocolos||[]).forEach(function(p){ SIP_PROTO[String(p)] = r; }); });
 var HIST = (D.historico || []);
 var FILA = D.homolog || {disponivel:false, motivo:'', itens:[], novos:[], saidos:[], alerta:[], total:0};
 
@@ -1957,12 +1964,12 @@ document.getElementById('notaHL').innerHTML =
   'lançamento no SIPPES"</b> na aba DEA e <b>"Pago"</b> no Acompanhamento, ou <b>"Homologado pelo OD do CPEx / Lançar '+
   'no SIPPES"</b> na aba DEA e <b>"Processado o Pagamento"</b> no Acompanhamento. Eles <b>ainda não foram pagos</b>: '+
   'falta a OM lançar no SIPPES/SIAPPES. '+
-  'Depois do pagamento de fato, o <b>administrador</b> registra o <b>mês da folha</b> (por protocolo ou marcando '+
-  'vários de uma vez, com a senha) e o protocolo sai da lista — fica em "Lançamentos registrados", onde o registro '+
+  'Quando o pagamento é lançado no SIPPES, o <b>administrador</b> marca <b>"Lançado no SIPPES"</b> (mês/ano de '+
+  'referência e operador; o botão fica verde e o protocolo continua na lista). Depois do pagamento de fato, '+
+  'registra o <b>mês da folha</b> (por protocolo, com a senha) e o protocolo sai da lista — fica em "Lançamentos registrados", onde o registro '+
   'pode ser desfeito. As demais abas continuam tratando esses protocolos como pagos.';
 
 var hlEstado = {busca:''};
-var HL_SEL = {};
 var MESES_BR = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 function hlFiltrados(){
   var b = semAcento(hlEstado.busca).trim();
@@ -1975,28 +1982,26 @@ function mesFolhaBR(m){
   var x = /^(\d{4})-(\d{2})$/.exec(m || '');
   return x ? MESES_BR[+x[2]-1] + '/' + x[1] : (m || '—');
 }
-function pedirLancamento(protos){
-  var itens = protos.map(function(pr){ return P_DO_PROTO[pr]; }).filter(Boolean);
-  if(!itens.length) return;
-  var nomes = {}; itens.forEach(function(p){ nomes[p.nome] = 1; });
-  var um = itens.length === 1 ? itens[0] : null;
-  avisarPai({tipo:'dea-lancar', grupo:{
-    protocolos: itens.map(function(p){ return String(p.protocolo); }),
-    nome: um ? um.nome : Object.keys(nomes).length + ' pessoa(s)',
-    prec_cp: um ? um.prec_cp : '',
-    ano: um ? String(um.ano) : '',
-    nr_bi: um ? (um.nr_bi || '???') : '',
-    segmento: um ? (um.segmento || 'Ativa') : '',
+// tipo: 'dea-lancar' (mês da folha) ou 'dea-sippes' (lançado no SIPPES). Um protocolo por vez.
+function pedirLancamento(pr, tipo){
+  var p = P_DO_PROTO[pr];
+  if(!p) return;
+  var sip = SIP_PROTO[pr];
+  avisarPai({tipo:tipo, grupo:{
+    protocolos: [String(p.protocolo)],
+    nome: p.nome, prec_cp: p.prec_cp, ano: String(p.ano),
+    nr_bi: p.nr_bi || '???', segmento: p.segmento || 'Ativa',
     aba: 'Homologados para lançamento',
-    total: brl(somaValor(itens)),
-    pagos_pessoa: [], pagos_grupo: []
+    total: brl(somaValor([p])),
+    pagos_pessoa: [], pagos_grupo: [],
+    sippes: sip ? {mes_ref: sip.mes_folha, operador: sip.operador} : null
   }});
 }
-function atualizaSelHL(){
-  var n = Object.keys(HL_SEL).length;
-  var b = document.getElementById('hl-lote');
-  b.disabled = !n;
-  b.textContent = n ? 'Registrar mês da folha dos selecionados (' + n + ')' : 'Registrar mês da folha dos selecionados';
+function dicaSippes(sip){
+  return sip
+    ? 'Lançado no SIPPES\nReferência: ' + mesFolhaBR(sip.mes_folha) + '\nOperador: ' + (sip.operador || '—') +
+      '\nRegistrado em: ' + dataHoraBR(sip.em) + '\n(clique para corrigir)'
+    : 'Ainda não lançado no SIPPES';
 }
 
 function renderHL(){
@@ -2005,11 +2010,6 @@ function renderHL(){
   document.getElementById('hl-soma').textContent = lista.length
     ? 'Soma dos valores: ' + brl(somaValor(lista)) : '';
   document.getElementById('hl-pdf').hidden = !lista.length;
-  document.getElementById('hl-acoes-lote').hidden = !(ADMIN && lista.length);
-  // a seleção vale só para o que está na tela
-  var vis = {}; lista.forEach(function(p){ vis[String(p.protocolo)] = 1; });
-  Object.keys(HL_SEL).forEach(function(k){ if(!vis[k]) delete HL_SEL[k]; });
-  atualizaSelHL();
   var area = document.getElementById('hl-area');
 
   if(!lista.length){
@@ -2017,17 +2017,14 @@ function renderHL(){
       '<p class="vazio-msg">Nenhum protocolo pendente de lançamento neste recorte.</p></div>';
   } else {
     area.innerHTML = '<div class="rolagem"><table class="tbl-hl"><thead><tr>'+
-        (ADMIN ? '<th scope="col"><input type="checkbox" id="hl-todos" aria-label="Selecionar todos"></th>' : '')+
         '<th scope="col">Protocolo</th><th scope="col">Data</th><th scope="col">Ano</th>'+
         '<th scope="col">Prec-cp</th><th scope="col">Nome</th>'+
         '<th scope="col">Valor</th><th scope="col">Situação — DEA</th><th scope="col">Situação — Acomp.</th>'+
         '<th scope="col">CODOM</th>'+(ADMIN ? '<th scope="col">Ação</th>' : '')+
       '</tr></thead><tbody>'+
       lista.map(function(p){
-        var pr = String(p.protocolo);
+        var pr = String(p.protocolo), sip = SIP_PROTO[pr];
         return '<tr>'+
-          (ADMIN ? '<td><input type="checkbox" data-hl-sel="'+esc(pr)+'"'+(HL_SEL[pr] ? ' checked' : '')+
-            ' aria-label="Selecionar '+esc(pr)+'"></td>' : '')+
           '<td class="mono">'+esc(p.protocolo)+'</td>'+
           '<td class="mono">'+esc(p.data)+'</td>'+
           '<td class="mono">'+esc(p.ano)+'</td>'+
@@ -2037,26 +2034,18 @@ function renderHL(){
           '<td><span class="selo andamento">'+esc(p.sit_dea)+'</span></td>'+
           '<td><span class="selo pago">'+esc(p.sit_acomp)+'</span></td>'+
           '<td class="mono">'+esc(p.codom)+'</td>'+
-          (ADMIN ? '<td><span class="acoes-linha"><button class="btn-exp" type="button" data-hl-lancar="'+esc(pr)+
+          (ADMIN ? '<td><span class="acoes-linha">'+
+            '<button class="btn-exp btn-sippes'+(sip ? ' lancado' : '')+'" type="button" data-hl-sippes="'+esc(pr)+
+            '" title="'+esc(dicaSippes(sip))+'">Lançado no SIPPES</button>'+
+            '<button class="btn-exp" type="button" data-hl-lancar="'+esc(pr)+
             '">Registrar mês da folha</button></span></td>' : '')+
         '</tr>';
       }).join('')+'</tbody></table></div>';
     area.querySelectorAll('[data-hl-lancar]').forEach(function(b){
-      b.addEventListener('click', function(){ pedirLancamento([b.dataset.hlLancar]); });
+      b.addEventListener('click', function(){ pedirLancamento(b.dataset.hlLancar, 'dea-lancar'); });
     });
-    area.querySelectorAll('[data-hl-sel]').forEach(function(c){
-      c.addEventListener('change', function(){
-        if(c.checked) HL_SEL[c.dataset.hlSel] = 1; else delete HL_SEL[c.dataset.hlSel];
-        atualizaSelHL();
-      });
-    });
-    var todos = document.getElementById('hl-todos');
-    if(todos) todos.addEventListener('change', function(){
-      area.querySelectorAll('[data-hl-sel]').forEach(function(c){
-        c.checked = todos.checked;
-        if(todos.checked) HL_SEL[c.dataset.hlSel] = 1; else delete HL_SEL[c.dataset.hlSel];
-      });
-      atualizaSelHL();
+    area.querySelectorAll('[data-hl-sippes]').forEach(function(b){
+      b.addEventListener('click', function(){ pedirLancamento(b.dataset.hlSippes, 'dea-sippes'); });
     });
   }
   renderHLR();
@@ -2090,7 +2079,10 @@ function renderHLR(){
         '<td>'+esc(Object.keys(nomes).join(' / ') || r.nome)+'</td>'+
         '<td class="num">'+esc(itens.length ? brl(somaValor(itens)) : '—')+'</td>'+
         '<td class="mono">'+esc(dataHoraBR(r.em))+'</td>'+
-        '<td class="parecer-txt">'+esc(r.motivo || '—')+'</td>'+
+        '<td class="parecer-txt">'+esc(r.motivo || '—')+
+          (r.sippes || []).map(function(x){
+            return '<br><small>SIPPES: ref. '+esc(mesFolhaBR(x.mes_ref))+' · '+esc(x.operador)+'</small>';
+          }).join('')+'</td>'+
         (ADMIN ? '<td><button class="btn-exp" type="button" data-desfazer-hl="'+i+'">Desfazer</button></td>' : '')+
       '</tr>';
     }).join('')+'</tbody></table></div>';
@@ -2107,10 +2099,6 @@ function renderHLR(){
 document.getElementById('hl-busca').addEventListener('input', function(){ hlEstado.busca = this.value; renderHL(); });
 document.getElementById('hl-limpar').addEventListener('click', function(){
   hlEstado = {busca:''}; document.getElementById('hl-busca').value = ''; renderHL();
-});
-document.getElementById('hl-lote').addEventListener('click', function(){
-  var sel = Object.keys(HL_SEL);
-  if(sel.length) pedirLancamento(sel);
 });
 
 /* =======================================================================
