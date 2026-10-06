@@ -322,6 +322,13 @@ de novo**, como o "Enviar para resolvidos".
 - A aba **"Mantidos pendentes"** lista as marcações com a situação atual de cada
   protocolo e, para o administrador, **"Desfazer"** (pede a senha).
 - O contador de "DEA encerrado sem pagamento" passa a incluir os avulsos.
+- **Separar um protocolo do grupo** (05/10/2026, pedido do usuário): nas quatro abas
+  de grupos sem pagamento, o grupo aberto com **2+ protocolos** mostra "Manter
+  pendente" **em cada linha** (antes, por linha, só no rejeitado "a conferir"). Grava
+  só aquele protocolo; ele vira avulso (selo "pendente confirmado") e o grupo segue
+  sem ele — "Enviar para resolvidos" do grupo passa a levar só os demais. Caso que
+  motivou: 534041 (R$ 1.299,50) sem relação com 534106 + 534796 (mesmo processo,
+  R$ 433,17).
 - **Protocolo novo no grupo depois da marcação** (05/10/2026, pedido do usuário): a
   marcação vale para os protocolos que existiam quando foi feita. Se entra no mesmo
   grupo (nome + Prec-cp + Nr BI + ano) um protocolo com **data posterior ao dia da

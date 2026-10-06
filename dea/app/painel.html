@@ -1540,14 +1540,22 @@ function corpoGrupo(g, modo){
   // Rejeitado de valor diferente, com ação por protocolo: em "Rejeitado em grupo
   // pago" e nas abas "pendente de análise CPEx" (29/09/2026).
   var confLista = (rp || modo === 'cpex' || modo === 'eacpex') ? (g._conferir || []) : [];
-  var colAcao = ADMIN && (rp || confLista.length > 0);
+  // Separar um protocolo sem relação com os demais (05/10/2026, pedido do usuário):
+  // nas abas de grupos sem pagamento, com 2+ protocolos, cada linha tem "Manter
+  // pendente" só daquele protocolo; ele vira avulso e o grupo segue sem ele
+  // (ex.: 534041 separado de 534106 + 534796, que são o mesmo processo).
+  var separavel = !rp && modo !== 'pf' && !mant && g.itens.length > 1;
+  var colAcao = ADMIN && (rp || confLista.length > 0 || separavel);
   var linhas = g.itens.map(function(p){
     var pr = String(p.protocolo), conf = confLista.indexOf(pr) !== -1;
     var acaoLinha = colAcao
       ? '<td>'+(conf
           ? '<span class="acoes-linha"><button class="btn-exp" type="button" data-resolver data-proto="'+esc(pr)+'">Enviar para resolvidos</button>'+
             '<button class="btn-exp" type="button" data-manter data-proto="'+esc(pr)+'">Manter pendente</button></span>'
-          : '')+'</td>'
+          : separavel && p.sit_efetiva_classe !== 'pago'
+            ? '<span class="acoes-linha"><button class="btn-exp" type="button" data-manter data-proto="'+esc(pr)+
+              '" title="Separa só este protocolo do grupo: pendência própria, sem relação com os demais">Manter pendente</button></span>'
+            : '')+'</td>'
       : '';
     return '<tr'+(conf ? ' class="a-conferir"' : '')+'>'+
       '<td class="mono">'+esc(p.protocolo)+'</td>'+
@@ -1635,7 +1643,7 @@ function corpoGrupo(g, modo){
     ? '<div class="acoes-admin"><button class="btn secundario" type="button" data-resolver>Enviar para resolvidos</button>'+
       '<button class="btn secundario" type="button" data-manter>Manter pendente</button>'+
       '<span class="dica">"Enviar para resolvidos" tira o grupo do painel; "Manter pendente" confirma que é pendência sem relação '+
-      'com outro protocolo pago e tira o aviso de pago em outro BI. Os dois pedem a senha de administrador e o motivo e podem ser desfeitos '+
+      'com outro protocolo pago e tira o aviso de pago em outro BI; o "Manter pendente" de uma linha separa só aquele protocolo do grupo. Os dois pedem a senha de administrador e o motivo e podem ser desfeitos '+
       'nas abas "Resolvidos manualmente" e "Mantidos pendentes".</span></div>'
     : '';
 
