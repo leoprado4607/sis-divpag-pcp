@@ -1488,12 +1488,23 @@ function explicacaoGrupo(g, modo){
   }
   if(g._origem){
     var pagoOrig = temPago(g._origem);
-    var refOrig = g._origem.itens.filter(function(p){
+    // Sem afirmar nada sobre o valor (05/10/2026): o separado à mão pode ter valor
+    // igual ou diferente dos demais (ex.: 534041, separado de 534106 + 534796).
+    var refs = g._origem.itens.filter(function(p){
       return p.sit_efetiva_classe === (pagoOrig ? 'pago' : 'andamento');
-    }).map(function(p){ return p.protocolo+' ('+p.valor_fmt+')'; }).join(', ');
-    return 'Protocolo de um grupo do mesmo nome, Prec-cp e Nr BI em que outro protocolo, de valor diferente, '+
-      (pagoOrig ? 'foi pago' : 'segue em curso')+(refOrig ? ' ('+refOrig+')' : '')+'. O administrador confirmou que é '+
-      'pendência própria, sem relação com '+(pagoOrig ? 'esse pagamento' : 'ele')+' — por isso aparece aqui sozinho.';
+    });
+    var refOrig = refs.map(function(p){ return p.protocolo+' — '+p.valor_fmt; }).join('; ');
+    var varios = refs.length > 1;
+    if(!refs.length){
+      return 'Protocolo separado de um grupo do mesmo nome, Prec-cp e Nr BI. O administrador confirmou que é '+
+        'pendência própria, sem relação com os demais protocolos do grupo — por isso aparece aqui sozinho.';
+    }
+    return 'Protocolo separado de um grupo do mesmo nome, Prec-cp e Nr BI em que '+
+      (pagoOrig ? (varios ? 'outros protocolos foram pagos' : 'outro protocolo foi pago')
+                : (varios ? 'outros protocolos seguem em curso' : 'outro protocolo segue em curso'))+
+      ' ('+refOrig+'). O administrador confirmou que é pendência própria, sem relação com '+
+      (pagoOrig ? (varios ? 'esses pagamentos' : 'esse pagamento') : (varios ? 'eles' : 'ele'))+
+      ' — por isso aparece aqui sozinho.';
   }
   var expl = modo === 'cpex'
     ? 'Nenhum protocolo deste grupo consta como pago, mas ao menos um ainda está em curso no fluxo do CPEx — o crédito ainda pode sair. Acompanhe até o pagamento; se o protocolo em curso for rejeitado ou excluído, o grupo passa para "DEA encerrado sem pagamento".'
