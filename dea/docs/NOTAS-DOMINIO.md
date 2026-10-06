@@ -322,6 +322,15 @@ de novo**, como o "Enviar para resolvidos".
 - A aba **"Mantidos pendentes"** lista as marcações com a situação atual de cada
   protocolo e, para o administrador, **"Desfazer"** (pede a senha).
 - O contador de "DEA encerrado sem pagamento" passa a incluir os avulsos.
+- **Protocolo novo no grupo depois da marcação** (05/10/2026, pedido do usuário): a
+  marcação vale para os protocolos que existiam quando foi feita. Se entra no mesmo
+  grupo (nome + Prec-cp + Nr BI + ano) um protocolo com **data posterior ao dia da
+  marcação** (horário de Brasília), ele pode ser a tentativa corrigida do mantido. A
+  separação em avulsos continua automática; o painel só **avisa**: selo "protocolo
+  novo no grupo" no cartão (e no PDF), quadro com os novos no grupo aberto e aviso na
+  linha da aba "Mantidos pendentes". Caso que motivou: 534106 (R$ 433,17, rejeitado)
+  mantido junto com o 534041 em 29/09; em 30/09 entrou o 534796 (R$ 433,17, em curso)
+  e o grupo se desfez sem aviso. No código: `NOVOS_MANT` no `painel.html`.
 
 ## Resolvidos manualmente (21/09/2026)
 

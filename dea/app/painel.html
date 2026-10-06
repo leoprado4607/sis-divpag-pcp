@@ -1106,6 +1106,46 @@ GRUPOS.concat(GRUPOS_EA, GRUPOS_PF).forEach(function(g){
 });
 var P_DO_PROTO = {};
 P.forEach(function(p){ P_DO_PROTO[String(p.protocolo)] = p; });
+
+/* ---------- protocolo novo em grupo com mantido pendente (05/10/2026) ----------
+   A marcação "Manter pendente" vale para os protocolos que existiam quando foi
+   feita. Se depois entra no mesmo grupo (nome + Prec-cp + Nr BI + ano) um
+   protocolo com data POSTERIOR ao dia da marcação, ele pode ser a tentativa
+   corrigida do mantido (ex.: 534106 mantido em 29/09; 534796, mesmo valor,
+   protocolado em 30/09). A separação continua automática; o painel só avisa,
+   para o administrador conferir e, se for o caso, desfazer a marcação. */
+function diaSP(iso){
+  var d = new Date(iso);
+  return isNaN(d) ? '' : d.toLocaleDateString('en-CA', {timeZone:'America/Sao_Paulo'}).replace(/-/g, '');
+}
+var NOVOS_MANT = {};   // protocolo mantido -> protocolos novos do grupo
+PENDENTES.forEach(function(r){
+  var marcados = {}, dia = diaSP(r.em), vistos = {}, novos = [];
+  (r.protocolos||[]).forEach(function(pr){ marcados[String(pr)] = 1; });
+  if(!dia) return;
+  Object.keys(marcados).forEach(function(pr){
+    var g = GRUPO_DO_PROTO[pr];
+    (g ? g.itens : []).forEach(function(q){
+      var qp = String(q.protocolo);
+      if(marcados[qp] || vistos[qp] || !(q.data_ord > dia)) return;
+      vistos[qp] = 1; novos.push(q);
+    });
+  });
+  if(novos.length) Object.keys(marcados).forEach(function(pr){ NOVOS_MANT[pr] = novos; });
+});
+function novosDoGrupo(protos){
+  var vistos = {}, out = [];
+  protos.forEach(function(pr){
+    (NOVOS_MANT[String(pr)] || []).forEach(function(q){
+      if(!vistos[q.protocolo]){ vistos[q.protocolo] = 1; out.push(q); }
+    });
+  });
+  return out;
+}
+function seloNovos(nv){
+  return '<span class="selo-aviso" title="Protocolo do mesmo grupo com data posterior à marcação de mantido pendente">'+
+    'protocolo novo no grupo: '+esc(nv.map(function(q){ return q.protocolo; }).join(', '))+'</span>';
+}
 function separaAvulso(pr){
   var g = GRUPO_DO_PROTO[pr], p = P_DO_PROTO[pr];
   if(!g || !p || p.sit_efetiva_classe === 'pago') return false;
@@ -1385,6 +1425,8 @@ function desenharGrupos(lista, pref, modo){
     // Mantido pendente pelo administrador: sem o aviso de pago em outro BI (29/09/2026).
     var mant = modo !== 'pf' && modo !== 'rp' && mantidoManual(g);
     if(mant) cont.push('<span class="selo-mantido" title="O administrador confirmou que é pendência sem relação com outro protocolo pago">pendente confirmado</span>');
+    var novosMant = mant ? novosDoGrupo(g._protos) : [];
+    if(novosMant.length) cont.push(seloNovos(novosMant));
     var avisoPessoa = (modo !== 'pf' && modo !== 'rp' && !mant && g.pagos_pessoa && g.pagos_pessoa.length)
       ? '<span class="selo-aviso" title="Há protocolo pago do mesmo nome e Prec-cp no ano, fora deste grupo (outro Nr BI)">'+
           'pago em outro BI: '+esc(g.pagos_pessoa.map(function(q){ return q.protocolo; }).join(', '))+'</span>'
@@ -1547,6 +1589,25 @@ function corpoGrupo(g, modo){
     var reg = PEN_PROTO[g._protos[0]];
     avisoPessoa = '<div class="aviso-mantido"><b>Mantido pendente pelo administrador</b> em '+esc(dataHoraBR(reg.em))+
       ': '+esc(reg.motivo)+'. Para desfazer, use a aba "Mantidos pendentes".</div>';
+    var nv = novosDoGrupo(g._protos);
+    if(nv.length){
+      avisoPessoa += '<div class="aviso-pessoa"><b>Entrou protocolo novo no grupo depois da marcação</b> '+
+        '(mesmo nome, Prec-cp, Nr BI e ano). Pode ser a tentativa corrigida deste crédito: se for, desfaça a marcação '+
+        'em "Mantidos pendentes" para o grupo voltar a ficar junto.'+
+        '<div class="rolagem"><table class="tbl-interna"><thead><tr>'+
+          '<th scope="col">Protocolo</th><th scope="col">Data</th><th scope="col">Valor</th>'+
+          '<th scope="col">Nome</th><th scope="col">Situação</th>'+
+        '</tr></thead><tbody>'+
+        nv.map(function(q){
+          return '<tr>'+
+            '<td class="mono">'+esc(q.protocolo)+'</td>'+
+            '<td class="mono">'+esc(q.data)+'</td>'+
+            '<td class="num">'+esc(q.valor_fmt)+'</td>'+
+            '<td>'+esc(q.nome)+'</td>'+
+            '<td><span class="selo '+esc(q.sit_efetiva_classe)+'">'+esc(q.sit_efetiva)+'</span></td>'+
+          '</tr>';
+        }).join('')+'</tbody></table></div></div>';
+    }
   } else if(modo !== 'pf' && !rp && g.pagos_pessoa && g.pagos_pessoa.length){
     avisoPessoa = '<div class="aviso-pessoa"><b>Há protocolo pago para este nome e Prec-cp no mesmo ano</b>, '+
       'fora deste grupo porque o Nr BI é outro, com valor a até R$ 2.000,00 de diferença. Pode ser a correção paga deste crédito — ou outra dívida. '+
@@ -2537,6 +2598,10 @@ function relGrupo(g, modo){
   var cont = contagensDea(g, selo);
   var mant = modo !== 'pf' && modo !== 'rp' && mantidoManual(g);
   if(mant) cont.push('<span class="selo-mantido">pendente confirmado</span>');
+  var nvRel = mant ? novosDoGrupo(g._protos) : [];
+  if(nvRel.length) cont.push('<span class="selo-aviso">protocolo novo no grupo: '+esc(nvRel.map(function(q){
+    return q.protocolo+' ('+q.data+', '+q.valor_fmt+')';
+  }).join('; '))+'</span>');
   if(modo !== 'pf' && modo !== 'rp' && !mant && g.pagos_pessoa && g.pagos_pessoa.length){
     cont.push('<span class="selo-aviso">pago em outro BI: '+esc(g.pagos_pessoa.map(function(q){
       return q.protocolo+' (BI '+(q.nr_bi || '???')+', '+q.valor_fmt+')';
@@ -3399,6 +3464,11 @@ function renderMP(){
         var p = P_DO_PROTO[String(pr)];
         return p ? '<span class="selo '+esc(p.sit_efetiva_classe)+'">'+esc(p.sit_efetiva)+'</span>' : '—';
       }).join(' ');
+      var nv = novosDoGrupo(r.protocolos||[]);
+      if(nv.length) sits += '<br><span class="selo-aviso" style="white-space:normal;display:inline-block;margin-top:4px" title="Pode ser a tentativa corrigida: confira e, se for, desfaça">'+
+        'protocolo novo no grupo depois da marcação: '+esc(nv.map(function(q){
+          return q.protocolo+' ('+q.data+', '+q.valor_fmt+', '+q.sit_efetiva+')';
+        }).join('; '))+'</span>';
       return '<tr>'+
         '<td class="mono">'+esc(dataHoraBR(r.em))+'</td>'+
         '<td>'+esc(r.nome)+'</td>'+
