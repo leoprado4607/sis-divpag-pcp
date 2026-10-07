@@ -245,6 +245,22 @@ a{color:var(--verde)}
   font-size:.78rem; color:var(--ink); background:var(--neutro-bg);
   border-left:3px solid var(--verde); padding:10px 14px; margin-bottom:var(--s3); max-width:90ch;
 }
+/* observação do grupo — botão "Obs" (07/10/2026) */
+.obs-grupo{margin-top:var(--s4); max-width:90ch}
+.obs-texto{
+  font-size:.78rem; color:var(--ink); background:var(--surface);
+  border-left:3px solid var(--dourado); padding:8px 14px; margin-bottom:var(--s2);
+  white-space:pre-wrap; overflow-wrap:anywhere;
+}
+.obs-editor{margin-top:var(--s2)}
+.obs-editor textarea{
+  display:block; width:100%; font:inherit; font-size:.8rem; padding:8px 10px;
+  border:1px solid var(--line-forte); background:var(--surface); color:var(--ink); resize:vertical;
+}
+.obs-editor textarea:focus{border-color:var(--dourado); outline:none}
+.obs-rodape{display:flex; gap:var(--s3); align-items:center; flex-wrap:wrap; margin-top:var(--s2)}
+.obs-cont{font-size:.72rem; color:var(--ink-3); margin-right:auto}
+.obs-msg{font-size:.75rem; color:var(--critico)}
 
 /* ---------- tabelas ---------- */
 .rolagem{overflow-x:auto; border:1px solid var(--line); background:var(--surface)}
@@ -1058,6 +1074,94 @@ PENDENTES.forEach(function(r){ (r.protocolos||[]).forEach(function(p){ PEN_PROTO
 function mantidoManual(g){
   return g._protos.length > 0 && g._protos.every(function(p){ return PEN_PROTO[p]; });
 }
+/* ---------- observação do grupo (07/10/2026, pedido do usuário) ----------
+   Botão "Obs" no grupo aberto das abas de grupos sem pagamento: texto livre do
+   administrador, até 150 caracteres, sem data nem autor na tela. Lista
+   manual/observacoes.json, anexada ao dados.js como window.DEA_OBS
+   ({protocolos, motivo = texto}). O grupo usa a observação dos mesmos
+   protocolos; se entrou protocolo novo, a do grupo antigo (contido nele); se
+   o grupo foi separado, a do grupo de onde saiu (que o contém). */
+var OBS_MAX = 150;
+var OBS = Array.isArray(window.DEA_OBS) ? window.DEA_OBS.slice() : [];
+function relObs(r, protos){
+  var rp = (r.protocolos||[]).map(String);
+  var dentro = rp.every(function(p){ return protos.indexOf(p) !== -1; });
+  var contem = protos.every(function(p){ return rp.indexOf(p) !== -1; });
+  return dentro && contem ? 'igual' : dentro ? 'contido' : contem ? 'contem' : '';
+}
+function obsDoGrupo(g){
+  var achado = null, nivel = 0, ordem = {igual:3, contido:2, contem:1};
+  OBS.forEach(function(r){
+    var n = ordem[relObs(r, g._protos)] || 0;
+    if(n > nivel){ nivel = n; achado = r; }
+  });
+  return achado ? String(achado.motivo || '') : '';
+}
+// Mesma regra do servidor: a nova substitui a dos mesmos protocolos e as contidas nele.
+function gravarObsLocal(protos, texto){
+  OBS = OBS.filter(function(r){ var k = relObs(r, protos); return k !== 'igual' && k !== 'contido'; });
+  if(texto) OBS.push({protocolos: protos.slice(), motivo: texto});
+}
+var obsPendentes = {}, obsSeq = 0;
+window.addEventListener('message', function(e){
+  if(e.source !== window.parent || e.origin !== window.location.origin) return;
+  var d = e.data || {};
+  if(d.tipo !== 'dea-obs-resultado' || !obsPendentes[d.pedido]) return;
+  var cb = obsPendentes[d.pedido];
+  delete obsPendentes[d.pedido];
+  cb(d);
+});
+function obsHTML(g){
+  var t = obsDoGrupo(g);
+  if(!ADMIN && !t) return '';
+  return '<div class="obs-grupo">'+
+    '<div class="obs-texto"'+(t ? '' : ' hidden')+'><b>Obs.:</b> <span data-obs-txt>'+esc(t)+'</span></div>'+
+    (ADMIN
+      ? '<button class="btn secundario" type="button" data-obs aria-expanded="false">Obs</button>'+
+        '<div class="obs-editor" hidden>'+
+          '<textarea rows="2" maxlength="'+OBS_MAX+'" aria-label="Observação sobre o grupo"></textarea>'+
+          '<div class="obs-rodape"><span class="obs-cont"></span>'+
+            '<span class="obs-msg" role="status"></span>'+
+            '<button class="btn secundario" type="button" data-obs-cancelar>Cancelar</button>'+
+            '<button class="btn" type="button" data-obs-salvar>Salvar</button>'+
+          '</div>'+
+        '</div>'
+      : '')+
+  '</div>';
+}
+function ligarObs(corpo, g){
+  var bloco = corpo.querySelector('.obs-grupo'), botao = bloco && bloco.querySelector('[data-obs]');
+  if(!botao) return;
+  var editor = bloco.querySelector('.obs-editor'), campo = editor.querySelector('textarea');
+  var cont = editor.querySelector('.obs-cont'), msg = editor.querySelector('.obs-msg');
+  var salvar = editor.querySelector('[data-obs-salvar]'), cancelar = editor.querySelector('[data-obs-cancelar]');
+  function contar(){ cont.textContent = campo.value.length+'/'+OBS_MAX; }
+  function abrir(sim){
+    editor.hidden = !sim; botao.hidden = sim; botao.setAttribute('aria-expanded', sim?'true':'false');
+    if(sim){ campo.value = obsDoGrupo(g); msg.textContent = ''; contar(); campo.focus(); }
+  }
+  botao.addEventListener('click', function(){ abrir(true); });
+  cancelar.addEventListener('click', function(){ abrir(false); });
+  campo.addEventListener('input', contar);
+  salvar.addEventListener('click', function(){
+    if(window.parent === window){ avisarPai({}); return; }
+    var texto = campo.value.replace(/\s+/g,' ').trim().slice(0, OBS_MAX);
+    var protos = g._protos.slice(), id = ++obsSeq;
+    salvar.disabled = cancelar.disabled = true;
+    msg.textContent = 'Salvando…';
+    obsPendentes[id] = function(r){
+      salvar.disabled = cancelar.disabled = false;
+      if(!r.ok){ msg.textContent = r.error || 'Não foi possível salvar.'; return; }
+      msg.textContent = '';
+      gravarObsLocal(protos, texto);
+      var caixa = bloco.querySelector('.obs-texto');
+      caixa.querySelector('[data-obs-txt]').textContent = texto;
+      caixa.hidden = !texto;
+      abrir(false);
+    };
+    avisarPai({tipo:'dea-obs', pedido:id, protocolos:protos, texto:texto});
+  });
+}
 
 var avisos = [];
 if(RES_FALHOU) avisos.push('Não foi possível carregar a lista de grupos resolvidos manualmente: '+
@@ -1471,6 +1575,7 @@ function desenharGrupos(lista, pref, modo){
         corpo.querySelectorAll('[data-manter]').forEach(function(b){
           b.addEventListener('click', function(){ pedirManter(g, modo, b.dataset.proto ? [b.dataset.proto] : null); });
         });
+        ligarObs(corpo, g);
       }
       art.dataset.aberto = aberto ? '0' : '1';
       corpo.hidden = aberto;
@@ -1665,8 +1770,11 @@ function corpoGrupo(g, modo){
       '<th scope="col">Nr BI</th><th scope="col">Situação — DEA</th>'+
       '<th scope="col">Situação — Acompanhamento</th><th scope="col">Parecer</th>'+
       (colAcao ? '<th scope="col">Ação</th>' : '')+
-    '</tr></thead><tbody>'+linhas+'</tbody></table></div>' + extraPF + acoes;
+    '</tr></thead><tbody>'+linhas+'</tbody></table></div>' + extraPF +
+    (MODOS_OBS[modo] ? obsHTML(g) : '') + acoes;
 }
+// Abas com o botão "Obs" (07/10/2026).
+var MODOS_OBS = {ano:1, cpex:1, ea:1, eacpex:1};
 
 /* ---------- ponte com a página que embute o painel ----------
    O painel não faz requisições (CSP connect-src 'none'): o pedido vai por

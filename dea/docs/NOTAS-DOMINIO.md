@@ -339,6 +339,28 @@ resolvidos" (sem senha desde 07/10/2026 — ver "Ações do administrador sem se
   mantido junto com o 534041 em 29/09; em 30/09 entrou o 534796 (R$ 433,17, em curso)
   e o grupo se desfez sem aviso. No código: `NOVOS_MANT` no `painel.html`.
 
+## Observação do grupo — botão "Obs" (07/10/2026, pedido do usuário)
+
+Nas abas **"DEA encerrado sem pagamento"**, **"DEA pendente de análise CPEx"**,
+**"Entre anos — encerrado sem pagamento"** e **"Entre anos — pendente de análise
+CPEx"**, o grupo **aberto** mostra o botão **"Obs"** (só para o administrador), que
+abre um campo de **até 150 caracteres** para uma observação livre. Sem data, sem
+nome de quem registrou e sem senha (basta a sessão de administrador). A observação
+salva aparece em destaque no grupo aberto — também para o leitor —, nunca no
+cartão fechado. Campo vazio + "Salvar" apaga.
+
+- Lista própria `manual/observacoes.json` no bucket privado (`{observacoes, log}`;
+  texto no campo `motivo`), anexada ao `dados.js` como `window.DEA_OBS` (em dev:
+  `observacoes-manuais.json`). Ação `salvar-obs` do `/api/dea`. O `log` guarda a
+  hora de cada alteração (auditoria), mas o painel não a mostra.
+- Salvar não recarrega o painel: o pedido vai por `postMessage` para a casca, que
+  grava e responde (`dea-obs-resultado`); o painel atualiza o grupo na hora.
+- Uma observação por conjunto de protocolos. O grupo mostra, nesta ordem: a dos
+  **mesmos protocolos**; a de um grupo **contido** nele (entrou protocolo novo); a
+  de um grupo que o **contém** (o protocolo foi separado com "Manter pendente").
+  Salvar substitui a dos mesmos protocolos e as contidas no grupo; a do grupo de
+  origem (que o contém) fica para os demais protocolos.
+
 ## Ações do administrador sem senha (07/10/2026, pedido do usuário)
 
 O login com `DEA_ADMIN_PASSWORD` já identifica o administrador; nenhuma ação do

@@ -48,6 +48,10 @@ export const DEA_LANCADOS_PATH = 'manual/lancados.json';
 // com o mês/ano de referência do pagamento e o nome do operador (05/10/2026).
 // Não tiram o protocolo da lista: isso continua com o registro do mês da folha.
 export const DEA_SIPPES_PATH = 'manual/sippes.json';
+// Observações livres do administrador sobre um grupo (botão "Obs", 07/10/2026),
+// até 150 caracteres; o texto fica no campo "motivo" do registro.
+export const DEA_OBS_PATH = 'manual/observacoes.json';
+const OBS_MAX = 150;
 
 const COOKIE = 'dea_sessao';
 const SESSAO_MS = 8 * 60 * 60 * 1000; // 8h
@@ -256,12 +260,13 @@ interface ArquivoResolvidos {
 
 // As duas listas manuais têm o mesmo formato; muda o arquivo e a chave da lista
 // ("resolvidos" / "pendentes"), para o resolvidos.json continuar idêntico.
-type TipoManual = 'resolvidos' | 'pendentes' | 'lancados' | 'sippes';
+type TipoManual = 'resolvidos' | 'pendentes' | 'lancados' | 'sippes' | 'observacoes';
 const MANUAL: Record<TipoManual, { path: string; local: string }> = {
   resolvidos: { path: DEA_RESOLVIDOS_PATH, local: 'resolvidos-manuais.json' },
   pendentes: { path: DEA_PENDENTES_PATH, local: 'pendentes-manuais.json' },
   lancados: { path: DEA_LANCADOS_PATH, local: 'lancados-manuais.json' },
   sippes: { path: DEA_SIPPES_PATH, local: 'sippes-manuais.json' },
+  observacoes: { path: DEA_OBS_PATH, local: 'observacoes-manuais.json' },
 };
 
 function storageCfg(): { url: string; key: string } | null {
@@ -341,11 +346,11 @@ function idGrupo(protocolos: string[]): string {
 // Anexa as listas (só o necessário para exibir) e o papel ao dados.js entregue.
 function anexarAoDados(
   dados: Buffer, res: ArquivoResolvidos | null, pen: ArquivoResolvidos | null, lan: ArquivoResolvidos | null,
-  sip: ArquivoResolvidos | null, admin: boolean,
+  sip: ArquivoResolvidos | null, obs: ArquivoResolvidos | null, admin: boolean,
 ): Buffer {
   // "<" escapado: o conteúdo vem de texto digitado (motivo, nome).
   const json = (arq: ArquivoResolvidos | null) => JSON.stringify(arq ? arq.resolvidos : null).replace(/</g, '\\u003c');
-  const js = `\nwindow.DEA_RESOLVIDOS=${json(res)};window.DEA_PENDENTES=${json(pen)};window.DEA_LANCADOS=${json(lan)};window.DEA_SIPPES=${json(sip)};window.DEA_ADMIN=${admin};\n`;
+  const js = `\nwindow.DEA_RESOLVIDOS=${json(res)};window.DEA_PENDENTES=${json(pen)};window.DEA_LANCADOS=${json(lan)};window.DEA_SIPPES=${json(sip)};window.DEA_OBS=${json(obs)};window.DEA_ADMIN=${admin};\n`;
   return Buffer.concat([dados, Buffer.from(js, 'utf8')]);
 }
 
@@ -430,6 +435,7 @@ async function statusAtualizacao(cfg: GithubCfg) {
 //   POST /api/dea  {acao: 'desfazer-pendente', id, motivo?}  (só admin)
 //   POST /api/dea  {acao: 'registrar-lancamento', mes_folha, motivo?, grupo} (só admin)
 //   POST /api/dea  {acao: 'desfazer-lancamento', id, motivo?} (só admin)
+//   POST /api/dea  {acao: 'salvar-obs', protocolos, texto}   (só admin; texto vazio apaga)
 // ---------------------------------------------------------------------------
 export async function handleDea(req: any, res: any): Promise<void> {
   const url = new URL(req.url || '/', 'http://local');
@@ -466,15 +472,16 @@ export async function handleDea(req: any, res: any): Promise<void> {
       if (!sessaoValida(req)) {
         return send(res, 401, '/* acesso restrito */', { 'Content-Type': 'application/javascript; charset=utf-8', ...HEADERS_PRIVADOS });
       }
-      const [dados, resolvidos, pendentes, lancados, sippes] = await Promise.all([
+      const [dados, resolvidos, pendentes, lancados, sippes, observacoes] = await Promise.all([
         lerDadosJs(), lerManual('resolvidos').catch(() => null), lerManual('pendentes').catch(() => null),
         lerManual('lancados').catch(() => null), lerManual('sippes').catch(() => null),
+        lerManual('observacoes').catch(() => null),
       ]);
       if (!dados) {
         // Sem corpo JS: o painel mostra o próprio aviso de "dados indisponíveis".
         return send(res, 503, '/* dados indisponíveis */', { 'Content-Type': 'application/javascript; charset=utf-8', ...HEADERS_PRIVADOS });
       }
-      const corpo = anexarAoDados(dados, resolvidos, pendentes, lancados, sippes, papelDaSessao(req) === 'admin');
+      const corpo = anexarAoDados(dados, resolvidos, pendentes, lancados, sippes, observacoes, papelDaSessao(req) === 'admin');
       return send(res, 200, corpo, { 'Content-Type': 'application/javascript; charset=utf-8', ...HEADERS_PRIVADOS });
     }
 
@@ -567,6 +574,39 @@ export async function handleDea(req: any, res: any): Promise<void> {
         return sendJson(res, 200, { ok: true, id });
       }
 
+      // Observação do grupo (botão "Obs", 07/10/2026): só com a sessão de
+      // administrador. Uma observação por grupo: a nova substitui qualquer
+      // registro que tenha protocolo em comum; texto vazio apaga.
+      if (body?.acao === 'salvar-obs') {
+        if (papelDaSessao(req) !== 'admin') {
+          return sendJson(res, 403, { error: 'Apenas o administrador pode registrar observações.' });
+        }
+        const rl = await checkRateLimitAsync('dea-obs:' + getClientIp(req), RESOLVER_MAX, RESOLVER_JANELA_MS);
+        if (!rl.allowed) {
+          return sendJson(res, 429, { error: 'Muitas tentativas. Aguarde alguns minutos.' }, { 'Retry-After': String(rl.retryAfterSec) });
+        }
+        const brutos: unknown[] = Array.isArray(body?.protocolos) ? body.protocolos : [];
+        const protocolos = [...new Set(brutos.map((p) => texto(p, 30)).filter((p) => /^\d{1,30}$/.test(p)))];
+        if (!protocolos.length || protocolos.length > 200 || protocolos.length !== brutos.length) {
+          return sendJson(res, 400, { error: 'Grupo inválido.' });
+        }
+        const obs = texto(body?.texto, OBS_MAX);
+        const arq = await lerManual('observacoes');
+        if (!arq) return sendJson(res, 503, { error: 'Não foi possível ler as observações. Tente de novo.' });
+        const em = new Date().toISOString();
+        const id = idGrupo(protocolos);
+        const antes = arq.resolvidos.filter((x) => (x.protocolos || []).some((p) => protocolos.includes(String(p))));
+        arq.resolvidos = arq.resolvidos.filter((x) => !antes.includes(x));
+        let reg: Resolvido | null = null;
+        if (obs) {
+          reg = { id, protocolos, motivo: obs, em, nome: '', prec_cp: '', ano: '', nr_bi: '', segmento: '', aba: '' };
+          arq.resolvidos.push(reg);
+        }
+        arq.log.push({ acao: !obs ? 'desfazer' : antes.length ? 'alterar' : 'resolver', id, protocolos, nome: '', motivo: obs, em });
+        await gravarManual('observacoes', arq);
+        return sendJson(res, 200, { ok: true, obs: reg && { protocolos, motivo: obs } });
+      }
+
       // Resolvidos manualmente, mantidos pendentes e lançamentos registrados:
       // mesmo fluxo, listas separadas.
       const ACOES_MANUAIS: Record<string, { tipo: TipoManual; marcar: boolean }> = {
@@ -580,7 +620,7 @@ export async function handleDea(req: any, res: any): Promise<void> {
       const acaoManual = ACOES_MANUAIS[String(body?.acao || '')];
       if (acaoManual) {
         const { tipo, marcar } = acaoManual;
-        const nomeLista = { resolvidos: 'resolvidos', pendentes: 'mantidos pendentes', lancados: 'lançamentos registrados', sippes: 'lançados no SIPPES' }[tipo];
+        const nomeLista = { resolvidos: 'resolvidos', pendentes: 'mantidos pendentes', lancados: 'lançamentos registrados', sippes: 'lançados no SIPPES', observacoes: 'observações' }[tipo];
         // Basta a sessão de administrador (login com DEA_ADMIN_PASSWORD): desde
         // 07/10/2026 a senha não é redigitada a cada ação.
         if (papelDaSessao(req) !== 'admin') {

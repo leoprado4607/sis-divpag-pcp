@@ -25,6 +25,9 @@ import { ArrowLeft, Lock, LogOut, Loader2, RefreshCw } from 'lucide-react';
 // caminho, gravando noutra lista (manual/pendentes.json).
 // "Lançado no SIPPES" (Homologados para lançamento) pede o mês/ano de referência
 // e o operador; manual/sippes.json.
+// "Obs" (observação do grupo, até 150 caracteres): o painel manda o texto e esta
+// casca grava direto no /api/dea, sem janela, e devolve o resultado ao painel
+// por postMessage (o painel atualiza sem recarregar); manual/observacoes.json.
 
 interface GrupoResolver {
   protocolos: string[];
@@ -59,6 +62,7 @@ const TIPO_MARCAR: Record<string, 'resolver' | 'manter' | 'lancar' | 'sippes'> =
   'dea-resolver': 'resolver', 'dea-manter-pendente': 'manter', 'dea-lancar': 'lancar', 'dea-sippes': 'sippes',
 };
 const MES_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+const OBS_MAX = 150;
 const OPERADOR_MAX = 15;
 const TIPO_DESFAZER: Record<string, 'desfazer' | 'desfazer-pendente' | 'desfazer-lancamento'> = {
   'dea-desfazer-resolvido': 'desfazer', 'dea-desfazer-pendente': 'desfazer-pendente',
@@ -164,6 +168,7 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
     if (!admin) return;
     const aoReceber = (e: MessageEvent) => {
       if (e.origin !== window.location.origin || e.source !== iframeRef.current?.contentWindow) return;
+      if (e.data?.tipo === 'dea-obs') { salvarObs(e.data, e.source as Window); return; }
       const p = lerPedido(e.data);
       if (!p) return;
       setPedido(p);
@@ -177,6 +182,21 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
     window.addEventListener('message', aoReceber);
     return () => window.removeEventListener('message', aoReceber);
   }, [admin]);
+
+  // Grava a observação e responde ao painel com {tipo:'dea-obs-resultado', pedido, ok, obs|error}.
+  async function salvarObs(data: any, alvo: Window) {
+    const responder = (r: Record<string, unknown>) =>
+      alvo.postMessage({ tipo: 'dea-obs-resultado', pedido: data.pedido, ...r }, window.location.origin);
+    const protocolos = listaTexto(data.protocolos);
+    if (!protocolos.length) { responder({ ok: false, error: 'Grupo inválido.' }); return; }
+    try {
+      const r = await postDea({ acao: 'salvar-obs', protocolos, texto: String(data.texto ?? '').slice(0, OBS_MAX) });
+      const d = await r.json().catch(() => ({}));
+      responder(r.ok ? { ok: true, obs: d?.obs ?? null } : { ok: false, error: d?.error || 'Não foi possível salvar.' });
+    } catch {
+      responder({ ok: false, error: 'Falha de conexão. Tente novamente.' });
+    }
+  }
 
   const fecharPedido = () => { if (!enviandoAcao) setPedido(null); };
 

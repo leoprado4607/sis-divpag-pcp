@@ -65,6 +65,7 @@ Pacote portado em [dea/](dea/) — leia [dea/LEIA-PRIMEIRO.md](dea/LEIA-PRIMEIRO
 - **Resolvidos manualmente:** o admin (basta a sessão admin; nenhuma ação pede a senha de novo) tira do painel um grupo sem pagamento; a lista fica em `manual/resolvidos.json` no bucket privado e o `/api/dea` a anexa ao `dados.js`. O painel não faz requisições (CSP `connect-src 'none'`): os botões falam com o `DeaDashboard.tsx` por `postMessage`. Detalhes em [dea/docs/NOTAS-DOMINIO.md](dea/docs/NOTAS-DOMINIO.md).
 - **Mantidos pendentes:** o oposto — o admin confirma que um protocolo é pendência sem relação com outro pago (botão "Manter pendente"); lista separada em `manual/pendentes.json` (`window.DEA_PENDENTES`), sem tocar nos resolvidos. A aba "Rejeitado em grupo pago" mostra o rejeitado de valor diferente num grupo com pagamento.
 - **Homologados para lançamento:** protocolos da DEA 2026+ com "Pagamento autorizado (CPEx)…" na DEA e "Pago" no Acompanhamento (ainda não pagos de fato). Antes, o admin marca "Lançado no SIPPES" (mês/ano ref. + operador; o protocolo fica, botão verde) em `manual/sippes.json` (`window.DEA_SIPPES`). Depois do pagamento, registra o mês da folha e o protocolo sai; lista em `manual/lancados.json` (`window.DEA_LANCADOS`).
+- **Obs do grupo:** botão "Obs" no grupo aberto das quatro abas de grupos sem pagamento (só admin; até 150 caracteres, sem data/autor/senha); `manual/observacoes.json` (`window.DEA_OBS`), salvo por `postMessage` sem recarregar o painel.
 
 ## Banco de dados (Supabase)
 
