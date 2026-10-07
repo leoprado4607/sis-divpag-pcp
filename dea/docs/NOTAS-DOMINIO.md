@@ -304,8 +304,8 @@ O contrário do "resolvido manual": o administrador confirma que o protocolo é
 **pendência própria, sem relação** com outro protocolo pago — do mesmo Nr BI (aba
 "Rejeitado em grupo pago") ou de outro Nr BI (o aviso "pago em outro BI"). O botão
 **"Manter pendente"** aparece por protocolo em "Rejeitado em grupo pago" e por grupo
-nas quatro abas de grupos sem pagamento; pede **motivo** e a **senha de administrador
-de novo**, como o "Enviar para resolvidos".
+nas quatro abas de grupos sem pagamento; pede **motivo**, como o "Enviar para
+resolvidos" (sem senha desde 07/10/2026 — ver "Ações do administrador sem senha").
 
 - Lista **separada**: `manual/pendentes.json` no bucket privado (`{pendentes, log}`),
   anexada ao `dados.js` como `window.DEA_PENDENTES`. **Não toca** no
@@ -320,7 +320,7 @@ de novo**, como o "Enviar para resolvidos".
   grupo avulso de 1 (`GRUPOS_AVULSOS`) e entra em "DEA encerrado sem pagamento" (ou em
   "pendente de análise CPEx", se voltar a andar); se for **pago** depois, sai sozinho.
 - A aba **"Mantidos pendentes"** lista as marcações com a situação atual de cada
-  protocolo e, para o administrador, **"Desfazer"** (pede a senha).
+  protocolo e, para o administrador, **"Desfazer"**.
 - O contador de "DEA encerrado sem pagamento" passa a incluir os avulsos.
 - **Separar um protocolo do grupo** (05/10/2026, pedido do usuário): nas quatro abas
   de grupos sem pagamento, o grupo aberto com **2+ protocolos** mostra "Manter
@@ -339,21 +339,31 @@ de novo**, como o "Enviar para resolvidos".
   mantido junto com o 534041 em 29/09; em 30/09 entrou o 534796 (R$ 433,17, em curso)
   e o grupo se desfez sem aviso. No código: `NOVOS_MANT` no `painel.html`.
 
+## Ações do administrador sem senha (07/10/2026, pedido do usuário)
+
+O login com `DEA_ADMIN_PASSWORD` já identifica o administrador; nenhuma ação do
+painel pede a senha de novo. Vale para "Enviar para resolvidos", "Manter pendente",
+"Registrar mês da folha" e os três "Desfazer" (o "Lançado no SIPPES" já era assim).
+O `/api/dea` exige só a **sessão de administrador** (cookie HMAC, até 8h) e mantém o
+limite de tentativas por IP; motivo, mês da folha e as demais validações seguem
+iguais. Antes era "dupla trava" (sessão + senha redigitada).
+
 ## Resolvidos manualmente (21/09/2026)
 
 O administrador pode tirar do painel um grupo sem pagamento que ele conferiu
 (ex.: o crédito saiu em outro Nr BI). No grupo aberto aparece **"Enviar para
 resolvidos"** — só para a sessão de administrador —, que pede **motivo** (mínimo
-de 5 caracteres) e a **senha de administrador de novo**. A aba **"Resolvidos
-manualmente"** lista os marcados e, para o administrador, tem **"Desfazer"** (pede a
-senha de novo).
+de 5 caracteres). A aba **"Resolvidos manualmente"** lista os marcados e, para o
+administrador, tem **"Desfazer"**. (Até 07/10/2026 as duas ações pediam a senha de
+administrador de novo — ver "Ações do administrador sem senha".)
 
 Como funciona, e por quê:
 
 - **O painel não faz requisições** (CSP `connect-src 'none'`). O botão manda um
   `postMessage` para a casca (`DeaDashboard.tsx`), que valida a origem e o iframe,
-  abre a janela de senha e chama `POST /api/dea {acao:'resolver'|'desfazer-resolvido'}`.
-- O servidor exige **sessão de admin E `DEA_ADMIN_PASSWORD` digitada**, com limite
+  abre a janela do pedido (motivo) e chama `POST /api/dea {acao:'resolver'|'desfazer-resolvido'}`.
+- O servidor exige **sessão de admin** (até 07/10/2026, também a `DEA_ADMIN_PASSWORD`
+  redigitada), com limite
   de 30 tentativas por IP a cada 10 min, e grava em `manual/resolvidos.json` no
   bucket privado `dea-privado` — **fora de `estado/`**, então o pipeline não lê nem
   sobrescreve. O arquivo tem `resolvidos` (a lista vigente) e `log` (tudo que foi
@@ -393,7 +403,7 @@ foram lançados, decisão do usuário). Retrato de 29/09/2026: 115 protocolos
 (DEA 2024: 523 e DEA 2025: 397 ficam de fora).
 
 - Depois do pagamento de fato, o administrador **registra o mês da folha** — por
-  protocolo (o registro em lote saiu em 05/10/2026) — com a **senha de administrador**; o
+  protocolo (o registro em lote saiu em 05/10/2026) — só com a sessão de administrador; o
   protocolo sai da lista e vai para **"Lançamentos registrados"** (na mesma aba),
   onde o registro pode ser **desfeito**. Observação opcional.
 - Lista manual própria: `manual/lancados.json` no bucket privado (`{lancados, log}`,

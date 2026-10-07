@@ -1029,7 +1029,7 @@ marcarPagosPessoa(GRUPOS);
 marcarPagosPessoa(GRUPOS_EA);
 
 /* ---------- resolvidos manualmente (21/09/2026) ----------
-   Lista gravada pelo administrador (com senha) no bucket privado e anexada ao
+   Lista gravada pelo administrador no bucket privado e anexada ao
    dados.js pelo servidor. Um grupo sai das abas quando TODOS os seus protocolos
    estão num registro — se entrar protocolo novo, ele volta a aparecer.
    null = o servidor não conseguiu ler a lista. */
@@ -1647,14 +1647,14 @@ function corpoGrupo(g, modo){
       }).join('')+'</tbody></table></div></div>';
   }
 
-  // Só o administrador vê o botão; o servidor exige, além da sessão, a senha.
+  // Só o administrador vê o botão; o servidor exige a sessão de administrador.
   // Em "Rejeitado em grupo pago" as ações ficam em cada linha; o grupo mantido
   // pendente não tem ação aqui (desfaz-se na aba "Mantidos pendentes").
   var acoes = (ADMIN && modo !== 'pf' && !rp && !mant)
     ? '<div class="acoes-admin"><button class="btn secundario" type="button" data-resolver>Enviar para resolvidos</button>'+
       '<button class="btn secundario" type="button" data-manter>Manter pendente</button>'+
       '<span class="dica">"Enviar para resolvidos" tira o grupo do painel; "Manter pendente" confirma que é pendência sem relação '+
-      'com outro protocolo pago e tira o aviso de pago em outro BI; o "Manter pendente" de uma linha separa só aquele protocolo do grupo. Os dois pedem a senha de administrador e o motivo e podem ser desfeitos '+
+      'com outro protocolo pago e tira o aviso de pago em outro BI; o "Manter pendente" de uma linha separa só aquele protocolo do grupo. Os dois pedem o motivo e podem ser desfeitos '+
       'nas abas "Resolvidos manualmente" e "Mantidos pendentes".</span></div>'
     : '';
 
@@ -1670,7 +1670,7 @@ function corpoGrupo(g, modo){
 
 /* ---------- ponte com a página que embute o painel ----------
    O painel não faz requisições (CSP connect-src 'none'): o pedido vai por
-   postMessage para a ferramenta (DeaDashboard), que pede a senha, chama o
+   postMessage para a ferramenta (DeaDashboard), que pede o motivo, chama o
    /api/dea e recarrega o painel. */
 var NOME_ABA = {ano:'DEA encerrado sem pagamento', cpex:'DEA pendente de análise CPEx',
                 ea:'Entre anos — encerrado sem pagamento', eacpex:'Entre anos — pendente de análise CPEx',
@@ -2046,7 +2046,7 @@ document.getElementById('notaHL').innerHTML =
   'falta a OM lançar no SIPPES/SIAPPES. '+
   'Quando o pagamento é lançado no SIPPES, o <b>administrador</b> marca <b>"Lançado no SIPPES"</b> (mês/ano de '+
   'referência e operador; o botão fica verde e o protocolo continua na lista). Depois do pagamento de fato, '+
-  'registra o <b>mês da folha</b> (por protocolo, com a senha) e o protocolo sai da lista — fica em "Lançamentos registrados", onde o registro '+
+  'registra o <b>mês da folha</b> (por protocolo) e o protocolo sai da lista — fica em "Lançamentos registrados", onde o registro '+
   'pode ser desfeito. As demais abas continuam tratando esses protocolos como pagos.';
 
 var hlEstado = {busca:''};
@@ -3392,10 +3392,10 @@ document.getElementById('rj-pdf').addEventListener('click', function(){
    RESOLVIDOS MANUALMENTE (21/09/2026)
    ======================================================================= */
 document.getElementById('notaRM').innerHTML =
-  'Grupos sem pagamento que o <b>administrador</b> conferiu e enviou para resolvidos, com a senha e um motivo — '+
+  'Grupos sem pagamento que o <b>administrador</b> conferiu e enviou para resolvidos, com um motivo — '+
   'por exemplo, quando o crédito foi pago num protocolo de <b>outro Nr BI</b>. Eles deixam de aparecer nas abas de grupos. '+
   'Se entrar um protocolo novo no mesmo grupo, ele volta a aparecer lá. '+
-  (ADMIN ? 'Como administrador, você pode <b>desfazer</b> a marcação; a senha é pedida de novo.'
+  (ADMIN ? 'Como administrador, você pode <b>desfazer</b> a marcação.'
          : 'Só o administrador pode marcar ou desfazer.');
 
 function dataHoraBR(iso){
@@ -3455,7 +3455,7 @@ document.getElementById('notaMP').innerHTML =
   '"pago em outro BI"). Seguem nas abas de pendência com o selo <b>pendente confirmado</b> e sem aquele aviso; '+
   'o vindo de grupo pago aparece sozinho em <b>DEA encerrado sem pagamento</b>. Se o protocolo for pago depois, '+
   'sai das abas de pendência. Esta lista não altera os <b>Resolvidos manualmente</b>. '+
-  (ADMIN ? 'Como administrador, você pode <b>desfazer</b> a marcação; a senha é pedida de novo.'
+  (ADMIN ? 'Como administrador, você pode <b>desfazer</b> a marcação.'
          : 'Só o administrador pode marcar ou desfazer.');
 
 function renderMP(){

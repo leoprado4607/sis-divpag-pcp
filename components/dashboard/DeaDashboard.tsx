@@ -19,12 +19,12 @@ import { ArrowLeft, Lock, LogOut, Loader2, RefreshCw } from 'lucide-react';
 //
 // Resolvidos manualmente: o painel não faz requisições (CSP connect-src 'none').
 // O botão "Enviar para resolvidos" (e o "Desfazer") do painel manda um
-// postMessage para cá; esta casca pede o motivo e a senha de administrador,
-// chama o /api/dea e recarrega o iframe.
+// postMessage para cá; esta casca pede o motivo, chama o /api/dea e recarrega
+// o iframe. Nenhuma ação pede a senha de novo: basta a sessão de administrador.
 // "Manter pendente" (e o "Desfazer" da aba "Mantidos pendentes") segue o mesmo
 // caminho, gravando noutra lista (manual/pendentes.json).
 // "Lançado no SIPPES" (Homologados para lançamento) pede o mês/ano de referência
-// e o operador, sem senha (basta a sessão de administrador); manual/sippes.json.
+// e o operador; manual/sippes.json.
 
 interface GrupoResolver {
   protocolos: string[];
@@ -157,7 +157,6 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
   const [motivo, setMotivo] = useState('');
   const [mesFolha, setMesFolha] = useState('');
   const [operador, setOperador] = useState('');
-  const [senhaAcao, setSenhaAcao] = useState('');
   const [erroAcao, setErroAcao] = useState('');
   const [enviandoAcao, setEnviandoAcao] = useState(false);
 
@@ -173,7 +172,6 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
       const sip = 'grupo' in p ? p.grupo.sippes : null;
       setMesFolha(sip?.mes_ref || mesAnterior(p.tipo === 'sippes' ? 0 : 1));
       setOperador(p.tipo === 'sippes' ? sip?.operador || '' : '');
-      setSenhaAcao('');
       setErroAcao('');
     };
     window.addEventListener('message', aoReceber);
@@ -190,7 +188,7 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
     if (pedido.tipo === 'sippes') {
       if (!MES_RE.test(mesFolha)) { setErroAcao('Informe o mês/ano de referência.'); return; }
       if (!operador.trim()) { setErroAcao('Informe o nome do operador.'); return; }
-    } else if (!senhaAcao) { setErroAcao('Digite a senha de administrador.'); return; }
+    }
     setEnviandoAcao(true);
     setErroAcao('');
     try {
@@ -198,13 +196,12 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
       const corpo = pedido.tipo === 'sippes'
         ? { acao, grupo: pedido.grupo, mes_ref: mesFolha, operador: operador.trim() }
         : 'grupo' in pedido
-        ? { acao, senha: senhaAcao, motivo: motivo.trim(), grupo: pedido.grupo, ...(pedido.tipo === 'lancar' ? { mes_folha: mesFolha } : {}) }
-        : { acao, senha: senhaAcao, motivo: motivo.trim(), id: pedido.registro.id };
+        ? { acao, motivo: motivo.trim(), grupo: pedido.grupo, ...(pedido.tipo === 'lancar' ? { mes_folha: mesFolha } : {}) }
+        : { acao, motivo: motivo.trim(), id: pedido.registro.id };
       const r = await postDea(corpo);
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { setErroAcao(d?.error || 'Não foi possível concluir.'); return; }
       setPedido(null);
-      setSenhaAcao('');
       setVersaoPainel((v) => v + 1); // recarrega o painel com a lista nova
     } catch {
       setErroAcao('Falha de conexão. Tente novamente.');
@@ -503,18 +500,6 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
               autoFocus={pedido.tipo !== 'lancar'}
               placeholder={pedido.tipo === 'resolver' ? 'ex.: crédito pago no protocolo 123456, em outro Nr BI'
                 : pedido.tipo === 'manter' ? 'ex.: dívida diferente da paga no protocolo 123456; aguardando novo protocolo' : ''}
-              className="mt-1 w-full border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-army-green outline-none"
-            />
-            <label className="block mt-3 text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="dea-senha-acao">
-              Senha de administrador
-            </label>
-            <input
-              id="dea-senha-acao"
-              type="password"
-              autoComplete="current-password"
-              value={senhaAcao}
-              onChange={(e) => setSenhaAcao(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && confirmarPedido()}
               className="mt-1 w-full border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-army-green outline-none"
             />
             </>)}

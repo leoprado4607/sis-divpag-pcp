@@ -223,7 +223,7 @@ async function lerDadosJs(): Promise<Buffer | null> {
 }
 
 // ---------------------------------------------------------------------------
-// Resolvidos manualmente — o administrador, com a senha, tira do painel um grupo
+// Resolvidos manualmente — o administrador (sessão admin) tira do painel um grupo
 // sem pagamento que ele conferiu e sabe estar quitado (ex.: pago em outro Nr BI).
 // O arquivo guarda a lista vigente e um log de tudo que foi marcado/desfeito.
 // A lista vai para o painel anexada ao dados.js (o painel não faz requisições:
@@ -424,12 +424,12 @@ async function statusAtualizacao(cfg: GithubCfg) {
 //   GET  /api/dea?r=atualizacao                 (só admin) status do workflow
 //   POST /api/dea  {acao: 'entrar', senha} | {acao: 'sair'}
 //   POST /api/dea  {acao: 'atualizar'}          (só admin) dispara o workflow
-//   POST /api/dea  {acao: 'resolver', senha, motivo, grupo}      (só admin + senha)
-//   POST /api/dea  {acao: 'desfazer-resolvido', senha, id, motivo?} (só admin + senha)
-//   POST /api/dea  {acao: 'manter-pendente', senha, motivo, grupo}  (só admin + senha)
-//   POST /api/dea  {acao: 'desfazer-pendente', senha, id, motivo?}  (só admin + senha)
-//   POST /api/dea  {acao: 'registrar-lancamento', senha, mes_folha, motivo?, grupo} (só admin + senha)
-//   POST /api/dea  {acao: 'desfazer-lancamento', senha, id, motivo?} (só admin + senha)
+//   POST /api/dea  {acao: 'resolver', motivo, grupo}      (só admin)
+//   POST /api/dea  {acao: 'desfazer-resolvido', id, motivo?} (só admin)
+//   POST /api/dea  {acao: 'manter-pendente', motivo, grupo}  (só admin)
+//   POST /api/dea  {acao: 'desfazer-pendente', id, motivo?}  (só admin)
+//   POST /api/dea  {acao: 'registrar-lancamento', mes_folha, motivo?, grupo} (só admin)
+//   POST /api/dea  {acao: 'desfazer-lancamento', id, motivo?} (só admin)
 // ---------------------------------------------------------------------------
 export async function handleDea(req: any, res: any): Promise<void> {
   const url = new URL(req.url || '/', 'http://local');
@@ -581,17 +581,14 @@ export async function handleDea(req: any, res: any): Promise<void> {
       if (acaoManual) {
         const { tipo, marcar } = acaoManual;
         const nomeLista = { resolvidos: 'resolvidos', pendentes: 'mantidos pendentes', lancados: 'lançamentos registrados', sippes: 'lançados no SIPPES' }[tipo];
-        // Dupla trava: sessão de administrador E a senha de administrador digitada
-        // de novo no momento da ação.
+        // Basta a sessão de administrador (login com DEA_ADMIN_PASSWORD): desde
+        // 07/10/2026 a senha não é redigitada a cada ação.
         if (papelDaSessao(req) !== 'admin') {
           return sendJson(res, 403, { error: `Apenas o administrador pode alterar os ${nomeLista}.` });
         }
         const rl = await checkRateLimitAsync('dea-resolver:' + getClientIp(req), RESOLVER_MAX, RESOLVER_JANELA_MS);
         if (!rl.allowed) {
           return sendJson(res, 429, { error: 'Muitas tentativas. Aguarde alguns minutos.' }, { 'Retry-After': String(rl.retryAfterSec) });
-        }
-        if (papelDaSenha(String(body?.senha || '')) !== 'admin') {
-          return sendJson(res, 401, { error: 'Senha de administrador incorreta.' });
         }
         const arq = await lerManual(tipo);
         if (!arq) return sendJson(res, 503, { error: `Não foi possível ler a lista de ${nomeLista}. Tente de novo.` });
