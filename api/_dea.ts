@@ -654,15 +654,15 @@ export async function handleDea(req: any, res: any): Promise<void> {
           if (arq.resolvidos.some((x) => x.id === id)) {
             return sendJson(res, 409, { error: `Este grupo já está nos ${nomeLista}.` });
           }
-          // Um protocolo não pode estar nas duas listas (resolvido E mantido pendente).
-          if (tipo !== 'lancados') {
-            const outro: TipoManual = tipo === 'resolvidos' ? 'pendentes' : 'resolvidos';
-            const arqOutro = await lerManual(outro);
-            if (!arqOutro) return sendJson(res, 503, { error: 'Não foi possível conferir a outra lista manual. Tente de novo.' });
-            const naOutra = protocolos.filter((p) => arqOutro.resolvidos.some((x) => (x.protocolos || []).includes(p)));
+          // Não se mantém pendente um protocolo resolvido. O contrário é permitido
+          // (09/10/2026, pedido do usuário): o mantido pode ser enviado para
+          // resolvidos e o resolvido prevalece; a marcação de mantido fica guardada.
+          if (tipo === 'pendentes') {
+            const arqRes = await lerManual('resolvidos');
+            if (!arqRes) return sendJson(res, 503, { error: 'Não foi possível conferir a lista de resolvidos. Tente de novo.' });
+            const naOutra = protocolos.filter((p) => arqRes.resolvidos.some((x) => (x.protocolos || []).includes(p)));
             if (naOutra.length) {
-              const rotulo = outro === 'resolvidos' ? 'Resolvidos manualmente' : 'Mantidos pendentes';
-              return sendJson(res, 409, { error: `Protocolo(s) ${naOutra.join(', ')} já consta(m) em "${rotulo}". Desfaça lá antes.` });
+              return sendJson(res, 409, { error: `Protocolo(s) ${naOutra.join(', ')} já consta(m) em "Resolvidos manualmente". Desfaça lá antes.` });
             }
           }
           // Nem em dois registros da mesma lista de mantidos ou de lançados.

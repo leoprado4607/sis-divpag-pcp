@@ -311,12 +311,18 @@ resolvidos" (sem senha desde 07/10/2026 — ver "Ações do administrador sem se
   anexada ao `dados.js` como `window.DEA_PENDENTES`. **Não toca** no
   `manual/resolvidos.json`, que mantém o formato e os registros de antes. Em dev com
   `DEA_DADOS_LOCAL`, fica em `pendentes-manuais.json`.
-- Um protocolo **não pode estar nas duas listas**: o servidor recusa marcar como
-  mantido um protocolo resolvido, e vice-versa ("desfaça lá antes"); também recusa
-  manter duas vezes o mesmo protocolo.
+- O servidor recusa marcar como mantido um protocolo **resolvido** ("desfaça lá
+  antes") e recusa manter duas vezes o mesmo protocolo.
+- **O resolvido prevalece** (09/10/2026, pedido do usuário): o protocolo mantido
+  **pode** ser enviado para resolvidos (antes o servidor recusava). A marcação de
+  mantido fica guardada em `pendentes.json`, mas o grupo sai das abas de pendência
+  como qualquer resolvido; na aba "Mantidos pendentes" a linha ganha o selo
+  **"enviado para resolvidos"**. Se o resolvido for desfeito, o grupo volta com o
+  selo "pendente confirmado".
 - Efeito no painel: o grupo cujos protocolos estão **todos** mantidos ganha o selo
-  **"pendente confirmado"**, perde o aviso "pago em outro BI" e não mostra os botões
-  (desfaz-se na aba "Mantidos pendentes"). O rejeitado **vindo de grupo pago** vira
+  **"pendente confirmado"**, perde o aviso "pago em outro BI" e mostra só o botão
+  **"Enviar para resolvidos"** (o "Manter pendente" desfaz-se na aba "Mantidos
+  pendentes"; até 09/10/2026 não mostrava nenhum botão). O rejeitado **vindo de grupo pago** vira
   grupo avulso de 1 (`GRUPOS_AVULSOS`) e entra em "DEA encerrado sem pagamento" (ou em
   "pendente de análise CPEx", se voltar a andar); se for **pago** depois, sai sozinho.
 - A aba **"Mantidos pendentes"** lista as marcações com a situação atual de cada

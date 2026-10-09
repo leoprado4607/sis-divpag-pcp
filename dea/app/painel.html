@@ -1753,14 +1753,19 @@ function corpoGrupo(g, modo){
   }
 
   // Só o administrador vê o botão; o servidor exige a sessão de administrador.
-  // Em "Rejeitado em grupo pago" as ações ficam em cada linha; o grupo mantido
-  // pendente não tem ação aqui (desfaz-se na aba "Mantidos pendentes").
-  var acoes = (ADMIN && modo !== 'pf' && !rp && !mant)
+  // Em "Rejeitado em grupo pago" as ações ficam em cada linha. O grupo mantido
+  // pendente não tem "Manter pendente" (desfaz-se na aba "Mantidos pendentes"),
+  // mas pode ser enviado para resolvidos: o resolvido prevalece sobre o mantido
+  // (09/10/2026, pedido do usuário).
+  var acoes = (ADMIN && modo !== 'pf' && !rp)
     ? '<div class="acoes-admin"><button class="btn secundario" type="button" data-resolver>Enviar para resolvidos</button>'+
-      '<button class="btn secundario" type="button" data-manter>Manter pendente</button>'+
-      '<span class="dica">"Enviar para resolvidos" tira o grupo do painel; "Manter pendente" confirma que é pendência sem relação '+
-      'com outro protocolo pago e tira o aviso de pago em outro BI; o "Manter pendente" de uma linha separa só aquele protocolo do grupo. Os dois pedem o motivo e podem ser desfeitos '+
-      'nas abas "Resolvidos manualmente" e "Mantidos pendentes".</span></div>'
+      (mant
+        ? '<span class="dica">"Enviar para resolvidos" tira o grupo do painel e prevalece sobre a marcação de mantido pendente. '+
+          'Pede o motivo e pode ser desfeito na aba "Resolvidos manualmente".</span></div>'
+        : '<button class="btn secundario" type="button" data-manter>Manter pendente</button>'+
+          '<span class="dica">"Enviar para resolvidos" tira o grupo do painel; "Manter pendente" confirma que é pendência sem relação '+
+          'com outro protocolo pago e tira o aviso de pago em outro BI; o "Manter pendente" de uma linha separa só aquele protocolo do grupo. Os dois pedem o motivo e podem ser desfeitos '+
+          'nas abas "Resolvidos manualmente" e "Mantidos pendentes".</span></div>')
     : '';
 
   return '<p class="grupo-expl">'+esc(expl)+'</p>'+ avisoPessoa +
@@ -3562,7 +3567,8 @@ document.getElementById('notaMP').innerHTML =
   'outro protocolo pago — do mesmo Nr BI (vindos de <b>Rejeitado em grupo pago</b>) ou de outro Nr BI (o aviso '+
   '"pago em outro BI"). Seguem nas abas de pendência com o selo <b>pendente confirmado</b> e sem aquele aviso; '+
   'o vindo de grupo pago aparece sozinho em <b>DEA encerrado sem pagamento</b>. Se o protocolo for pago depois, '+
-  'sai das abas de pendência. Esta lista não altera os <b>Resolvidos manualmente</b>. '+
+  'sai das abas de pendência. Esta lista não altera os <b>Resolvidos manualmente</b>; se o protocolo também for '+
+  '<b>enviado para resolvidos</b>, o resolvido prevalece e ele sai das abas de pendência. '+
   (ADMIN ? 'Como administrador, você pode <b>desfazer</b> a marcação.'
          : 'Só o administrador pode marcar ou desfazer.');
 
@@ -3591,6 +3597,10 @@ function renderMP(){
         var p = P_DO_PROTO[String(pr)];
         return p ? '<span class="selo '+esc(p.sit_efetiva_classe)+'">'+esc(p.sit_efetiva)+'</span>' : '—';
       }).join(' ');
+      // Enviado para resolvidos depois: o resolvido prevalece (09/10/2026).
+      var res = (r.protocolos||[]).length && r.protocolos.every(function(pr){ return RES_PROTO[String(pr)]; });
+      if(res) sits += '<br><span class="selo-mantido" style="display:inline-block;margin-top:4px" '+
+        'title="O resolvido prevalece: o protocolo não aparece nas abas de pendência">enviado para resolvidos</span>';
       var nv = novosDoGrupo(r.protocolos||[]);
       if(nv.length) sits += '<br><span class="selo-aviso" style="white-space:normal;display:inline-block;margin-top:4px" title="Pode ser a tentativa corrigida: confira e, se for, desfaça">'+
         'protocolo novo no grupo depois da marcação: '+esc(nv.map(function(q){
