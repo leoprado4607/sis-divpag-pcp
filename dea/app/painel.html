@@ -984,14 +984,25 @@ var GRUPOS_PF = hidratarGrupos(D.grupos_pagos_fora);
    Desde 05/10/2026 (pedido do usuário) entra também o par "Homologado pelo OD do
    CPEx / Lançar no SIPPES" na DEA + "Processado o Pagamento" no Acompanhamento.
    Desde 14/10/2026 (pedido do usuário) "Homologado pelo OD do CPEx / Lançar no
-   SIPPES" na DEA basta, qualquer que seja o Acompanhamento (null = qualquer). */
-var HL_ANO_MIN = 2026;
+   SIPPES" na DEA basta, qualquer que seja o Acompanhamento (null = qualquer).
+   Desde 14/10/2026 (pedido do usuário) só a aba DEA do ANO CORRENTE — o do
+   retrato (META.data_ref), como em "Alterações do dia": o sistema de pagamento
+   não autoriza protocolo de ano diferente do corrente. */
+var HL_ANO = +String(META.data_ref || '').slice(0, 4) || new Date().getFullYear();
 var HL_PARES = [['AUTORIZADO_CPEX','PAGO'], ['HOMOLOGADO',null]];
 function anoDaAba(p){ var m = /(\d{4})/.exec(p.aba || ''); return m ? +m[1] : 0; }
+/* "Homologado pelo OD do CPEx" na situação DEA basta, pelo código OU pelo texto
+   (14/10/2026, pedido do usuário): se a planilha trouxer uma redação que o
+   build_data.py ainda não conhece, o código vira ANDAMENTO_OUTRO e o rótulo é o
+   texto original — o protocolo não pode sumir desta aba por isso. */
+function homologadoNaDea(p){
+  return p.sit_dea_cod === 'HOMOLOGADO' ||
+    semAcento(p.sit_dea).replace(/[^a-z0-9]+/g, ' ').trim().indexOf('homologado pelo od do cpex') === 0;
+}
 var HOMOL = P.filter(function(p){
-  return anoDaAba(p) >= HL_ANO_MIN && HL_PARES.some(function(c){
+  return anoDaAba(p) === HL_ANO && (homologadoNaDea(p) || HL_PARES.some(function(c){
     return p.sit_dea_cod === c[0] && (c[1] === null || p.sit_acomp_cod === c[1]);
-  });
+  }));
 }).sort(function(a,b){ return a.data_ord < b.data_ord ? -1 : a.data_ord > b.data_ord ? 1 : 0; });
 var LANCADOS = window.DEA_LANCADOS;
 var LAN_FALHOU = !Array.isArray(LANCADOS);
@@ -2155,7 +2166,7 @@ document.getElementById('notaHist').innerHTML =
   'nada era guardado, e não há como reconstruir.';
 
 document.getElementById('notaHL').innerHTML =
-  'Protocolos das abas <b>DEA '+HL_ANO_MIN+'</b> em diante com situação <b>"Pagamento autorizado (CPEx) / Aguardando '+
+  'Protocolos da aba <b>DEA '+HL_ANO+'</b> (ano corrente) com situação <b>"Pagamento autorizado (CPEx) / Aguardando '+
   'lançamento no SIPPES"</b> na aba DEA e <b>"Pago"</b> no Acompanhamento, ou <b>"Homologado pelo OD do CPEx / Lançar '+
   'no SIPPES"</b> na aba DEA (qualquer situação no Acompanhamento). Eles <b>ainda não foram pagos</b>: '+
   'falta a OM lançar no SIPPES/SIAPPES. '+
@@ -2940,7 +2951,7 @@ document.getElementById('hl-pdf').addEventListener('click', function(){
     : '<p class="rel-vazio">Nenhum protocolo pendente de lançamento neste recorte.</p>';
   abrirRelatorio(
     relCapa('Homologados para lançamento',
-      'Protocolos das abas DEA '+HL_ANO_MIN+' em diante com situação "Pagamento autorizado (CPEx) / Aguardando '+
+      'Protocolos da aba DEA '+HL_ANO+' (ano corrente) com situação "Pagamento autorizado (CPEx) / Aguardando '+
       'lançamento no SIPPES" na aba DEA e "Pago" no Acompanhamento, ou "Homologado pelo OD do CPEx / Lançar no '+
       'SIPPES" na aba DEA (qualquer situação no Acompanhamento): ainda não foram pagos — falta a OM '+
       'lançar no SIPPES/SIAPPES. Saem da relação quando o '+

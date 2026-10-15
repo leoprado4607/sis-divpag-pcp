@@ -410,6 +410,29 @@ Como funciona, e por quê:
 
 ## Aba "Homologados para lançamento"
 
+### Só o ano corrente — 14/10/2026 (pedido do usuário)
+
+O recorte fixo "DEA 2026 em diante" (`HL_ANO_MIN`) virou **só a aba DEA do ano
+corrente** (`HL_ANO`): o sistema de pagamento não autoriza protocolo de ano
+diferente do corrente. O ano é o do retrato (`META.data_ref`), o mesmo critério de
+"Alterações do dia"; sem ele, o ano da data do navegador. Vale para os dois pares
+de situação. Na virada para 2027 os protocolos da DEA 2026 saem da lista (os
+"Lançamentos registrados" continuam visíveis). Onde abaixo se lê "DEA 2026 em
+diante" / `HL_ANO_MIN`, passou a valer esta regra.
+
+### Homologado reconhecido também pelo texto — 14/10/2026 (pedido do usuário)
+
+"Se na situação DEA aparecer 'Homologado pelo OD do CPEx / Lançar no SIPPES', o
+protocolo aparece em Homologados para lançamento, independente do
+Acompanhamento." O painel reconhece o caso pelo código `HOMOLOGADO` **ou** pelo
+texto da situação DEA começando com "Homologado pelo OD do CPEx" (sem acento e
+pontuação; `homologadoNaDea` no `painel.html`). Motivo: uma redação nova na
+planilha, que o `MAPA_SITUACAO` do `build_data.py` não conhece, vira
+`ANDAMENTO_OUTRO` com o texto original como rótulo — a tela mostra "Homologado…",
+mas o código não bate, e o protocolo ficava de fora (suspeita no caso do
+521738). O recorte do ano corrente continua valendo. O aviso "Situações não
+previstas no mapa" do rodapé de dados mostra se isso está acontecendo.
+
 ### Acréscimo de 14/10/2026 (pedido do usuário)
 
 **"Homologado pelo OD do CPEx / Lançar no SIPPES"** (`HOMOLOGADO`) na aba DEA
