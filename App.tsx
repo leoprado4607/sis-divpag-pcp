@@ -36,7 +36,7 @@ const App: React.FC = () => {
   if (currentView !== 'home') {
     return (
       <div className="min-h-screen flex flex-col bg-army-cream overflow-x-hidden">
-        <SpeedInsights />
+        <SpeedInsights sampleRate={0.5} />
         {!['andrecito-app', 'comparison-app', 'dea-dashboard'].includes(currentView) && <Header onBack={handleBackToHome} />}
         <main className="flex-grow">
           <Suspense fallback={<ViewLoader />}>
@@ -53,7 +53,7 @@ const App: React.FC = () => {
   /* ─── Home view ─── */
   return (
     <div className="min-h-screen flex flex-col bg-army-cream overflow-x-hidden">
-      <SpeedInsights />
+      <SpeedInsights sampleRate={0.5} />
 
       {/* Sticky nav */}
       <Header showExtraLogos={true} />
