@@ -125,6 +125,26 @@ para "Entre anos". Grupo pago não muda. No código: `tirarHomologados()` no
 ao corrente não entra em `HOMOL` e, portanto, continua no grupo. "Rejeitado em
 grupo pago" não muda.
 
+**Em curso de valor diferente em grupo pago (pedido do usuário, 15/10/2026).**
+Caso que originou a regra: 536757 (R$ 1.553,19, "Protocolado e Aguardando
+Análise") refazendo o rejeitado 531490 (mesmo valor), no mesmo nome, Prec-cp e
+Nr BI do 531488 (R$ 517,73, **pago**). O grupo dos três era "resolvido" e sumia
+de todas as abas; a aba "Rejeitado em grupo pago" só pega rejeitados, então o
+536757 — ainda não pago — não aparecia em lugar nenhum.
+
+Regra: num grupo com protocolo pago (de ano único ou de "Pago em outro ano"), o
+protocolo de classe **`andamento`** cujo valor é **diferente de todos os pagos**
+do grupo (1 centavo ou mais) vai para **"DEA pendente de análise CPEx"**, num
+grupo próprio (um por grupo de origem e ano), com o selo **"grupo com pago:
+&lt;protocolos&gt;"** (tela e PDF) e explicação própria. O grupo pago não muda.
+Ficam de fora os mantidos pendentes (já viram avulsos) e os homologados
+(`tirarHomologados()`); "Enviar para resolvidos" funciona como em qualquer grupo.
+O aviso "pago em outro BI" desse grupo ignora os pagos do grupo de origem (já
+citados no selo). Calculado no painel (`GRUPOS_EMCURSO_PAGO`), sem mudança no
+`build_data.py`; os contadores de `agregados` e do Histórico não mudam.
+Retrato de 15/10/2026: 4 protocolos (535126, 536757, 524524, 536242), todos
+"Protocolado e Aguardando Análise", todos da Ativa.
+
 O critério usa a classe já produzida pelo `build_data.py` (`MAPA_SITUACAO`),
 sem mudança no pipeline: o filtro está no painel (`emCurso()` em `recortar()`).
 A aba "Entre anos" recebeu a mesma divisão (pedido do usuário, 21/09/2026):

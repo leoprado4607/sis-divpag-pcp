@@ -1292,6 +1292,40 @@ AVULSO_PROTOS.forEach(function(pr){
   g.sem_acomp = g.itens.filter(function(p){ return !p.tem_acomp; }).length;
   g.incerto = g.sem_acomp > 0;
 });
+/* ---------- em curso de valor diferente em grupo pago (15/10/2026) ----------
+   Pedido do usuário: grupo com protocolo pago some das abas de pendência, mas o
+   protocolo EM CURSO cujo valor é diferente de todos os pagos do grupo ainda
+   não foi pago — pode ser a correção de outra dívida (ex.: 536757, R$ 1.553,19,
+   refazendo o rejeitado 531490, no grupo do 531488, R$ 517,73, pago). Esses
+   protocolos vão para "DEA pendente de análise CPEx" num grupo próprio (um por
+   grupo de origem e ano). O grupo pago não muda. Ficam de fora os mantidos
+   pendentes (já viram avulsos); os resolvidos manualmente somem pela regra de
+   sempre; os homologados saem em tirarHomologados(). */
+var GRUPOS_EMCURSO_PAGO = [];
+GRUPOS_COM_PAGO.forEach(function(g){
+  var pagos = g.itens.filter(function(p){ return p.sit_efetiva_classe === 'pago'; });
+  var porAno = {};
+  g.itens.forEach(function(p){
+    var pr = String(p.protocolo);
+    if(p.sit_efetiva_classe !== 'andamento' || PEN_PROTO[pr]) return;
+    if(!pagos.every(function(q){ return Math.abs((q.valor||0) - (p.valor||0)) >= 0.005; })) return;
+    (porAno[p.ano] = porAno[p.ano] || []).push(p);
+  });
+  Object.keys(porAno).forEach(function(ano){
+    var itens = porAno[ano], p0 = itens[0];
+    var protos = itens.map(function(p){ return String(p.protocolo); });
+    var sem = itens.filter(function(p){ return !p.tem_acomp; }).length;
+    GRUPOS_EMCURSO_PAGO.push({
+      id: 'C' + protos.join('-'), prec_cp: p0.prec_cp, segmento: p0.segmento || 'Ativa', ano: +ano,
+      nome: p0.nome, nomes: [p0.nome], qtd: itens.length, protocolos: protos, itens: itens,
+      nr_bi: p0.nr_bi || '???',
+      valor_total: itens.reduce(function(t,p){ return t + (p.valor||0); }, 0),
+      status: 'risco', sem_acomp: sem, incerto: sem > 0,
+      _busca: semAcento(p0.nome) + ' ' + p0.prec_cp, _protos: protos,
+      _pagoDe: g, _pagosRef: pagos
+    });
+  });
+});
 /* ---------- homologado sai do grupo (14/10/2026, pedido do usuário) ----------
    O protocolo em "Homologados para lançamento" (HOMOL, inclusive os de mês da
    folha já registrado) já foi analisado e segue para pagamento: sai do grupo
@@ -1316,9 +1350,14 @@ function tirarHomologados(g){
     return p.sit_efetiva_classe === 'rejeitado' || p.sit_efetiva_classe === 'andamento';
   }) ? 'risco' : 'atencao';
 }
-GRUPOS.concat(GRUPOS_EA, GRUPOS_AVULSOS).forEach(tirarHomologados);
+GRUPOS.concat(GRUPOS_EA, GRUPOS_AVULSOS, GRUPOS_EMCURSO_PAGO).forEach(tirarHomologados);
 GRUPOS.concat(GRUPOS_EA, GRUPOS_PF).forEach(function(g){ g._conferir = aConferir(g); });
 marcarPagosPessoa(GRUPOS_AVULSOS);
+marcarPagosPessoa(GRUPOS_EMCURSO_PAGO);
+// O pago do próprio grupo de origem já é citado no cartão; não é "outro BI".
+GRUPOS_EMCURSO_PAGO.forEach(function(g){
+  g.pagos_pessoa = g.pagos_pessoa.filter(function(q){ return g._pagoDe._protos.indexOf(String(q.protocolo)) === -1; });
+});
 
 /* ---------- recorte por segmento (vale para todas as abas) ---------- */
 var SEG = {Ativa:true, Veteranos:false, Pensionistas:false};
@@ -1338,8 +1377,9 @@ function recortar(){
   // pagamento" (V.G) e "pendente de análise CPEx" (V.GC).
   // Os resolvidos manualmente pelo administrador também saem (21/09/2026).
   function pend(g){ return porSeg(g) && g.itens.length > 0 && naoPago(g) && !resolvidoManual(g); }
-  // Os avulsos (mantido pendente vindo de grupo pago) entram junto (29/09/2026).
-  var anoUnico = GRUPOS.concat(GRUPOS_AVULSOS);
+  // Os avulsos (mantido pendente vindo de grupo pago) entram junto (29/09/2026),
+  // e os em curso de valor diferente em grupo pago (15/10/2026).
+  var anoUnico = GRUPOS.concat(GRUPOS_AVULSOS, GRUPOS_EMCURSO_PAGO);
   V.G  = anoUnico.filter(function(g){ return pend(g) && !emCurso(g); });
   V.GC = anoUnico.filter(function(g){ return pend(g) && emCurso(g); });
   V.RP = GRUPOS_COM_PAGO.filter(function(g){ return porSeg(g) && g._conferir.length; })
@@ -1484,7 +1524,8 @@ document.getElementById('notaCP').innerHTML =
   'aprovado aguardando pagamento, pagamento autorizado ou processado. Ainda há chance de o crédito sair: acompanhe até o pagamento. '+
   'O protocolo <b>rejeitado com valor diferente</b> do que está em curso fica destacado como <b>a conferir</b>: pode ser outra dívida. '+
   'Se o administrador o <b>mantiver pendente</b>, ele sai do grupo e passa a figurar sozinho em <b>DEA encerrado sem pagamento</b>. '+
-  'Grupos em que algum protocolo foi pago não aparecem aqui. O protocolo que está em <b>Homologados para lançamento</b> '+
+  'Grupos em que algum protocolo foi pago não aparecem aqui, exceto o protocolo <b>em curso com valor diferente</b> de todos '+
+  'os pagos, que aparece num grupo próprio com o selo <b>grupo com pago</b>. O protocolo que está em <b>Homologados para lançamento</b> '+
   'sai do grupo, e os demais continuam aqui (ou em <b>DEA encerrado sem pagamento</b>, se nenhum seguir em curso). '+
   'A situação considerada é a da aba Acompanhamento; para os processos que ainda aguardam avaliação do CPEx, vale a da aba DEA.';
 
@@ -1556,6 +1597,10 @@ function desenharGrupos(lista, pref, modo){
         'a conferir: '+esc(g._conferir.join(', '))+'</span>');
     } else if(modo === 'cpex' || modo === 'eacpex'){
       cls = 'atencao'; verd = 'Em análise';
+      if(g._pagoDe){
+        cont.push('<span class="selo-aviso" title="Em curso com valor diferente do protocolo pago do mesmo grupo">'+
+          'grupo com pago: '+esc(g._pagosRef.map(function(q){ return q.protocolo; }).join(', '))+'</span>');
+      }
       if(g._conferir && g._conferir.length){
         cont.push('<span class="selo-aviso" title="Rejeitado com valor diferente do protocolo em curso do grupo">'+
           'a conferir: '+esc(g._conferir.join(', '))+'</span>');
@@ -1629,6 +1674,14 @@ function explicacaoGrupo(g, modo){
       'com valor diferente do pago — podem ser outra dívida, que o pagamento não quitou. Confira cada um: se o crédito '+
       'é o mesmo do pago, envie para resolvidos; se é outra pendência, mantenha pendente (ele passa a figurar sozinho '+
       'em "DEA encerrado sem pagamento").';
+  }
+  if(g._pagoDe){
+    var varPg = g._pagosRef.length > 1;
+    return 'Protocolo em curso de um grupo do mesmo nome, Prec-cp e Nr BI em que '+
+      (varPg ? 'outros protocolos foram pagos' : 'outro protocolo foi pago')+' ('+
+      g._pagosRef.map(function(p){ return p.protocolo+' — '+p.valor_fmt; }).join('; ')+
+      '), mas com valor diferente — pode ser outra dívida, ainda não paga. Acompanhe até o pagamento; '+
+      'se for o mesmo crédito do pago, envie para resolvidos.';
   }
   if(g._origem){
     var pagoOrig = temPago(g._origem);
@@ -2771,6 +2824,9 @@ function relGrupo(g, modo){
   var cont = contagensDea(g, selo);
   var mant = modo !== 'pf' && modo !== 'rp' && mantidoManual(g);
   if(mant) cont.push('<span class="selo-mantido">pendente confirmado</span>');
+  if(g._pagoDe) cont.push('<span class="selo-aviso">grupo com pago: '+esc(g._pagosRef.map(function(q){
+    return q.protocolo+' ('+q.valor_fmt+')';
+  }).join('; '))+'</span>');
   var nvRel = mant ? novosDoGrupo(g._protos) : [];
   if(nvRel.length) cont.push('<span class="selo-aviso">protocolo novo no grupo: '+esc(nvRel.map(function(q){
     return q.protocolo+' ('+q.data+', '+q.valor_fmt+')';
