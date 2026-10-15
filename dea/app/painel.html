@@ -1292,6 +1292,31 @@ AVULSO_PROTOS.forEach(function(pr){
   g.sem_acomp = g.itens.filter(function(p){ return !p.tem_acomp; }).length;
   g.incerto = g.sem_acomp > 0;
 });
+/* ---------- homologado sai do grupo (14/10/2026, pedido do usuário) ----------
+   O protocolo em "Homologados para lançamento" (HOMOL, inclusive os de mês da
+   folha já registrado) já foi analisado e segue para pagamento: sai do grupo
+   SEM pagamento, que fica só com os demais protocolos (tratados à mão pelo
+   administrador) e é reclassificado — se nenhum continuar em curso, passa de
+   "pendente de análise CPEx" para "encerrado sem pagamento". Grupo que fica
+   vazio não aparece. Grupo pago não muda (já está fora das pendências). */
+var HOMOL_PROTO = {};
+HOMOL.forEach(function(p){ HOMOL_PROTO[String(p.protocolo)] = true; });
+function tirarHomologados(g){
+  if(g.status === 'resolvido' || temPago(g)) return;
+  var resto = g.itens.filter(function(p){ return !HOMOL_PROTO[String(p.protocolo)]; });
+  if(resto.length === g.itens.length) return;
+  g.itens = resto;
+  g._protos = g.itens.map(function(p){ return String(p.protocolo); });
+  g.qtd = g.itens.length;
+  g.valor_total = g.itens.reduce(function(t,p){ return t + (p.valor||0); }, 0);
+  g.sem_acomp = g.itens.filter(function(p){ return !p.tem_acomp; }).length;
+  g.incerto = g.sem_acomp > 0;
+  // mesma regra do build_data.py: há rejeitado ou em curso -> risco; só excluídos -> atenção
+  g.status = g.itens.some(function(p){
+    return p.sit_efetiva_classe === 'rejeitado' || p.sit_efetiva_classe === 'andamento';
+  }) ? 'risco' : 'atencao';
+}
+GRUPOS.concat(GRUPOS_EA, GRUPOS_AVULSOS).forEach(tirarHomologados);
 GRUPOS.concat(GRUPOS_EA, GRUPOS_PF).forEach(function(g){ g._conferir = aConferir(g); });
 marcarPagosPessoa(GRUPOS_AVULSOS);
 
@@ -1312,7 +1337,7 @@ function recortar(){
   // Regra de 21/09/2026: o antigo "DEA pendente" se divide em "encerrado sem
   // pagamento" (V.G) e "pendente de análise CPEx" (V.GC).
   // Os resolvidos manualmente pelo administrador também saem (21/09/2026).
-  function pend(g){ return porSeg(g) && naoPago(g) && !resolvidoManual(g); }
+  function pend(g){ return porSeg(g) && g.itens.length > 0 && naoPago(g) && !resolvidoManual(g); }
   // Os avulsos (mantido pendente vindo de grupo pago) entram junto (29/09/2026).
   var anoUnico = GRUPOS.concat(GRUPOS_AVULSOS);
   V.G  = anoUnico.filter(function(g){ return pend(g) && !emCurso(g); });
@@ -1459,7 +1484,8 @@ document.getElementById('notaCP').innerHTML =
   'aprovado aguardando pagamento, pagamento autorizado ou processado. Ainda há chance de o crédito sair: acompanhe até o pagamento. '+
   'O protocolo <b>rejeitado com valor diferente</b> do que está em curso fica destacado como <b>a conferir</b>: pode ser outra dívida. '+
   'Se o administrador o <b>mantiver pendente</b>, ele sai do grupo e passa a figurar sozinho em <b>DEA encerrado sem pagamento</b>. '+
-  'Grupos em que algum protocolo foi pago não aparecem aqui. '+
+  'Grupos em que algum protocolo foi pago não aparecem aqui. O protocolo que está em <b>Homologados para lançamento</b> '+
+  'sai do grupo, e os demais continuam aqui (ou em <b>DEA encerrado sem pagamento</b>, se nenhum seguir em curso). '+
   'A situação considerada é a da aba Acompanhamento; para os processos que ainda aguardam avaliação do CPEx, vale a da aba DEA.';
 
 var gEstado = {ano:'', busca:'', protocolo:''};
@@ -1888,7 +1914,9 @@ document.getElementById('notaEC').innerHTML =
   'só os grupos que atravessam a virada), mas aqui ficam os grupos sem pagamento em que <b>ao menos um protocolo '+
   'ainda está em curso</b> — protocolado e aguardando análise ou documentação, analisado aguardando envio pela DAP '+
   'ou homologação, homologado, aprovado aguardando pagamento, pagamento autorizado ou processado. Ainda há chance '+
-  'de o crédito sair: acompanhe até o pagamento. Os de ano único estão em <b>DEA pendente de análise CPEx</b>.';
+  'de o crédito sair: acompanhe até o pagamento. O protocolo que está em <b>Homologados para lançamento</b> sai do '+
+  'grupo, e os demais continuam aqui (ou em <b>Entre anos — encerrado sem pagamento</b>, se nenhum seguir em curso). '+
+  'Os de ano único estão em <b>DEA pendente de análise CPEx</b>.';
 
 function notaEANumeros(){
   var r = V.EA.filter(function(g){ return g.status === 'risco'; });

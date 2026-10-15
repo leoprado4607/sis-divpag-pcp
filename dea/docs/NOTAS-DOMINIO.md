@@ -111,6 +111,20 @@ não protocolo que ainda possa ser aprovado:
   informação" e textos novos não mapeados que caem na reserva `andamento`).
   Veredito único "Em análise".
 
+**Protocolo em "Homologados para lançamento" sai do grupo (pedido do usuário,
+14/10/2026).** O protocolo que está na lista `HOMOL` da aba "Homologados para
+lançamento" (inclusive os de mês da folha já registrado) já foi analisado e segue
+para pagamento: sai do grupo **sem pagamento** — só ele; os demais protocolos
+continuam, para o administrador tratar à mão. O grupo é reclassificado com o
+que sobrou (mesma regra do `build_data.py`: rejeitado ou em curso → risco; só
+excluídos → atenção) e, se nenhum continuar em curso, passa de "pendente de
+análise CPEx" para "encerrado sem pagamento". Grupo que fica vazio não aparece.
+Vale para as abas de ano único (inclusive os avulsos de "Manter pendente") e
+para "Entre anos". Grupo pago não muda. No código: `tirarHomologados()` no
+`painel.html`, logo depois da separação dos avulsos. Homologado de ano anterior
+ao corrente não entra em `HOMOL` e, portanto, continua no grupo. "Rejeitado em
+grupo pago" não muda.
+
 O critério usa a classe já produzida pelo `build_data.py` (`MAPA_SITUACAO`),
 sem mudança no pipeline: o filtro está no painel (`emCurso()` em `recortar()`).
 A aba "Entre anos" recebeu a mesma divisão (pedido do usuário, 21/09/2026):
