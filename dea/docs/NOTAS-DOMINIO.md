@@ -410,6 +410,18 @@ Como funciona, e por quê:
 
 ## Aba "Homologados para lançamento"
 
+### Acréscimo de 14/10/2026 (pedido do usuário)
+
+**"Homologado pelo OD do CPEx / Lançar no SIPPES"** (`HOMOLOGADO`) na aba DEA
+passou a **bastar** para o protocolo entrar na aba, qualquer que seja a situação
+no Acompanhamento (antes exigia "Processado o Pagamento"). O resto da regra não
+mudou: só DEA 2026 em diante (`HL_ANO_MIN`), sai ao registrar o mês da folha, e o
+par `AUTORIZADO_CPEX` + `PAGO` continua igual. No código: `['HOMOLOGADO', null]`
+em `HL_PARES` (`null` = qualquer Acompanhamento). Motivo: protocolos homologados
+apareciam em "DEA pendente de análise CPEx" sem constar aqui, porque o
+Acompanhamento ainda não estava em "Processado o Pagamento". As demais abas não
+mudam.
+
 ### Acréscimo de 05/10/2026 (pedido do usuário)
 
 Além do par abaixo, a aba lista também os protocolos com **"Homologado pelo OD do

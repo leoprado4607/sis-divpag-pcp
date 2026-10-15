@@ -982,13 +982,15 @@ var GRUPOS_PF = hidratarGrupos(D.grupos_pagos_fora);
    lista quando o administrador registra o mês da folha (window.DEA_LANCADOS,
    lista manual/lancados.json). O substituto do antigo homologados_idx.
    Desde 05/10/2026 (pedido do usuário) entra também o par "Homologado pelo OD do
-   CPEx / Lançar no SIPPES" na DEA + "Processado o Pagamento" no Acompanhamento. */
+   CPEx / Lançar no SIPPES" na DEA + "Processado o Pagamento" no Acompanhamento.
+   Desde 14/10/2026 (pedido do usuário) "Homologado pelo OD do CPEx / Lançar no
+   SIPPES" na DEA basta, qualquer que seja o Acompanhamento (null = qualquer). */
 var HL_ANO_MIN = 2026;
-var HL_PARES = [['AUTORIZADO_CPEX','PAGO'], ['HOMOLOGADO','PGTO_PROCESSADO']];
+var HL_PARES = [['AUTORIZADO_CPEX','PAGO'], ['HOMOLOGADO',null]];
 function anoDaAba(p){ var m = /(\d{4})/.exec(p.aba || ''); return m ? +m[1] : 0; }
 var HOMOL = P.filter(function(p){
   return anoDaAba(p) >= HL_ANO_MIN && HL_PARES.some(function(c){
-    return p.sit_dea_cod === c[0] && p.sit_acomp_cod === c[1];
+    return p.sit_dea_cod === c[0] && (c[1] === null || p.sit_acomp_cod === c[1]);
   });
 }).sort(function(a,b){ return a.data_ord < b.data_ord ? -1 : a.data_ord > b.data_ord ? 1 : 0; });
 var LANCADOS = window.DEA_LANCADOS;
@@ -2155,7 +2157,7 @@ document.getElementById('notaHist').innerHTML =
 document.getElementById('notaHL').innerHTML =
   'Protocolos das abas <b>DEA '+HL_ANO_MIN+'</b> em diante com situação <b>"Pagamento autorizado (CPEx) / Aguardando '+
   'lançamento no SIPPES"</b> na aba DEA e <b>"Pago"</b> no Acompanhamento, ou <b>"Homologado pelo OD do CPEx / Lançar '+
-  'no SIPPES"</b> na aba DEA e <b>"Processado o Pagamento"</b> no Acompanhamento. Eles <b>ainda não foram pagos</b>: '+
+  'no SIPPES"</b> na aba DEA (qualquer situação no Acompanhamento). Eles <b>ainda não foram pagos</b>: '+
   'falta a OM lançar no SIPPES/SIAPPES. '+
   'Quando o pagamento é lançado no SIPPES, o <b>administrador</b> marca <b>"Lançado no SIPPES"</b> (mês/ano de '+
   'referência e operador; o botão fica verde e o protocolo continua na lista). Depois do pagamento de fato, '+
@@ -2940,7 +2942,7 @@ document.getElementById('hl-pdf').addEventListener('click', function(){
     relCapa('Homologados para lançamento',
       'Protocolos das abas DEA '+HL_ANO_MIN+' em diante com situação "Pagamento autorizado (CPEx) / Aguardando '+
       'lançamento no SIPPES" na aba DEA e "Pago" no Acompanhamento, ou "Homologado pelo OD do CPEx / Lançar no '+
-      'SIPPES" na aba DEA e "Processado o Pagamento" no Acompanhamento: ainda não foram pagos — falta a OM '+
+      'SIPPES" na aba DEA (qualquer situação no Acompanhamento): ainda não foram pagos — falta a OM '+
       'lançar no SIPPES/SIAPPES. Saem da relação quando o '+
       'administrador registra o mês da folha em que foram pagos.',
       [['Protocolos', num(lista.length)],
