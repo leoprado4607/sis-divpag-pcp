@@ -34,17 +34,18 @@ const App: React.FC = () => {
 
   /* ─── Sub-app views: header + content + footer ─── */
   if (currentView !== 'home') {
+    const SubAppShell = currentView === 'dea-dashboard' ? 'main' : 'div';
     return (
       <div className="min-h-screen flex flex-col bg-army-cream overflow-x-hidden">
         <SpeedInsights sampleRate={0.5} />
-        {!['andrecito-app', 'comparison-app', 'dea-dashboard'].includes(currentView) && <Header onBack={handleBackToHome} />}
-        <main className="flex-grow">
+        {/* Andrecito e Comparador já trazem o próprio <main>; só o Painel DEA usa este. */}
+        <SubAppShell className="flex-grow">
           <Suspense fallback={<ViewLoader />}>
             {currentView === 'dea-dashboard'  && <DeaDashboard  onBack={handleBackToHome} />}
             {currentView === 'andrecito-app'  && <AndrecitoApp  onBack={handleBackToHome} />}
             {currentView === 'comparison-app' && <ComparisonApp onBack={handleBackToHome} />}
           </Suspense>
-        </main>
+        </SubAppShell>
         <Footer />
       </div>
     );
@@ -56,8 +57,9 @@ const App: React.FC = () => {
       <SpeedInsights sampleRate={0.5} />
 
       {/* Sticky nav */}
-      <Header showExtraLogos={true} />
+      <Header />
 
+      <main className="flex-grow flex flex-col">
       {/* ── Hero ── */}
       <section className="relative overflow-hidden">
         {/* Background image with overlay (full width) */}
@@ -82,12 +84,12 @@ const App: React.FC = () => {
 
         {/* Text content over the image */}
         <div className="relative z-10 flex flex-col items-center justify-center text-center min-h-[36vh] px-6 sm:px-10 lg:px-16 py-10">
-          <h2 className="font-cormorant font-semibold text-3xl sm:text-4xl lg:text-5xl leading-[1.1]
+          <h1 className="font-cormorant font-semibold text-3xl sm:text-4xl lg:text-5xl leading-[1.1]
                          text-white animate-fade-in-up drop-shadow-md"
               style={{ animationDelay: '0.08s' }}>
             Portal de consultas sobre{' '}
             <span className="italic">pagamento de pessoal</span>
-          </h2>
+          </h1>
         </div>
       </section>
 
@@ -98,7 +100,7 @@ const App: React.FC = () => {
           {/* Section label */}
           <div className="flex items-center gap-4 mb-8">
             <div className="h-px flex-grow bg-army-green/15" />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-army-gold whitespace-nowrap">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-army-gold-deep whitespace-nowrap">
               Sistemas disponíveis
             </span>
             <div className="h-px flex-grow bg-army-green/15" />
@@ -112,6 +114,7 @@ const App: React.FC = () => {
           </div>
         </div>
       </section>
+      </main>
 
       <Footer />
     </div>

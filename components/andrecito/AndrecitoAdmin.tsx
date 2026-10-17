@@ -7,6 +7,7 @@ import {
   Hash, Award, Calendar, TrendingUp
 } from 'lucide-react';
 import { andrecitoService } from '../../services/andrecitoService';
+import AndrecitoHeader from './AndrecitoHeader';
 import { adminRequest } from '../../services/adminClient';
 import { AndrecitoCategory, AndrecitoSubcategory, AndrecitoDocument } from '../../types';
 import { ViewState, UserRole } from './AndrecitoApp';
@@ -316,46 +317,22 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 font-sans overflow-hidden">
-      <header className="bg-army-green text-white shadow-xl border-b-[6px] border-army-gold sticky top-0 z-50">
-        <div className="absolute inset-0 opacity-20 pointer-events-none select-none" 
-             style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}>
-        </div>
-        <div className="max-w-[1600px] mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4 relative z-10">
-          <div className="flex items-center gap-4 w-full md:w-auto">
-            <button onClick={onBack} aria-label="Voltar" className="p-2 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"><ArrowLeft className="w-6 h-6 text-army-gold" /></button>
-            <div className="flex items-center gap-3">
-               <Bot className="w-10 h-10 text-white opacity-90" />
-               <div className="text-left">
-                 <h1 className="text-lg md:text-xl font-montserrat font-bold leading-none">Sistema de Consultas</h1>
-                 <p className="text-army-gold text-[10px] uppercase font-bold tracking-widest mt-1">Gestão Admin</p>
-               </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-             <div className="flex items-center gap-1 bg-black/20 p-1 rounded-lg">
-                <button onClick={() => onNavigate('query')} className="px-3 py-1.5 rounded-md text-xs font-bold text-gray-300 hover:text-white"><Search size={14} /> Pesquisa</button>
-                <button onClick={() => onNavigate('library')} className="px-3 py-1.5 rounded-md text-xs font-bold text-gray-300 hover:text-white"><Library size={14} /> Biblioteca</button>
-                <button onClick={() => onNavigate('admin')} className="px-3 py-1.5 rounded-md text-xs font-bold bg-white text-army-green shadow-sm"><Settings size={14} /> Admin</button>
-             </div>
-             <button onClick={onLogout} className="p-2 text-red-300 hover:text-white rounded-lg ml-2"><LogOut size={18} /></button>
-          </div>
-        </div>
-      </header>
+    <div className="flex flex-col h-screen bg-army-cream font-sans overflow-hidden">
+      <AndrecitoHeader onBack={onBack} onLogout={onLogout} onNavigate={onNavigate} currentView={currentView} userRole="admin" />
 
-      <main className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar bg-slate-100">
+      <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 custom-scrollbar bg-army-cream">
         {/* Abas internas do Admin */}
         <div className="max-w-7xl mx-auto mb-6">
-          <div className="flex gap-2 bg-white rounded-xl p-1 border border-slate-200 w-fit shadow-sm">
+          <div className="flex gap-2 bg-white p-1 border border-army-green/10 w-fit">
             <button
               onClick={() => setAdminTab('manage')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${adminTab === 'manage' ? 'bg-army-green text-white shadow-sm' : 'text-slate-500 hover:text-army-green'}`}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold transition-all ${adminTab === 'manage' ? 'bg-army-green text-white' : 'text-army-green/75 hover:text-army-green'}`}
             >
               <Settings size={14} /> Gerenciar
             </button>
             <button
               onClick={() => setAdminTab('analytics')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${adminTab === 'analytics' ? 'bg-army-green text-white shadow-sm' : 'text-slate-500 hover:text-army-green'}`}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-bold transition-all ${adminTab === 'analytics' ? 'bg-army-green text-white' : 'text-army-green/75 hover:text-army-green'}`}
             >
               <BarChart2 size={14} /> Estatísticas
             </button>
@@ -367,24 +344,24 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
             {/* Header da aba */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-sm font-black text-army-green uppercase tracking-widest">Painel de Uso — Andrecito</h2>
-                <p className="text-[11px] text-slate-400 mt-0.5">Consultas registradas nos últimos 30 dias</p>
+                <h2 className="font-cormorant font-semibold text-xl text-army-green">Painel de Uso — Andrecito</h2>
+                <p className="text-[11px] text-army-green/75 mt-0.5">Consultas registradas nos últimos 30 dias</p>
               </div>
               <button
                 onClick={fetchAnalytics}
                 disabled={analyticsLoading}
-                className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-army-green px-3 py-2 rounded-lg bg-white border border-slate-200 transition-all disabled:opacity-50"
+                className="flex items-center gap-2 text-xs font-bold text-army-green/75 hover:text-army-green px-3 py-2 bg-white border border-army-green/10 transition-all disabled:opacity-50"
               >
                 <RefreshCw size={13} className={analyticsLoading ? 'animate-spin' : ''} /> Atualizar
               </button>
             </div>
 
             {analyticsError && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600">{analyticsError}</div>
+              <div className="bg-red-50 border border-red-200 p-4 text-sm text-red-700">{analyticsError}</div>
             )}
 
             {analyticsLoading && !analytics && (
-              <div className="flex items-center justify-center py-20 text-slate-400 text-sm gap-3">
+              <div className="flex items-center justify-center py-20 text-army-green/75 text-sm gap-3">
                 <RefreshCw size={20} className="animate-spin" /> Carregando estatísticas...
               </div>
             )}
@@ -395,34 +372,34 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
                     { label: 'Total de Consultas', value: analytics.totalQueries, icon: <MessageSquare size={18} />, color: 'text-army-green' },
-                    { label: 'Últimos 30 dias', value: analytics.last30Days, icon: <Activity size={18} />, color: 'text-blue-600' },
-                    { label: 'Usuários únicos (30d)', value: analytics.uniqueIps30Days, icon: <Users size={18} />, color: 'text-purple-600' },
+                    { label: 'Últimos 30 dias', value: analytics.last30Days, icon: <Activity size={18} />, color: 'text-blue-700' },
+                    { label: 'Usuários únicos (30d)', value: analytics.uniqueIps30Days, icon: <Users size={18} />, color: 'text-purple-700' },
                     { label: 'Tokens médios/consulta', value: analytics.avgTokens.toLocaleString('pt-BR'), icon: <Zap size={18} />, color: 'text-army-gold' },
                   ].map(card => (
-                    <div key={card.label} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+                    <div key={card.label} className="bg-white border border-army-green/10 p-5">
                       <div className={`${card.color} mb-2`}>{card.icon}</div>
-                      <div className={`text-2xl font-black ${card.color}`}>{card.value}</div>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{card.label}</p>
+                      <div className={`text-2xl font-semibold ${card.color}`}>{card.value}</div>
+                      <p className="text-[11px] text-army-green/75 font-bold uppercase tracking-wider mt-1">{card.label}</p>
                     </div>
                   ))}
                 </div>
 
                 {/* Termos mais pesquisados — ranking */}
-                <div className="relative bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="relative bg-white border border-army-green/10 overflow-hidden">
                   <div className="h-1 w-full bg-gradient-to-r from-army-green via-army-light to-army-gold" />
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-2.5">
-                        <div className="p-2 rounded-xl bg-army-green/10 text-army-green"><Hash size={16} /></div>
+                        <div className="p-2 bg-army-green/10 text-army-green"><Hash size={16} /></div>
                         <div>
-                          <h3 className="text-xs font-black text-army-green uppercase tracking-widest font-montserrat">Termos Mais Pesquisados</h3>
-                          <p className="text-[10px] text-slate-400 mt-0.5">Frequência nas consultas dos últimos 30 dias</p>
+                          <h3 className="font-cormorant font-semibold text-xl text-army-green leading-tight">Termos Mais Pesquisados</h3>
+                          <p className="text-[11px] text-army-green/75 mt-0.5">Frequência nas consultas dos últimos 30 dias</p>
                         </div>
                       </div>
-                      <TrendingUp size={18} className="text-army-gold/40" />
+                      <TrendingUp size={18} className="text-army-gold" />
                     </div>
                     {analytics.recentQueries.length === 0 ? (
-                      <p className="text-center text-slate-400 text-sm py-6">Sem dados.</p>
+                      <p className="text-center text-army-green/75 text-sm py-6">Sem dados.</p>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4">
                         {(() => {
@@ -437,28 +414,25 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                                 className="group flex items-center gap-3 animate-fade-in-up opacity-0"
                                 style={{ animationDelay: `${i * 60}ms` }}
                               >
-                                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-black font-montserrat shadow-sm
-                                  ${isTop ? 'bg-gradient-to-br from-army-gold to-army-gold-light text-white ring-2 ring-army-gold/20'
+                                <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold tabular-nums font-sans
+                                  ${isTop ? 'bg-army-gold-light text-army-charcoal ring-2 ring-army-gold/30'
                                     : isPodium ? 'bg-army-green text-white'
-                                    : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
+                                    : 'bg-army-cream text-army-green/75 border border-army-green/10'}`}>
                                   {isTop ? <Award size={14} /> : i + 1}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex justify-between items-baseline mb-1.5">
-                                    <span className="text-sm font-bold text-slate-700 capitalize truncate group-hover:text-army-green transition-colors">{word}</span>
+                                    <span className="text-sm font-bold text-army-charcoal/80 capitalize truncate group-hover:text-army-green transition-colors">{word}</span>
                                     <span className="flex items-baseline gap-1 flex-shrink-0 ml-2">
-                                      <span className={`text-sm font-black font-montserrat ${isPodium ? 'text-army-green' : 'text-slate-500'}`}>{count}</span>
-                                      <span className="text-[9px] text-slate-400 font-bold uppercase">buscas</span>
+                                      <span className={`text-sm font-semibold tabular-nums ${isPodium ? 'text-army-green' : 'text-army-green/75'}`}>{count}</span>
+                                      <span className="text-[11px] text-army-green/75 font-bold uppercase">buscas</span>
                                     </span>
                                   </div>
-                                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                  <div className="w-full bg-army-cream h-2 rounded-full overflow-hidden">
                                     <div
-                                      className="h-full rounded-full origin-left animate-grow-bar"
+                                      className={`h-full rounded-full origin-left animate-grow-bar bg-gradient-to-r ${isPodium ? 'from-army-green to-army-gold' : 'from-army-light to-army-gold-light'}`}
                                       style={{
                                         width: `${(count / maxCount) * 100}%`,
-                                        background: isPodium
-                                          ? 'linear-gradient(90deg, #2E3D1A, #A8832A)'
-                                          : 'linear-gradient(90deg, #6B7A42, #C9A84C)',
                                         animationDelay: `${i * 60}ms`,
                                       }}
                                     />
@@ -474,20 +448,20 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                 </div>
 
                 {/* Consultas recentes — tabela */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                  <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-2.5 bg-slate-50/50">
-                    <div className="p-2 rounded-xl bg-army-green/10 text-army-green"><MessageSquare size={16} /></div>
+                <div className="bg-white border border-army-green/10 overflow-hidden">
+                  <div className="px-6 py-5 border-b border-army-green/10 flex items-center gap-2.5 bg-army-cream/50">
+                    <div className="p-2 bg-army-green/10 text-army-green"><MessageSquare size={16} /></div>
                     <div>
-                      <h3 className="text-xs font-black text-army-green uppercase tracking-widest font-montserrat">Consultas Recentes</h3>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{analytics.recentQueries.length} registros mais recentes</p>
+                      <h3 className="font-cormorant font-semibold text-xl text-army-green leading-tight">Consultas Recentes</h3>
+                      <p className="text-[11px] text-army-green/75 mt-0.5">{analytics.recentQueries.length} registros mais recentes</p>
                     </div>
                   </div>
                   <div className="overflow-x-auto custom-scrollbar max-h-[480px]">
                     {analytics.recentQueries.length === 0 ? (
-                      <p className="text-center text-slate-400 text-sm py-16">Nenhuma consulta registrada ainda.</p>
+                      <p className="text-center text-army-green/75 text-sm py-16">Nenhuma consulta registrada ainda.</p>
                     ) : (
                       <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 sticky top-0 z-10">
+                        <thead className="bg-army-cream text-[11px] font-semibold text-army-green/75 uppercase tracking-widest border-b border-army-green/10 sticky top-0 z-10">
                           <tr>
                             <th className="px-4 py-3 whitespace-nowrap">Data</th>
                             <th className="px-4 py-3 whitespace-nowrap">Horário</th>
@@ -497,51 +471,51 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                             <th className="px-4 py-3 w-2/5">Pergunta</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
+                        <tbody className="divide-y divide-army-green/[0.07]">
                           {analytics.recentQueries.map((q, i) => {
                             const d = new Date(q.created_at);
                             const local = [q.city, q.region, countryLabel(q.country)].filter(Boolean).join(' / ');
                             return (
                               <tr key={i} className="hover:bg-army-cream/40 transition-colors">
                                 <td className="px-4 py-3 whitespace-nowrap">
-                                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
-                                    <Calendar size={11} className="text-slate-300" />
+                                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-army-charcoal/80">
+                                    <Calendar size={11} className="text-army-green/75" />
                                     {d.toLocaleDateString('pt-BR')}
                                   </span>
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap">
-                                  <span className="flex items-center gap-1.5 text-[11px] font-mono text-slate-500">
-                                    <Clock size={11} className="text-slate-300" />
+                                  <span className="flex items-center gap-1.5 text-[11px] font-mono text-army-green/75">
+                                    <Clock size={11} className="text-army-green/75" />
                                     {d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                   </span>
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   {q.ip_address ? (
-                                    <span className="flex items-center gap-1.5 text-[11px] font-mono text-slate-500">
-                                      <Globe size={11} className="text-slate-300" />{q.ip_address}
+                                    <span className="flex items-center gap-1.5 text-[11px] font-mono text-army-green/75">
+                                      <Globe size={11} className="text-army-green/75" />{q.ip_address}
                                     </span>
-                                  ) : <span className="text-[11px] text-slate-300">—</span>}
+                                  ) : <span className="text-[11px] text-army-green/75">—</span>}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   {local ? (
-                                    <span className="flex items-center gap-1.5 text-[11px] text-slate-600">
-                                      <MapPin size={11} className="text-army-gold/70" />{local}
+                                    <span className="flex items-center gap-1.5 text-[11px] text-army-charcoal/80">
+                                      <MapPin size={11} className="text-army-gold" />{local}
                                     </span>
-                                  ) : <span className="text-[11px] text-slate-300">—</span>}
+                                  ) : <span className="text-[11px] text-army-green/75">—</span>}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-right">
                                   {q.tokens_estimated > 0 ? (
-                                    <span className="inline-block text-[10px] font-mono font-bold text-army-green bg-army-green/5 border border-army-green/10 px-2 py-0.5 rounded-md">
+                                    <span className="inline-block text-[11px] font-mono font-bold text-army-green bg-army-green/5 border border-army-green/10 px-2 py-0.5">
                                       {q.tokens_estimated.toLocaleString('pt-BR')}
                                     </span>
-                                  ) : <span className="text-[11px] text-slate-300">—</span>}
+                                  ) : <span className="text-[11px] text-army-green/75">—</span>}
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="flex items-start gap-2">
-                                    <span className={`flex-shrink-0 mt-0.5 text-[8px] font-black px-1.5 py-0.5 rounded-full border uppercase ${q.user_type === 'admin' ? 'bg-army-green/10 text-army-green border-army-green/20' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
+                                    <span className={`flex-shrink-0 mt-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-full border uppercase ${q.user_type === 'admin' ? 'bg-army-green/10 text-army-green border-army-green/20' : 'bg-army-cream text-army-green/75 border-army-green/10'}`}>
                                       {q.user_type}
                                     </span>
-                                    <span className="text-[12px] text-slate-700 leading-snug line-clamp-2" title={q.query_text}>{q.query_text}</span>
+                                    <span className="text-xs text-army-charcoal/80 leading-snug line-clamp-2" title={q.query_text}>{q.query_text}</span>
                                   </div>
                                 </td>
                               </tr>
@@ -561,40 +535,42 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
         <div className="max-w-7xl mx-auto space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Gestão de Estrutura */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div className="bg-white p-6 border border-army-green/10">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-sm font-black text-army-green uppercase tracking-widest flex items-center gap-2">
+                        <h3 className="font-cormorant font-semibold text-xl text-army-green flex items-center gap-2">
                         <FolderPlus size={18} /> Estrutura de Pastas
                         </h3>
                     </div>
                     
                     <div className="flex gap-2 mb-8">
                     <input 
-                        className="flex-1 bg-slate-50 border border-slate-200 p-2.5 rounded-lg text-sm"
+                        className="flex-1 bg-army-cream border border-army-green/10 p-2.5 text-sm"
                         placeholder="Nova Categoria (ex: Portarias)"
+                        aria-label="Nome da nova categoria"
                         value={newCatName}
                         onChange={e => setNewCatName(e.target.value)}
                     />
-                    <button onClick={handleAddCategory} className="bg-army-green text-white px-4 rounded-lg font-bold text-xs">Criar</button>
+                    <button onClick={handleAddCategory} className="bg-army-green text-white px-4 font-bold text-xs">Criar</button>
                     </div>
                     <div className="space-y-4 max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
                     {categories.map(cat => (
                         <div 
                             key={cat.id} 
-                            className="border transition-all rounded-xl p-4 bg-slate-50 border-slate-100 hover:border-slate-300"
+                            className="border transition-all p-4 bg-army-cream border-army-green/10 hover:border-army-green/25"
                         >
                         <div className="flex justify-between items-center mb-4">
                             <div className="flex items-center gap-2">
-                                <Folder size={16} className="text-slate-400" />
-                                <span className="font-bold text-sm uppercase text-slate-600">{cat.name}</span>
-                                <span className="bg-army-green/10 text-army-green text-[9px] font-black px-1.5 py-0.5 rounded-full border border-army-green/20">
+                                <Folder size={16} className="text-army-green/75" />
+                                <span className="font-bold text-sm uppercase text-army-charcoal/80">{cat.name}</span>
+                                <span className="bg-army-green/10 text-army-green text-[11px] font-semibold px-1.5 py-0.5 rounded-full border border-army-green/20">
                                     {getDocCountForCat(cat.id)}
                                 </span>
                             </div>
                             <button 
                                 onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat.id); }} 
-                                className="text-slate-300 hover:text-red-600 transition-colors" 
+                                className="text-army-green/75 hover:text-red-700 transition-colors" 
                                 title="Excluir Categoria"
+                                aria-label={`Excluir categoria ${cat.name}`}
                             >
                                 <Trash2 size={16}/>
                             </button>
@@ -603,16 +579,18 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                             {subcategories.filter(s => s.category_id === cat.id).map(sub => (
                             <div 
                                 key={sub.id} 
-                                className="flex justify-between items-center p-2 rounded-lg border text-xs bg-white border-slate-100 text-slate-600 hover:border-army-gold"
+                                className="flex justify-between items-center p-2 border text-xs bg-white border-army-green/10 text-army-charcoal/80 hover:border-army-gold"
                             >
                                 <div className="flex items-center gap-2">
-                                    <ChevronRight size={12} className="text-slate-300" />
+                                    <ChevronRight size={12} className="text-army-green/75" />
                                     <span className="font-medium">{sub.name}</span>
-                                    <span className="text-[9px] font-bold text-slate-400">({getDocCountForSub(sub.id)})</span>
+                                    <span className="text-[11px] font-bold text-army-green/75">({getDocCountForSub(sub.id)})</span>
                                 </div>
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); handleDeleteSubcategory(sub.id); }} 
-                                    className="text-slate-300 hover:text-red-400 transition-colors"
+                                    className="text-army-green/75 hover:text-red-700 transition-colors"
+                                    title="Excluir Subcategoria"
+                                    aria-label={`Excluir subcategoria ${sub.name}`}
                                 >
                                     <Trash size={14}/>
                                 </button>
@@ -620,12 +598,13 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                             ))}
                             <div className="flex gap-2 pt-2">
                                 <input 
-                                    className="flex-1 text-[11px] p-2 border rounded-md outline-none focus:border-army-green"
+                                    className="flex-1 text-[11px] p-2 border outline-none focus:border-army-green"
                                     placeholder="Nova Subcategoria..."
+                                    aria-label={`Nova subcategoria em ${cat.name}`}
                                     value={newSubNames[cat.id] || ''}
                                     onChange={e => setNewSubNames({...newSubNames, [cat.id]: e.target.value})}
                                 />
-                                <button onClick={() => handleAddSubcategory(cat.id)} className="bg-army-gold text-white px-3 py-1 rounded-md text-[10px] font-black hover:bg-yellow-600 transition-colors">Add</button>
+                                <button onClick={() => handleAddSubcategory(cat.id)} className="bg-army-gold text-white px-3 py-1 text-[11px] font-semibold hover:bg-army-gold-deep transition-colors">Add</button>
                             </div>
                         </div>
                         </div>
@@ -635,81 +614,81 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
 
                 {/* Upload e Estatísticas */}
                 <div className="space-y-8">
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                    <h3 className="text-sm font-black text-army-green uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <div className="bg-white p-6 border border-army-green/10">
+                    <h3 className="font-cormorant font-semibold text-xl text-army-green mb-6 flex items-center gap-2">
                         <Upload size={18} /> Upload de Acervo
                     </h3>
                     <div className="space-y-4">
                         <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase">Categoria de Destino</label>
-                        <select className="w-full p-2.5 bg-slate-50 border rounded-lg text-sm" value={uploadCatId} onChange={e => setUploadCatId(e.target.value)}>
+                        <label htmlFor="up-cat" className="text-[11px] font-semibold text-army-green/75 uppercase">Categoria de Destino</label>
+                        <select id="up-cat" className="w-full p-2.5 bg-army-cream border text-sm" value={uploadCatId} onChange={e => setUploadCatId(e.target.value)}>
                             <option value="">Selecione Categoria...</option>
                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                         </div>
                         
                         <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase">Subcategoria (Opcional)</label>
-                        <select className="w-full p-2.5 bg-slate-50 border rounded-lg text-sm" value={uploadSubId} onChange={e => setUploadSubId(e.target.value)} disabled={!uploadCatId}>
+                        <label htmlFor="up-sub" className="text-[11px] font-semibold text-army-green/75 uppercase">Subcategoria (Opcional)</label>
+                        <select id="up-sub" className="w-full p-2.5 bg-army-cream border text-sm" value={uploadSubId} onChange={e => setUploadSubId(e.target.value)} disabled={!uploadCatId}>
                             <option value="">(Raiz da Categoria)</option>
                             {subcategories.filter(s => s.category_id === uploadCatId).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                         </div>
 
                         <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase">Arquivos (PDF preferencialmente)</label>
-                        <input type="file" multiple onChange={e => setUploadFiles(Array.from(e.target.files || []))} className="w-full text-xs p-2 bg-slate-50 border border-dashed border-slate-200 rounded-lg" />
+                        <label htmlFor="up-files" className="text-[11px] font-semibold text-army-green/75 uppercase">Arquivos (PDF preferencialmente)</label>
+                        <input id="up-files" type="file" multiple onChange={e => setUploadFiles(Array.from(e.target.files || []))} className="w-full text-xs p-2 bg-army-cream border border-dashed border-army-green/10" />
                         </div>
 
                         {isUploading && (
                         <div className="space-y-2">
-                            <div className="flex justify-between text-[10px] font-bold text-army-green">
+                            <div className="flex justify-between text-[11px] font-bold text-army-green">
                             <span>Processando arquivos...</span>
                             <span>{uploadProgress}%</span>
                             </div>
-                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                            <div className="w-full bg-army-cream h-2 rounded-full overflow-hidden">
                             <div className="bg-army-green h-full transition-all duration-300" style={{width: `${uploadProgress}%`}}></div>
                             </div>
                         </div>
                         )}
                         
-                        <button onClick={handleUpload} disabled={isUploading} className="w-full bg-army-green text-white py-4 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 hover:bg-green-900 transition-all disabled:opacity-50">
+                        <button onClick={handleUpload} disabled={isUploading} className="w-full bg-army-green text-white py-4 font-bold flex items-center justify-center gap-2 hover:bg-army-mid transition-all disabled:opacity-50">
                         <Database size={18} /> {isUploading ? 'Realizando Upload...' : 'Iniciar Upload em Lote'}
                         </button>
                     </div>
                     </div>
 
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Estatísticas do Banco de Dados</h3>
+                    <div className="bg-white p-6 border border-army-green/10">
+                    <h3 className="text-[11px] font-semibold text-army-green/75 uppercase tracking-widest mb-4">Estatísticas do Banco de Dados</h3>
                     <div className="grid grid-cols-2 gap-4 text-center">
-                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                            <span className="text-2xl font-black text-army-green">{documents.length}</span>
-                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Arquivos Registrados</p>
+                        <div className="bg-army-cream p-4 border border-army-green/10">
+                            <span className="text-2xl font-semibold text-army-green">{documents.length}</span>
+                            <p className="text-[11px] text-army-green/75 font-bold uppercase tracking-tighter">Arquivos Registrados</p>
                         </div>
-                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                            <span className="text-2xl font-black text-army-gold">{formatSize(documents.reduce((a, b) => a + b.size, 0))}</span>
-                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Armazenamento Total</p>
+                        <div className="bg-army-cream p-4 border border-army-green/10">
+                            <span className="text-2xl font-semibold text-army-gold">{formatSize(documents.reduce((a, b) => a + b.size, 0))}</span>
+                            <p className="text-[11px] text-army-green/75 font-bold uppercase tracking-tighter">Armazenamento Total</p>
                         </div>
                     </div>
-                    <div className="mt-4 pt-4 border-t border-slate-100">
+                    <div className="mt-4 pt-4 border-t border-army-green/10">
                         <button
                             onClick={handleClearCache}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-slate-500 bg-slate-50 hover:bg-red-50 hover:text-red-600 border border-slate-200 transition-all"
+                            className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold text-army-green/75 bg-army-cream hover:bg-red-50 hover:text-red-700 border border-army-green/10 transition-all"
                             title="Remove o texto cacheado dos PDFs (use após substituir documentos)"
                         >
                             <Trash2 size={14} /> Limpar cache de PDFs
                         </button>
                         {cacheMsg && (
-                            <p className="text-[10px] text-army-green font-bold text-center mt-2">{cacheMsg}</p>
+                            <p className="text-[11px] text-army-green font-bold text-center mt-2">{cacheMsg}</p>
                         )}
                     </div>
-                    <div className="mt-4 pt-4 border-t border-slate-100">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Texto para a IA</p>
+                    <div className="mt-4 pt-4 border-t border-army-green/10">
+                        <p className="text-[11px] font-semibold text-army-green/75 uppercase tracking-widest mb-2">Texto para a IA</p>
                         {textStatusError ? (
-                            <p className="text-[10px] text-red-600 font-bold">{textStatusError}</p>
+                            <p className="text-[11px] text-red-700 font-bold">{textStatusError}</p>
                         ) : (
                             <>
-                                <p className="text-[11px] text-slate-500 mb-3">
+                                <p className="text-[11px] text-army-green/75 mb-3">
                                     {pendingPdfs.length > 0
                                         ? `${pendingPdfs.length} PDF(s) sem texto indexado. Indexe para que entrem inteiros nas consultas.`
                                         : 'Todos os PDFs têm texto indexado.'}
@@ -717,7 +696,7 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                                 <button
                                     onClick={handleIndexPending}
                                     disabled={!!bulkIndex || pendingPdfs.length === 0}
-                                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white bg-army-green hover:bg-green-900 transition-all disabled:opacity-50"
+                                    className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold text-white bg-army-green hover:bg-army-mid transition-all disabled:opacity-50"
                                 >
                                     <RefreshCw size={14} className={bulkIndex ? 'animate-spin' : ''} />
                                     {bulkIndex ? `Indexando ${bulkIndex.done}/${bulkIndex.total}...` : `Indexar pendentes (${pendingPdfs.length})`}
@@ -730,17 +709,17 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
             </div>
 
             {/* SEÇÃO DE GERENCIAMENTO DE ARQUIVOS */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/50">
+            <div className="bg-white border border-army-green/10 overflow-hidden">
+                <div className="p-6 border-b border-army-green/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-army-cream/50">
                     <div className="flex flex-col">
-                        <h3 className="text-sm font-black text-army-green uppercase tracking-widest flex items-center gap-2">
+                        <h3 className="font-cormorant font-semibold text-xl text-army-green flex items-center gap-2">
                             <Files size={18} /> Gerenciamento de Acervo Digital
                         </h3>
                         <div className="flex items-center gap-2 mt-1.5">
-                            <span className="text-[10px] font-black text-army-gold bg-army-green px-2 py-0.5 rounded-full uppercase tracking-widest">
+                            <span className="text-[11px] font-semibold text-army-gold-light bg-army-green px-2 py-0.5 rounded-full uppercase tracking-widest">
                                 Pasta: Todo o Acervo
                             </span>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase">
+                            <span className="text-[11px] font-bold text-army-green/75 uppercase">
                                 ({filteredDocuments.length} resultados)
                             </span>
                         </div>
@@ -749,17 +728,18 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                         <input 
                             type="text"
                             placeholder="Buscar no acervo..."
-                            className="w-full bg-white border border-slate-200 py-3 pl-10 pr-4 rounded-xl text-xs outline-none focus:ring-4 focus:ring-army-green/5 focus:border-army-green transition-all"
+                            aria-label="Buscar no acervo"
+                            className="w-full bg-white border border-army-green/10 py-3 pl-10 pr-4 text-xs outline-none focus:border-army-green transition-all"
                             value={docSearch}
                             onChange={e => setDocSearch(e.target.value)}
                         />
-                        <Search className="absolute left-3.5 top-3.5 text-slate-400" size={16} />
+                        <Search className="absolute left-3.5 top-3.5 text-army-green/75" size={16} />
                     </div>
                 </div>
                 
                 <div className="overflow-x-auto custom-scrollbar max-h-[600px]">
                     <table className="w-full text-left border-collapse table-fixed">
-                        <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 sticky top-0 z-10">
+                        <thead className="bg-army-cream text-[11px] font-semibold text-army-green/75 uppercase tracking-widest border-b border-army-green/10 sticky top-0 z-10">
                             <tr>
                                 <th className="px-6 py-4 w-1/3">Arquivo</th>
                                 <th className="px-6 py-4 w-1/4">Localização</th>
@@ -769,46 +749,46 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                                 <th className="px-6 py-4 w-28 text-center">Ações</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
+                        <tbody className="divide-y divide-army-green/[0.07]">
                             {filteredDocuments.length > 0 ? filteredDocuments.map(doc => {
                                 const cat = categories.find(c => c.id === doc.category_id);
                                 const sub = subcategories.find(s => s.id === doc.subcategory_id);
                                 return (
-                                    <tr key={doc.id} className="hover:bg-slate-50 transition-colors group">
+                                    <tr key={doc.id} className="hover:bg-army-cream transition-colors group">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3 overflow-hidden">
-                                                <div className="p-2 bg-slate-100 text-slate-400 rounded-lg group-hover:bg-army-green group-hover:text-white transition-colors flex-shrink-0">
+                                                <div className="p-2 bg-army-cream text-army-green/75 group-hover:bg-army-green group-hover:text-white transition-colors flex-shrink-0">
                                                     <FileText size={16} />
                                                 </div>
-                                                <span className="text-xs font-bold text-slate-800 truncate" title={doc.name}>{doc.name}</span>
+                                                <span className="text-xs font-bold text-army-charcoal truncate" title={doc.name}>{doc.name}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col min-w-0">
-                                                <span className="text-[10px] font-black text-army-green uppercase truncate">{cat?.name || '-'}</span>
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase italic truncate">{sub?.name || 'Diretório Raiz'}</span>
+                                                <span className="text-[11px] font-semibold text-army-green uppercase truncate">{cat?.name || '-'}</span>
+                                                <span className="text-[11px] font-bold text-army-green/75 uppercase italic truncate">{sub?.name || 'Diretório Raiz'}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className="text-[11px] font-mono text-slate-500">{formatSize(doc.size)}</span>
+                                            <span className="text-[11px] font-mono text-army-green/75">{formatSize(doc.size)}</span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                                            <div className="flex items-center gap-2 text-[11px] text-army-green/75">
                                                 <Clock size={12} />
                                                 {new Date(doc.created_at).toLocaleDateString('pt-BR')}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             {indexingIds.has(doc.id) ? (
-                                                <span className="text-[10px] font-bold text-army-gold uppercase">Indexando...</span>
+                                                <span className="text-[11px] font-bold text-army-gold-deep uppercase">Indexando...</span>
                                             ) : textStatus.get(doc.id) === 'gemini' ? (
-                                                <span className="text-[10px] font-bold text-army-green uppercase" title="PDF digitalizado, transcrito pela IA">Transcrito (IA)</span>
+                                                <span className="text-[11px] font-bold text-army-green uppercase" title="PDF digitalizado, transcrito pela IA">Transcrito (IA)</span>
                                             ) : textStatus.has(doc.id) ? (
-                                                <span className="text-[10px] font-bold text-army-green uppercase">Indexado</span>
+                                                <span className="text-[11px] font-bold text-army-green uppercase">Indexado</span>
                                             ) : doc.mime_type === 'application/pdf' ? (
-                                                <span className="text-[10px] font-bold text-red-500 uppercase">Pendente</span>
+                                                <span className="text-[11px] font-bold text-red-700 uppercase">Pendente</span>
                                             ) : (
-                                                <span className="text-[10px] text-slate-400">-</span>
+                                                <span className="text-[11px] text-army-green/75">-</span>
                                             )}
                                         </td>
                                         <td className="px-2 py-4">
@@ -817,16 +797,18 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                                                 <button
                                                     onClick={() => handleIndexDocument(doc)}
                                                     disabled={indexingIds.has(doc.id) || !!bulkIndex}
-                                                    className="p-2 text-slate-300 hover:text-army-green hover:bg-slate-100 rounded-lg transition-all disabled:opacity-40"
+                                                    className="p-2 text-army-green/75 hover:text-army-green hover:bg-army-cream transition-all disabled:opacity-40"
                                                     title={textStatus.has(doc.id) ? 'Reindexar o texto do documento' : 'Indexar o texto do documento'}
+                                                    aria-label={`${textStatus.has(doc.id) ? 'Reindexar' : 'Indexar'} ${doc.name}`}
                                                 >
                                                     <RefreshCw size={16} className={indexingIds.has(doc.id) ? 'animate-spin' : ''} />
                                                 </button>
                                             )}
                                             <button
                                                 onClick={() => handleDeleteDocument(doc)}
-                                                className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                className="p-2 text-army-green/75 hover:text-red-700 hover:bg-red-50 transition-all"
                                                 title="Excluir Arquivo Permanentemente"
+                                                aria-label={`Excluir ${doc.name}`}
                                             >
                                                 <Trash2 size={18} />
                                             </button>
@@ -836,7 +818,7 @@ const AndrecitoAdmin: React.FC<AndrecitoAdminProps> = ({ onBack, onLogout, onNav
                                 );
                             }) : (
                                 <tr>
-                                    <td colSpan={6}className="px-6 py-20 text-center text-slate-400 italic text-sm">
+                                    <td colSpan={6}className="px-6 py-20 text-center text-army-green/75 italic text-sm">
                                         <div className="flex flex-col items-center gap-3">
                                             <Database size={48} className="opacity-10" />
                                             <p>Nenhum documento encontrado.</p>

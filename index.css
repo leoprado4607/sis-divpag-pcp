@@ -6,11 +6,19 @@ body {
   background-color: #F5F2EA;
   margin: 0;
   padding: 0;
+  accent-color: #2E3D1A;
+  caret-color: #2E3D1A;
+}
+
+/* Seleção de texto na paleta do portal (dourado claro), não no azul do navegador. */
+::selection {
+  background: rgba(201, 168, 76, 0.35);
+  color: inherit;
 }
 
 /* Acessibilidade: respeita quem pede menos movimento (SO/navegador).
    Neutraliza animações e transições — inclusive as classes animate-* do
-   Tailwind e o shimmer/spinner — mantendo o conteúdo visível (sem ficar
+   Tailwind e o shimmer; o spinner vira pulsação (abaixo) — mantendo o conteúdo visível (sem ficar
    preso em opacity:0 de animações "forwards"). */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -21,6 +29,15 @@ body {
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+  /* O spinner é o único aviso de "carregando": em vez de parar a rotação
+     (e parecer travado), troca por uma pulsação lenta de opacidade. */
+  .animate-spin {
+    animation: reduced-pulse 1.6s ease-in-out infinite !important;
+  }
+}
+@keyframes reduced-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
 }
 
 /* Acessibilidade (WCAG 2.4.7): foco de teclado SEMPRE visível, inclusive onde o
@@ -37,7 +54,7 @@ body {
   height: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #EAE5D5; /* army-cream-dark */
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #A8832A;
@@ -51,8 +68,8 @@ body {
 .prose h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; color: #2E3D1A; }
 .prose h2 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #2E3D1A; }
 .prose h3 { font-size: 1.1rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.5rem; color: #2E3D1A; }
-.prose p { margin-bottom: 1rem; line-height: 1.6; color: #374151; }
+.prose p { margin-bottom: 1rem; line-height: 1.6; color: #1A1D12; }
 .prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
 .prose ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 1rem; }
-.prose blockquote { border-left: 4px solid #A8832A; padding-left: 1rem; font-style: italic; color: #4b5563; }
+.prose blockquote { border-left: 2px solid #A8832A; padding-left: 1rem; font-style: italic; color: #445526; }
 .prose strong { font-weight: 600; color: #2E3D1A; }

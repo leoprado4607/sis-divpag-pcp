@@ -5,6 +5,7 @@ import {
   ChevronRight, Briefcase, ChevronLeft
 } from 'lucide-react';
 import { setAdminToken } from '../../services/adminAuth';
+import { LOGO_URL } from '../../constants';
 
 interface AndrecitoLoginProps {
   onLogin: (role: 'admin' | 'guest') => void;
@@ -62,27 +63,28 @@ const AndrecitoLogin: React.FC<AndrecitoLoginProps> = ({ onLogin, onBack }) => {
           {/* Crest circle */}
           <div className="w-[68px] h-[68px] rounded-full bg-white/[0.07] border border-army-gold/35 flex items-center justify-center mb-7 transition-all hover:border-army-gold/70">
             <img
-              src="https://lh3.googleusercontent.com/d/1z58eVvaJZ55IAZ_ebEeLXzpPZCXO2fBU=s240"
-              referrerPolicy="no-referrer"
-              alt="Brasão DivPag"
+              src={LOGO_URL}
+              alt="Brasão da B Adm Gu Natal"
+              width={54}
+              height={54}
               className="w-[54px] h-[54px] object-contain drop-shadow-lg"
             />
           </div>
 
-          <p className="text-[9px] tracking-[0.2em] uppercase text-army-gold/75 font-medium mb-3 text-center">
+          <p className="text-[11px] tracking-[0.2em] uppercase text-army-gold-light font-medium mb-3 text-center">
             Divisão de Pagamento de Pessoal
           </p>
-          <h1 className="font-cormorant font-semibold text-[2.6rem] xl:text-5xl text-white text-center leading-[1.1] mb-10">
+          <h1 className="font-cormorant font-semibold text-4xl xl:text-5xl text-white text-center leading-[1.1] mb-10">
             Sistema de <span className="italic">Pesquisas</span>
           </h1>
 
           {/* Feature card */}
           <div className="w-full max-w-md border border-white/[0.1] bg-white/[0.04] p-7">
-            <div className="border-l-2 border-army-gold pl-4 mb-6">
-              <p className="text-[10px] tracking-[0.14em] uppercase text-army-gold/65 font-medium mb-1.5">
+            <div className="border-l border-army-gold pl-4 mb-6">
+              <p className="text-[11px] tracking-[0.14em] uppercase text-army-gold-light font-medium mb-1.5">
                 Plataforma Integrada
               </p>
-              <p className="text-sm text-white/50 leading-relaxed">
+              <p className="text-sm text-white/70 leading-relaxed">
                 Inteligência artificial aplicada à legislação militar.
               </p>
             </div>
@@ -96,7 +98,7 @@ const AndrecitoLogin: React.FC<AndrecitoLoginProps> = ({ onLogin, onBack }) => {
                   <div className="w-9 h-9 bg-white/[0.05] border border-white/[0.08] flex items-center justify-center">
                     <Icon size={16} className="text-army-gold" />
                   </div>
-                  <span className="text-[9px] font-medium tracking-[0.12em] uppercase text-white/35">{label}</span>
+                  <span className="text-[11px] font-medium tracking-[0.12em] uppercase text-white/70">{label}</span>
                 </div>
               ))}
             </div>
@@ -105,7 +107,7 @@ const AndrecitoLogin: React.FC<AndrecitoLoginProps> = ({ onLogin, onBack }) => {
 
         {/* Footer */}
         <div className="relative z-10 px-12 py-4 border-t border-white/[0.08]">
-          <p className="text-[10px] text-white/25 tracking-wide">
+          <p className="text-[11px] text-white/70 tracking-wide">
             © {new Date().getFullYear()} Divisão de Pagamento de Pessoal / B Adm Gu Natal
           </p>
         </div>
@@ -127,7 +129,7 @@ const AndrecitoLogin: React.FC<AndrecitoLoginProps> = ({ onLogin, onBack }) => {
         {/* Mobile back */}
         <button
           onClick={onBack}
-          className="lg:hidden absolute top-6 left-6 flex items-center gap-1.5 text-army-green/40 hover:text-army-green transition-colors text-[11px] font-medium tracking-[0.12em] uppercase"
+          className="lg:hidden absolute top-6 left-6 flex items-center gap-1.5 text-army-green/75 hover:text-army-green transition-colors text-[11px] font-medium tracking-[0.12em] uppercase"
         >
           <ArrowLeft size={13} /> Portal
         </button>
@@ -139,10 +141,10 @@ const AndrecitoLogin: React.FC<AndrecitoLoginProps> = ({ onLogin, onBack }) => {
 
             <div className="p-8">
               <div className="mb-7">
-                <p className="text-[9px] tracking-[0.18em] uppercase text-army-gold font-medium mb-2">
+                <p className="text-[11px] tracking-[0.18em] uppercase text-army-gold-deep font-medium mb-2">
                   {view === 'selection' ? 'Acesso ao Sistema' : 'Área Restrita'}
                 </p>
-                <h2 className="font-cormorant font-semibold text-[1.6rem] text-army-green leading-tight">
+                <h2 className="font-cormorant font-semibold text-2xl text-army-green leading-tight">
                   {view === 'selection' ? 'Bem-vindo' : 'Acesso Restrito'}
                 </h2>
               </div>
@@ -160,10 +162,10 @@ const AndrecitoLogin: React.FC<AndrecitoLoginProps> = ({ onLogin, onBack }) => {
                       </div>
                       <div className="text-left">
                         <span className="block font-medium text-army-green group-hover:text-white text-sm transition-colors">Consultas</span>
-                        <span className="block text-[11px] text-army-green/45 group-hover:text-white/55 transition-colors">Consulta Pública</span>
+                        <span className="block text-[11px] text-army-green/75 group-hover:text-white/70 transition-colors">Consulta Pública</span>
                       </div>
                     </div>
-                    <ChevronRight size={15} className="text-army-green/25 group-hover:text-white/50 transition-colors" />
+                    <ChevronRight size={15} className="text-army-green/75 group-hover:text-white/70 transition-colors" />
                   </button>
 
                   {/* Admin button */}
@@ -177,30 +179,34 @@ const AndrecitoLogin: React.FC<AndrecitoLoginProps> = ({ onLogin, onBack }) => {
                       </div>
                       <div className="text-left">
                         <span className="block font-medium text-army-charcoal group-hover:text-white text-sm transition-colors">Administrador</span>
-                        <span className="block text-[11px] text-army-charcoal/40 group-hover:text-white/55 transition-colors">Gestão do Sistema</span>
+                        <span className="block text-[11px] text-army-charcoal/70 group-hover:text-white/70 transition-colors">Gestão do Sistema</span>
                       </div>
                     </div>
-                    <ChevronRight size={15} className="text-army-gold/35 group-hover:text-white/50 transition-colors" />
+                    <ChevronRight size={15} className="text-army-gold group-hover:text-white/70 transition-colors" />
                   </button>
                 </div>
               ) : (
                 <form onSubmit={handleAdminLogin} className="space-y-4">
                   <div className="relative">
-                    <User className="absolute left-3.5 top-3.5 text-army-green/30" size={15} />
+                    <User className="absolute left-3.5 top-3.5 text-army-green/75" size={15} />
                     <input
                       type="text"
-                      className="w-full pl-10 pr-4 py-3 border border-army-green/20 bg-army-cream focus:border-army-green focus:bg-white outline-none transition-all text-sm text-army-charcoal placeholder-army-green/30"
+                      className="w-full pl-10 pr-4 py-3 border border-army-green/20 bg-army-cream focus:border-army-green focus:bg-white outline-none transition-all text-sm text-army-charcoal placeholder-army-green/75"
                       placeholder="Usuário"
+                      aria-label="Usuário"
+                      autoComplete="username"
                       value={username}
                       onChange={e => setUsername(e.target.value)}
                     />
                   </div>
                   <div className="relative">
-                    <Briefcase className="absolute left-3.5 top-3.5 text-army-green/30" size={15} />
+                    <Briefcase className="absolute left-3.5 top-3.5 text-army-green/75" size={15} />
                     <input
                       type="password"
-                      className="w-full pl-10 pr-4 py-3 border border-army-green/20 bg-army-cream focus:border-army-green focus:bg-white outline-none transition-all text-sm text-army-charcoal placeholder-army-green/30"
+                      className="w-full pl-10 pr-4 py-3 border border-army-green/20 bg-army-cream focus:border-army-green focus:bg-white outline-none transition-all text-sm text-army-charcoal placeholder-army-green/75"
                       placeholder="Senha"
+                      aria-label="Senha"
+                      autoComplete="current-password"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                     />
@@ -215,7 +221,7 @@ const AndrecitoLogin: React.FC<AndrecitoLoginProps> = ({ onLogin, onBack }) => {
                   <button
                     type="button"
                     onClick={() => setView('selection')}
-                    className="w-full flex items-center justify-center gap-1.5 text-army-green/35 hover:text-army-green text-[11px] transition-colors pt-1 uppercase font-medium tracking-wide"
+                    className="w-full flex items-center justify-center gap-1.5 text-army-green/75 hover:text-army-green text-[11px] transition-colors pt-1 uppercase font-medium tracking-wide"
                   >
                     <ChevronLeft size={13} /> Voltar
                   </button>

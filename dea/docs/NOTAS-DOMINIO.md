@@ -871,6 +871,15 @@ com a realidade: a execução agendada de 17/09 passou a marcar **09:07**, coere
 com o agendamento das 09:00. Se aparecer alguma entrada com hora adiantada em
 ~3h, é resquício anterior à correção.
 
+## Acessibilidade visual do painel (17/10/2026)
+
+Mudança só de aparência, pedida pelo usuário depois da auditoria `/impeccable audit`. Nenhuma regra de dados mudou.
+
+- **Contraste:** `--ink-3` passou de `#7C8269` (4,0:1 sobre branco) para `#676D55` (5,4:1 no branco e 4,8:1 no creme). O sobretítulo do topo subiu de 45% para 72% de branco (antes dava 3,7:1 sobre o verde).
+- **Tamanho mínimo:** nenhum texto funcional fica abaixo de 11px. Os rótulos dos filtros ("Segmento", "Ano", "Protocolo"…), o `.rotulo` e os rótulos do relatório saíram de 8,5–10px para 11px, e os tamanhos de `.63–.68rem` subiram para `.72rem`.
+- **Ponto do carimbo:** deixou de pulsar e saiu do verde-esmeralda para o dourado claro da paleta (`--dourado-c`). Ele acompanha o carimbo de data e não mede nada ao vivo.
+- **Sem mudança:** as listras do selo `.ausente` continuam. Elas significam "ausente" e não são decoração.
+
 ## Atualização — MANUAL pelo administrador (desde 21/09/2026)
 
 No site (sispagpesbadm.com) **não há mais agendamento**. O administrador entra

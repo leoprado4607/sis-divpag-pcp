@@ -338,7 +338,7 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
 
   if (status === 'verificando') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-[60vh] bg-army-cream flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-army-green animate-spin" aria-label="Carregando" />
       </div>
     );
@@ -346,19 +346,34 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
 
   if (status === 'login') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-8 max-w-md w-full border-t-8 border-army-green shadow-2xl">
-            <div className="text-center mb-8">
-              <div className="w-20 h-20 bg-army-green/5 text-army-green rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner"><Lock size={36} /></div>
-              <h3 className="text-2xl font-bold text-slate-800 font-montserrat">Acesso Restrito</h3>
-              <p className="text-xs text-slate-400 mt-1 uppercase font-bold tracking-wider">Exercícios Anteriores</p>
+      <div className="min-h-[calc(100vh-3rem)] bg-army-cream flex items-center justify-center p-4">
+        <div className="bg-white p-8 sm:p-10 max-w-md w-full border border-army-green/10 border-t-2 border-t-army-gold">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="p-3 bg-army-cream border border-army-green/10 flex-shrink-0"><Lock size={24} className="text-army-green" /></div>
+              <div className="min-w-0">
+                <h3 className="font-cormorant font-semibold text-3xl text-army-green leading-tight">Acesso Restrito</h3>
+                <p className="text-[13px] text-army-green/75">Exercícios Anteriores</p>
+              </div>
             </div>
             <div className="space-y-4">
-                <input type="password" aria-label="Senha de acesso" placeholder="Digite a credencial..." value={senha} onChange={e => setSenha(e.target.value)} autoFocus className="w-full border-2 border-slate-100 p-4 rounded-2xl mb-2 text-center text-lg focus:border-army-green outline-none transition-colors bg-slate-50" onKeyDown={e => e.key === 'Enter' && entrar()}/>
-                {erro && <p role="alert" className="text-center text-sm font-semibold text-red-600">{erro}</p>}
-                <div className="flex gap-3">
-                    <button onClick={onBack} className="flex-1 py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors uppercase text-xs tracking-widest">VOLTAR</button>
-                    <button onClick={entrar} disabled={enviando} className="flex-1 bg-army-green text-white py-4 rounded-2xl font-black shadow-lg hover:bg-green-900 transition-all uppercase text-xs tracking-widest disabled:opacity-60">{enviando ? 'VERIFICANDO...' : 'AUTENTICAR'}</button>
+                <div>
+                  <label htmlFor="dea-senha" className="block text-sm font-semibold text-army-green mb-1.5">Senha de acesso</label>
+                  <input
+                    id="dea-senha"
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="Digite a credencial..."
+                    value={senha}
+                    onChange={e => setSenha(e.target.value)}
+                    autoFocus
+                    className="w-full border border-army-green/15 bg-army-cream focus:bg-white focus:border-army-green px-4 py-3 text-base text-army-charcoal placeholder-army-green/75 outline-none transition-colors"
+                    onKeyDown={e => e.key === 'Enter' && entrar()}
+                  />
+                </div>
+                {erro && <p role="alert" className="text-sm font-semibold text-red-700">{erro}</p>}
+                <div className="flex gap-3 pt-2">
+                    <button type="button" onClick={onBack} className="flex-1 min-h-[44px] border border-army-green/15 text-army-green hover:border-army-green text-[13px] font-semibold transition-colors">Voltar</button>
+                    <button type="button" onClick={entrar} disabled={enviando} className="flex-1 min-h-[44px] bg-army-green hover:bg-army-mid text-white text-[13px] font-semibold transition-colors disabled:opacity-60">{enviando ? 'Verificando…' : 'Entrar'}</button>
                 </div>
             </div>
         </div>
@@ -367,34 +382,46 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[#faf9f5]">
-      <div className="bg-army-green text-white border-b-4 border-army-gold flex items-center justify-between px-3 py-1.5 shrink-0">
-        <button onClick={onBack} className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors text-sm font-semibold">
-          <ArrowLeft className="w-4 h-4 text-army-gold" /> Início
-        </button>
-        <div className="flex items-center gap-2">
-          {admin && (
-            <>
-              <span className="hidden sm:inline text-xs text-white/80" aria-live="polite">
+    <div className="h-screen flex flex-col bg-army-cream">
+      <div className="bg-army-green text-white border-b-2 border-army-gold shrink-0">
+        <div className="flex items-center justify-between gap-2 px-2 sm:px-3">
+          <button type="button" onClick={onBack} className="min-h-[44px] flex items-center gap-2 px-2 hover:bg-white/10 transition-colors text-sm font-semibold">
+            <ArrowLeft className="w-4 h-4 text-army-gold-light" /> Início
+          </button>
+          <div className="flex items-center gap-1 sm:gap-2">
+            {admin && (
+              <>
+                <span className="hidden sm:inline text-xs text-white/80" aria-live="polite">
                 {textoStatus}
                 {falhou && !msgAtualizacao && atual?.ultima?.url && (
-                  <> <a href={atual.ultima.url} target="_blank" rel="noopener noreferrer" className="underline text-army-gold">ver log</a></>
+                  <> <a href={atual.ultima.url} target="_blank" rel="noopener noreferrer" className="underline text-army-gold-light">ver log</a></>
                 )}
-              </span>
-              <button
-                onClick={atualizar}
-                disabled={rodando || atual?.configurado === false}
-                title="Baixa a planilha e regera o painel (apenas administrador)"
-                className="flex items-center gap-2 px-3 py-1 rounded-lg bg-army-gold text-army-green hover:brightness-110 transition text-sm font-bold disabled:opacity-60"
-              >
-                <RefreshCw className={`w-4 h-4 ${rodando ? 'animate-spin' : ''}`} /> {rodando ? 'Atualizando' : 'Atualizar'}
-              </button>
-            </>
-          )}
-          <button onClick={sair} className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors text-sm font-semibold">
-            <LogOut className="w-4 h-4 text-army-gold" /> Sair
-          </button>
+                </span>
+                <button
+                  type="button"
+                  onClick={atualizar}
+                  disabled={rodando || atual?.configurado === false}
+                  title="Baixa a planilha e regera o painel (apenas administrador)"
+                  className="min-h-[36px] my-1 flex items-center gap-2 px-3 bg-army-gold-light text-army-charcoal hover:bg-white transition-colors text-sm font-semibold disabled:opacity-60"
+                >
+                  <RefreshCw className={`w-4 h-4 ${rodando ? 'animate-spin' : ''}`} /> {rodando ? 'Atualizando' : 'Atualizar'}
+                </button>
+              </>
+            )}
+            <button type="button" onClick={sair} className="min-h-[44px] flex items-center gap-2 px-2 hover:bg-white/10 transition-colors text-sm font-semibold">
+              <LogOut className="w-4 h-4 text-army-gold-light" /> Sair
+            </button>
+          </div>
         </div>
+        {admin && (
+          // no celular o status da atualização desce para uma linha própria
+          <p className="sm:hidden px-4 pb-2 text-xs text-white/80" aria-hidden="true">
+            {textoStatus}
+                {falhou && !msgAtualizacao && atual?.ultima?.url && (
+                  <> <a href={atual.ultima.url} target="_blank" rel="noopener noreferrer" className="underline text-army-gold-light">ver log</a></>
+                )}
+          </p>
+        )}
       </div>
       <iframe
         key={versaoPainel}
@@ -405,20 +432,20 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
         referrerPolicy="no-referrer"
       />
       {pedido && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={fecharPedido}>
+        <div className="fixed inset-0 z-50 bg-army-charcoal/60 flex items-center justify-center p-4" onClick={fecharPedido}>
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="dea-pedido-titulo"
-            className="bg-white rounded-2xl w-full max-w-lg p-6 border-t-8 border-army-green shadow-2xl"
+            className="bg-white w-full max-w-lg p-6 border-t-2 border-army-gold shadow-2xl"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.key === 'Escape' && fecharPedido()}
           >
-            <h3 id="dea-pedido-titulo" className="text-lg font-bold text-slate-800">
+            <h3 id="dea-pedido-titulo" className="font-cormorant font-semibold text-2xl text-army-green leading-tight">
               {PEDIDOS[pedido.tipo].titulo}
             </h3>
             {pedido.tipo === 'lancar' || pedido.tipo === 'sippes' ? (
-              <dl className="mt-3 text-sm text-slate-700 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+              <dl className="mt-3 text-sm text-army-charcoal/80 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
                 <dt className="font-semibold">Nome</dt><dd>{pedido.grupo.nome || '—'}</dd>
                 {pedido.grupo.prec_cp && <><dt className="font-semibold">Prec-cp</dt><dd>{pedido.grupo.prec_cp}</dd></>}
                 <dt className="font-semibold">Protocolos</dt>
@@ -428,7 +455,7 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
                 </dd>
               </dl>
             ) : 'grupo' in pedido ? (
-              <dl className="mt-3 text-sm text-slate-700 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+              <dl className="mt-3 text-sm text-army-charcoal/80 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
                 <dt className="font-semibold">Nome</dt><dd>{pedido.grupo.nome || '—'}</dd>
                 <dt className="font-semibold">Prec-cp</dt><dd>{pedido.grupo.prec_cp}</dd>
                 <dt className="font-semibold">Ano · Nr BI</dt><dd>{pedido.grupo.ano} · {pedido.grupo.nr_bi}</dd>
@@ -442,7 +469,7 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
                 )}
               </dl>
             ) : (
-              <p className="mt-3 text-sm text-slate-700">
+              <p className="mt-3 text-sm text-army-charcoal/80">
                 {pedido.registro.nome} · Prec-cp {pedido.registro.prec_cp} · {pedido.registro.ano}<br />
                 {pedido.tipo === 'desfazer'
                   ? `Protocolos ${pedido.registro.protocolos.join(', ')} voltarão a aparecer nas abas de grupos.`
@@ -452,18 +479,18 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
               </p>
             )}
             {pedido.tipo === 'manter' && (
-              <p className="mt-3 text-xs text-slate-500">
+              <p className="mt-3 text-xs text-army-green/75">
                 Confirma que é pendência própria, sem relação com outro protocolo pago. Ele segue nas abas de pendência com o selo
                 "pendente confirmado" e sem o aviso de pago em outro BI.
               </p>
             )}
             {pedido.tipo === 'lancar' && (
               <>
-                <p className="mt-3 text-xs text-slate-500">
+                <p className="mt-3 text-xs text-army-green/75">
                   Confirma que o pagamento foi feito de fato. O protocolo sai de "Homologados para lançamento" e fica em
                   "Lançamentos registrados", onde pode ser desfeito.
                 </p>
-                <label className="block mt-4 text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="dea-mes-folha">
+                <label className="block mt-4 text-sm font-semibold text-army-green" htmlFor="dea-mes-folha">
                   Mês da folha de pagamento
                 </label>
                 <input
@@ -471,17 +498,17 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
                   type="month"
                   value={mesFolha}
                   onChange={(e) => setMesFolha(e.target.value)}
-                  className="mt-1 w-full border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-army-green outline-none"
+                  className="mt-1 w-full border border-army-green/15 p-2 text-sm focus:border-army-green outline-none"
                 />
               </>
             )}
             {pedido.tipo === 'sippes' && (
               <>
-                <p className="mt-3 text-xs text-slate-500">
+                <p className="mt-3 text-xs text-army-green/75">
                   Registra que o pagamento foi lançado no SIPPES. O protocolo continua em "Homologados para lançamento" até
                   o registro do mês da folha, depois do pagamento de fato.
                 </p>
-                <label className="block mt-4 text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="dea-mes-ref">
+                <label className="block mt-4 text-sm font-semibold text-army-green" htmlFor="dea-mes-ref">
                   Mês/ano de referência do pagamento
                 </label>
                 <input
@@ -489,9 +516,9 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
                   type="month"
                   value={mesFolha}
                   onChange={(e) => setMesFolha(e.target.value)}
-                  className="mt-1 w-full border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-army-green outline-none"
+                  className="mt-1 w-full border border-army-green/15 p-2 text-sm focus:border-army-green outline-none"
                 />
-                <label className="block mt-3 text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="dea-operador">
+                <label className="block mt-3 text-sm font-semibold text-army-green" htmlFor="dea-operador">
                   Operador que realizou o registro
                 </label>
                 <input
@@ -502,13 +529,13 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
                   autoFocus
                   onChange={(e) => setOperador(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && confirmarPedido()}
-                  className="mt-1 w-full border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-army-green outline-none"
+                  className="mt-1 w-full border border-army-green/15 p-2 text-sm focus:border-army-green outline-none"
                 />
-                <p className="mt-1 text-right text-xs text-slate-400">{operador.length}/{OPERADOR_MAX}</p>
+                <p className="mt-1 text-right text-xs text-army-green/75">{operador.length}/{OPERADOR_MAX}</p>
               </>
             )}
             {pedido.tipo !== 'sippes' && (<>
-            <label className="block mt-4 text-xs font-bold uppercase tracking-wider text-slate-500" htmlFor="dea-motivo">
+            <label className="block mt-4 text-sm font-semibold text-army-green" htmlFor="dea-motivo">
               {pedido.tipo === 'lancar' ? 'Observação (opcional)' : `Motivo${'grupo' in pedido ? '' : ' (opcional)'}`}
             </label>
             <textarea
@@ -520,18 +547,18 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
               autoFocus={pedido.tipo !== 'lancar'}
               placeholder={pedido.tipo === 'resolver' ? 'ex.: crédito pago no protocolo 123456, em outro Nr BI'
                 : pedido.tipo === 'manter' ? 'ex.: dívida diferente da paga no protocolo 123456; aguardando novo protocolo' : ''}
-              className="mt-1 w-full border-2 border-slate-200 rounded-xl p-2 text-sm focus:border-army-green outline-none"
+              className="mt-1 w-full border border-army-green/15 p-2 text-sm focus:border-army-green outline-none"
             />
             </>)}
-            {erroAcao && <p role="alert" className="mt-3 text-sm font-semibold text-red-600">{erroAcao}</p>}
+            {erroAcao && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{erroAcao}</p>}
             <div className="mt-5 flex justify-end gap-3">
-              <button onClick={fecharPedido} disabled={enviandoAcao} className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700">
+              <button onClick={fecharPedido} disabled={enviandoAcao} className="px-4 py-2 text-sm font-bold text-army-green/75 hover:text-army-charcoal/80">
                 Cancelar
               </button>
               <button
                 onClick={confirmarPedido}
                 disabled={enviandoAcao}
-                className="px-4 py-2 rounded-xl bg-army-green text-white text-sm font-bold hover:bg-green-900 disabled:opacity-60"
+                className="px-4 py-2 bg-army-green text-white text-sm font-bold hover:bg-army-mid disabled:opacity-60"
               >
                 {enviandoAcao ? 'Enviando…' : PEDIDOS[pedido.tipo].botao}
               </button>

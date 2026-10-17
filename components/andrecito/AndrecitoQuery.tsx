@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, Send, FileText, CheckCircle2, AlertCircle, Printer, Download, BookOpen, ChevronDown, ChevronRight, CheckSquare, Square, Filter, X, ArrowLeft, Library, Settings, LogOut, Bot, Folder, RefreshCw, Trash2, Cpu, Info, Lock, Users, ShieldCheck } from 'lucide-react';
 import { andrecitoService } from '../../services/andrecitoService';
+import AndrecitoHeader from './AndrecitoHeader';
 import { AndrecitoCategory, AndrecitoSubcategory, AndrecitoDocument } from '../../types';
 import { ViewState, UserRole } from './AndrecitoApp';
 import ReactMarkdown from 'react-markdown';
@@ -99,6 +100,8 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
     try { sessionStorage.setItem('andrecito_intro_seen', '1'); } catch { /* sessão sem storage */ }
   }, []);
   const [expandedCat, setExpandedCat] = useState<string>('');
+  // No celular o acervo vira gaveta sobre a consulta (no desktop é a coluna fixa).
+  const [acervoAberto, setAcervoAberto] = useState(false);
   const [estimatedDocCount, setEstimatedDocCount] = useState(0);
   const [query, setQuery] = useState('');
   const [lastQuery, setLastQuery] = useState('');
@@ -400,18 +403,20 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
     return (
     <div key={cat.id} className="mb-1.5">
       <button
+        type="button"
+        aria-expanded={expandedCat === cat.id}
         onClick={() => {
           setExpandedCat(expandedCat === cat.id ? '' : cat.id);
           if (!subcategoriesMap[cat.id]) andrecitoService.getSubcategories(cat.id).then(subs => setSubcategoriesMap(p => ({ ...p, [cat.id]: subs })));
         }}
-        className={`w-full flex items-center justify-between py-2 text-sm transition-colors ${expandedCat === cat.id ? 'text-army-green font-semibold' : 'text-army-green/60 hover:text-army-green font-medium'}`}
+        className={`w-full min-h-[40px] flex items-center justify-between py-2 text-sm transition-colors ${expandedCat === cat.id ? 'text-army-green font-semibold' : 'text-army-green/75 hover:text-army-green font-medium'}`}
       >
-        <span className="flex items-center gap-2">
-          <Folder size={13} className={expandedCat === cat.id ? 'text-army-gold' : 'text-army-green/30'} />
-          {cat.name}
+        <span className="flex items-center gap-2 min-w-0 text-left">
+          <Folder size={13} className={`flex-shrink-0 ${expandedCat === cat.id ? 'text-army-gold' : 'text-army-green/75'}`} />
+          <span className="truncate">{cat.name}</span>
           {lockedCount > 0 && (
             <span
-              className="flex items-center gap-0.5 text-[8.5px] font-bold text-army-gold bg-army-gold/10 px-1.5 py-0.5 rounded-full"
+              className="flex items-center gap-0.5 text-[11px] font-bold text-army-gold-deep bg-army-gold/10 px-1.5 py-0.5 rounded-full"
               title={`${lockedCount} subcategoria(s) selecionada(s) pelo público-alvo`}
             >
               <Lock size={8} /> {lockedCount}
@@ -429,6 +434,8 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
             return (
               <button
                 key={sub.id}
+                type="button"
+                aria-pressed={isChecked}
                 disabled={isLocked}
                 onClick={() => {
                   // Itens travados pelo público-alvo não podem ser desmarcados.
@@ -436,13 +443,13 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
                   setSelectedSubcats(p => p.includes(sub.id) ? p.filter(x => x !== sub.id) : [...p, sub.id]);
                 }}
                 title={isLocked ? 'Selecionado automaticamente pelo público-alvo (não editável)' : undefined}
-                className={`w-full flex items-center gap-2 py-1.5 text-xs transition-all ${isLocked ? 'text-army-green font-semibold cursor-not-allowed' : isManual ? 'text-army-green font-semibold' : 'text-army-green/50 hover:text-army-green'}`}
+                className={`w-full flex items-center gap-2 py-1.5 text-xs transition-all ${isLocked ? 'text-army-green font-semibold cursor-not-allowed' : isManual ? 'text-army-green font-semibold' : 'text-army-green/75 hover:text-army-green'}`}
               >
                 {isChecked
                   ? <CheckSquare size={13} className="text-army-gold flex-shrink-0" />
-                  : <Square size={13} className="text-army-green/20 flex-shrink-0" />}
+                  : <Square size={13} className="text-army-green/75 flex-shrink-0" />}
                 <span className="text-left flex-1">{sub.name}</span>
-                {isLocked && <Lock size={10} className="text-army-gold/60 flex-shrink-0" />}
+                {isLocked && <Lock size={10} className="text-army-gold flex-shrink-0" />}
               </button>
             );
           })}
@@ -477,7 +484,7 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
         em: ({ children }) => <em className="italic text-army-charcoal/70">{children}</em>,
         code: ({ children }) => <code className="bg-army-cream text-army-green/90 text-xs px-1.5 py-0.5 rounded font-mono border border-army-green/10">{children}</code>,
         blockquote: ({ children }) => (
-          <blockquote className="border-l-4 border-army-gold/60 pl-4 py-1 my-4 bg-army-cream/60 text-army-charcoal/70 italic rounded-r">
+          <blockquote className="border-l-2 border-army-gold pl-4 py-1 my-4 bg-army-cream/60 text-army-charcoal/80 italic">
             {children}
           </blockquote>
         ),
@@ -503,64 +510,25 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
   return (
     <div className="flex flex-col h-screen bg-army-cream overflow-hidden">
 
-      {/* ── Header ── */}
-      <header className="bg-army-green text-white sticky top-0 z-50 border-b-2 border-army-gold no-print">
-        <div className="max-w-[1600px] mx-auto px-5 sm:px-8 h-16 flex items-center gap-4">
+      <AndrecitoHeader onBack={onBack} onLogout={onLogout} onNavigate={onNavigate} currentView={currentView} userRole={userRole} />
 
-          {/* Back + system name */}
-          <div className="flex items-center gap-3.5 flex-shrink-0">
+      <div className="flex flex-1 overflow-hidden relative">
+
+        {/* ── Sidebar (gaveta no celular) ── */}
+        <aside
+          id="acervo-consulta"
+          aria-label="Acervo de documentos"
+          className={`${acervoAberto ? 'flex' : 'hidden'} md:flex absolute inset-0 md:static w-full md:w-74 bg-white border-r border-army-green/10 flex-col md:h-9/10 z-30 no-print`}
+        >
+          <div className="px-5 pt-5 pb-3 border-b border-army-green/8 flex items-center justify-between gap-3">
+            <h2 className="font-cormorant font-semibold text-xl text-army-green leading-tight">Acervo de documentos</h2>
             <button
-              onClick={onBack}
-              className="flex items-center gap-1.5 text-white/40 hover:text-army-gold transition-colors text-[11px] font-medium tracking-[0.14em] uppercase"
+              type="button"
+              onClick={() => setAcervoAberto(false)}
+              className="md:hidden flex-shrink-0 min-h-[44px] px-3 bg-army-green text-white text-[13px] font-semibold"
             >
-              <ArrowLeft size={13} />
-              <span className="hidden sm:inline">Portal</span>
+              Voltar à consulta
             </button>
-            <div className="h-4 w-px bg-white/15" />
-            <Bot size={20} className="text-army-gold/60 flex-shrink-0" />
-            <div className="leading-tight min-w-0">
-              <p className="text-[8.5px] tracking-[0.16em] uppercase text-white/35 font-medium">Sistema de Pesquisas</p>
-              <p className="font-cormorant font-semibold text-[1rem] text-white leading-none tracking-tight">ANDRECITO</p>
-            </div>
-          </div>
-
-          {/* Nav pills */}
-          <div className="flex-1 flex items-center justify-center">
-            <div className="hidden sm:flex items-center gap-0.5 bg-white/[0.06] p-1">
-              {([
-                { id: 'query' as ViewState, icon: Search, label: 'Pesquisa' },
-                { id: 'library' as ViewState, icon: Library, label: 'Biblioteca' },
-                ...(userRole === 'admin' ? [{ id: 'admin' as ViewState, icon: Settings, label: 'Admin' }] : []),
-              ]).map(({ id, icon: Icon, label }) => (
-                <button
-                  key={id}
-                  onClick={() => onNavigate(id)}
-                  className={`px-3.5 py-1.5 text-[11px] font-medium tracking-wide flex items-center gap-1.5 transition-all ${currentView === id ? 'bg-white text-army-green' : 'text-white/45 hover:text-white'}`}
-                >
-                  <Icon size={12} /> {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Logout */}
-          <button
-            onClick={onLogout}
-            className="flex-shrink-0 flex items-center gap-1.5 text-white/35 hover:text-red-300 transition-colors text-[11px] font-medium tracking-wide uppercase"
-          >
-            <LogOut size={13} />
-            <span className="hidden sm:inline">Sair</span>
-          </button>
-        </div>
-      </header>
-
-      <div className="flex flex-1 overflow-hidden">
-
-        {/* ── Sidebar ── */}
-        <aside className="w-74 bg-white border-r border-army-green/10 flex flex-col h-9/10 z-10 no-print">
-          <div className="px-5 pt-6 pb-2 border-b border-army-green/8">
-            <p className="text-[9px] font-semibold tracking-[0.2em] uppercase text-army-gold mb-0.5">Acervo</p>
-            <h3 className="font-cormorant font-semibold text-[1.1rem] text-army-green leading-tight">Documentos</h3>
           </div>
 
           <div className="p-5 overflow-y-auto flex-1 custom-scrollbar">
@@ -570,9 +538,9 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
           {/* Doc count - Footer */}
           <div className="h-20 flex flex-col items-center justify-center px-5 py-3 border-t-2 border-army-gold/30 bg-army-cream/50">
             <div className="w-full flex flex-col items-center justify-center text-center gap-1">
-              <p className="text-[8px] tracking-[0.14em] uppercase text-army-green/40 font-medium">Escopo de Análise</p>
+              <p className="text-[11px] tracking-[0.14em] uppercase text-army-green/75 font-medium">Escopo de Análise</p>
               <p className="font-cormorant font-semibold text-2xl text-army-green leading-none">{estimatedDocCount}</p>
-              <p className="text-xs font-sans font-normal text-army-green/50">arquivos</p>
+              <p className="text-xs font-sans font-normal text-army-green/75">arquivos</p>
             </div>
           </div>
         </aside>
@@ -581,19 +549,31 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
         <main className="flex-1 flex flex-col bg-army-cream/40 overflow-hidden relative">
 
           {/* ── Input bar ── */}
-          <div className="px-5 md:px-10 py-5 bg-white border-b border-army-green/10 shadow-[0_4px_24px_rgba(46,61,26,0.06)] relative z-10 no-print">
+          <div className="px-4 md:px-10 py-4 md:py-5 bg-white border-b border-army-green/10 relative z-10 no-print">
+            <button
+              type="button"
+              onClick={() => setAcervoAberto(true)}
+              aria-controls="acervo-consulta"
+              aria-expanded={acervoAberto}
+              className="md:hidden w-full mb-3 min-h-[44px] flex items-center justify-between px-4 border border-army-green/15 bg-army-cream text-[13px] font-semibold text-army-green"
+            >
+              <span className="flex items-center gap-2"><Folder size={15} className="text-army-gold-deep" /> Acervo e categorias</span>
+              <span className="text-army-green/75 font-medium tabular-nums">{estimatedDocCount} arquivos</span>
+            </button>
             <div className="max-w-4xl mx-auto flex items-center gap-3">
               <button
                 onClick={() => { setQuery(''); setResponse(''); }}
-                className="flex-shrink-0 w-11 h-11 border border-army-green/15 hover:border-red-200 hover:bg-red-50 text-army-green/30 hover:text-red-400 transition-all flex items-center justify-center"
+                className="flex-shrink-0 w-11 h-11 border border-army-green/15 hover:border-red-200 hover:bg-red-50 text-army-green/75 hover:text-red-400 transition-all flex items-center justify-center"
                 title="Limpar"
+                aria-label="Limpar consulta"
               >
                 <Trash2 size={16} />
               </button>
               <div className="flex-1 relative">
                 <input
                   type="text"
-                  className="w-full bg-army-cream border border-army-green/15 focus:border-army-green focus:bg-white py-3.5 pl-5 pr-20 outline-none text-sm text-army-charcoal placeholder-army-green/30 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full bg-army-cream border border-army-green/15 focus:border-army-green focus:bg-white py-3.5 pl-5 pr-20 outline-none text-sm text-army-charcoal placeholder-army-green/75 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  aria-label="Sua pergunta"
                   placeholder={canSearch ? 'Sobre o que deseja pesquisar hoje?' : 'Selecione ao menos um público-alvo abaixo para liberar a pesquisa…'}
                   value={query}
                   onChange={e => setQuery(e.target.value)}
@@ -603,6 +583,7 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
                 <button
                   onClick={handleSearch}
                   disabled={loading || !canSearch || !query.trim()}
+                  aria-label="Pesquisar"
                   className="absolute right-0 top-0 bottom-0 bg-army-green hover:bg-army-mid text-white px-5 font-medium transition-colors disabled:opacity-30 flex items-center justify-center"
                 >
                   <Send size={17} />
@@ -614,10 +595,10 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
             <div className="max-w-4xl mx-auto mt-4">
               <div className="flex items-center gap-2 mb-2.5">
                 <Users size={13} className="text-army-gold" />
-                <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-army-green/60">
+                <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-army-green/75">
                   Público-alvo da consulta
                 </p>
-                <span className="text-[9px] font-bold text-army-gold uppercase tracking-wide">· obrigatório</span>
+                <span className="text-[11px] font-bold text-army-gold-deep uppercase tracking-wide">· obrigatório</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {AUDIENCE_OPTIONS.map(opt => {
@@ -628,19 +609,19 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
                       onClick={() => toggleAudience(opt.key)}
                       aria-pressed={active}
                       className={`flex items-center gap-2 px-3 py-2.5 border text-xs font-medium transition-all ${active
-                        ? 'border-army-green bg-army-green/[0.06] text-army-green shadow-sm'
-                        : 'border-army-green/15 bg-army-cream/40 text-army-green/50 hover:border-army-green/40 hover:text-army-green'}`}
+                        ? 'border-army-green bg-army-green/[0.06] text-army-green'
+                        : 'border-army-green/15 bg-army-cream/40 text-army-green/75 hover:border-army-green/40 hover:text-army-green'}`}
                     >
                       {active
                         ? <CheckSquare size={15} className="text-army-gold flex-shrink-0" />
-                        : <Square size={15} className="text-army-green/25 flex-shrink-0" />}
+                        : <Square size={15} className="text-army-green/75 flex-shrink-0" />}
                       <span className="text-left leading-tight">{opt.label}</span>
                     </button>
                   );
                 })}
               </div>
               {!canSearch && (
-                <p className="flex items-center gap-1.5 text-[11px] text-army-green/45 mt-2.5">
+                <p className="flex items-center gap-1.5 text-[11px] text-army-green/75 mt-2.5">
                   <Info size={12} className="text-army-gold flex-shrink-0" />
                   Escolha pelo menos um público-alvo. As pastas correspondentes serão selecionadas automaticamente; o refinamento por categorias é opcional.
                 </p>
@@ -649,36 +630,40 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
           </div>
 
           {/* Results area */}
-          <div className="flex-1 overflow-y-auto p-5 md:p-10 custom-scrollbar">
+          <p className="sr-only" role="status" aria-live="polite">
+            {loading ? processingStep || 'Processando a consulta…' : response ? 'Resposta pronta.' : ''}
+          </p>
+          <div className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar" aria-busy={loading}>
             {loading ? (
               <div className="h-full flex flex-col items-center justify-center gap-5">
                 <div className="relative">
-                  <RefreshCw className="w-14 h-14 text-army-gold/70 animate-spin" />
+                  <RefreshCw className="w-14 h-14 text-army-gold animate-spin" />
                   <Bot className="absolute inset-0 m-auto text-army-green" size={22} />
                 </div>
                 <div className="text-center">
                   <h3 className="font-cormorant font-semibold text-xl text-army-green">{processingStep}</h3>
-                  <p className="text-xs text-army-green/40 mt-1.5 font-medium">Aguarde, a IA está processando seu pedido.</p>
+                  <p className="text-xs text-army-green/75 mt-1.5 font-medium">Aguarde, a IA está processando seu pedido.</p>
                 </div>
               </div>
             ) : response ? (
-              <div className="max-w-4xl mx-auto bg-white border-l-4 border-army-gold shadow-[0_4px_24px_rgba(46,61,26,0.08)] print:border-none print:shadow-none print:max-w-full">
+              <div className="max-w-4xl mx-auto bg-white border border-army-green/10 border-t-2 border-t-army-gold print:border-none print:shadow-none print:max-w-full">
                 {/* Response header */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-8 pt-7 pb-5 border-b border-army-green/8 gap-4 no-print">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-5 sm:px-8 pt-6 sm:pt-7 pb-5 border-b border-army-green/8 gap-4 no-print">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-army-green flex items-center justify-center flex-shrink-0">
                       <Bot size={16} className="text-white" />
                     </div>
                     <div>
                       <p className="font-cormorant font-semibold text-army-green text-lg leading-none">Resultado da consulta</p>
-                      <p className="text-[9px] text-army-green/40 uppercase tracking-widest font-medium mt-0.5">Baseado em Legislação Federal e Normas do EB</p>
+                      <p className="text-[11px] text-army-green/75 uppercase tracking-widest font-medium mt-0.5">Baseado em Legislação Federal e Normas do EB</p>
                     </div>
                   </div>
                   <div className="flex gap-2 self-end">
                     <button
                       onClick={handleDownloadPDF}
-                      className="flex items-center gap-1.5 px-3.5 py-2 border border-army-green/15 hover:border-army-gold hover:bg-army-gold/5 text-army-green/50 hover:text-army-gold transition-all text-xs font-medium"
+                      className="flex items-center gap-1.5 px-3.5 py-2 border border-army-green/15 hover:border-army-gold hover:bg-army-gold/5 text-army-green/75 hover:text-army-gold transition-all text-xs font-medium"
                       title="Baixar PDF"
+                      aria-label="Baixar PDF"
                     >
                       <Download size={14} /> <span className="hidden lg:inline">PDF</span>
                     </button>
@@ -686,24 +671,25 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
                       onClick={() => window.print()}
                       className="flex items-center gap-1.5 px-3.5 py-2 bg-army-green hover:bg-army-mid text-white transition-all text-xs font-medium"
                       title="Imprimir"
+                      aria-label="Imprimir"
                     >
                       <Printer size={14} /> <span className="hidden lg:inline">Imprimir</span>
                     </button>
                   </div>
                 </div>
-                <div className="max-w-none px-8 py-7 text-sm print:text-black overflow-visible">
+                <div className="max-w-none px-5 sm:px-8 py-6 sm:py-7 text-sm print:text-black overflow-visible">
                   {renderedResponse}
                 </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-start text-center px-6 no-print pt-12">
                 <div className="w-16 h-16 border border-army-gold/25 bg-white flex items-center justify-center mb-6">
-                  <Search size={28} className="text-army-green/25" />
+                  <Search size={28} className="text-army-green/75" />
                 </div>
-                <h3 className="font-cormorant font-semibold text-2xl text-army-green/40 mb-2">Central de Inteligência</h3>
-                <p className="text-xs text-army-green/30 max-w-sm leading-relaxed font-medium">
-                  Comece escolhendo o <span className="font-semibold text-army-green/50">público-alvo</span> da sua consulta abaixo.
-                  As pastas relacionadas serão selecionadas automaticamente — você ainda pode refinar pelas categorias ao lado — e então digite sua dúvida.
+                <h3 className="font-cormorant font-semibold text-2xl text-army-green mb-2">Central de Inteligência</h3>
+                <p className="text-xs text-army-green/75 max-w-sm leading-relaxed font-medium">
+                  Comece escolhendo o <span className="font-semibold text-army-green">público-alvo</span> da sua consulta, logo acima.
+                  As pastas relacionadas serão selecionadas automaticamente — você ainda pode refinar pelas categorias do acervo — e então digite sua dúvida.
                 </p>
               </div>
             )}
@@ -715,14 +701,24 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
       {showIntro && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 no-print">
           <div className="absolute inset-0 bg-army-charcoal/50 backdrop-blur-sm" onClick={dismissIntro} />
-          <div className="relative bg-white w-full max-w-lg border-t-4 border-army-gold shadow-2xl">
+          <div
+            className="relative bg-white w-full max-w-lg border-t-4 border-army-gold shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="intro-titulo"
+            onKeyDown={e => {
+              if (e.key === 'Escape') dismissIntro();
+              // único controle do pop-up: Tab não deixa o foco escapar para a página atrás
+              else if (e.key === 'Tab') e.preventDefault();
+            }}
+          >
             <div className="flex items-start gap-4 px-7 pt-7 pb-5 border-b border-army-green/10">
               <div className="w-11 h-11 bg-army-green flex items-center justify-center flex-shrink-0">
                 <ShieldCheck size={22} className="text-army-gold" />
               </div>
               <div className="min-w-0">
-                <p className="text-[9px] tracking-[0.16em] uppercase text-army-gold font-semibold">Como realizar sua consulta</p>
-                <h2 className="font-cormorant font-semibold text-2xl text-army-green leading-tight">Antes de pesquisar</h2>
+                <p className="text-[11px] tracking-[0.16em] uppercase text-army-gold-deep font-semibold">Como realizar sua consulta</p>
+                <h2 id="intro-titulo" className="font-cormorant font-semibold text-2xl text-army-green leading-tight">Antes de pesquisar</h2>
               </div>
             </div>
 
@@ -753,6 +749,7 @@ const AndrecitoQuery: React.FC<AndrecitoQueryProps> = ({ onBack, onLogout, onNav
             <div className="px-7 pb-7 pt-1">
               <button
                 onClick={dismissIntro}
+                autoFocus
                 className="w-full bg-army-green hover:bg-army-mid text-white py-3.5 font-medium text-sm transition-colors flex items-center justify-center gap-2"
               >
                 <CheckCircle2 size={16} /> Entendi, vamos começar

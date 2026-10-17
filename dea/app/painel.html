@@ -11,7 +11,7 @@
   --surface-2:#FAF8F2;
   --ink:#1A1D12;
   --ink-2:#4C523E;
-  --ink-3:#7C8269;
+  --ink-3:#676D55;
   --line:rgba(46,61,26,.14);
   --line-forte:rgba(46,61,26,.28);
   --verde:#2E3D1A;
@@ -64,8 +64,8 @@ a{color:var(--verde)}
 .brasao img{width:42px; height:42px; object-fit:contain; max-width:100%}
 .marca-txt{min-width:0; line-height:1.15}
 .sobretitulo{
-  margin:0 0 2px; font-size:9px; letter-spacing:.15em; text-transform:uppercase;
-  color:rgba(255,255,255,.45); font-weight:500;
+  margin:0 0 2px; font-size:11px; letter-spacing:.15em; text-transform:uppercase;
+  color:rgba(255,255,255,.72); font-weight:500;
 }
 .titulo{
   font-family:var(--serif); font-weight:600; font-size:1.2rem; color:#fff;
@@ -78,10 +78,8 @@ a{color:var(--verde)}
   padding:7px 14px; color:rgba(255,255,255,.8); font-size:.72rem;
 }
 .ponto{
-  width:7px; height:7px; border-radius:50%; background:#34D399; flex:0 0 auto;
-  animation:pulsa 2.4s ease-in-out infinite;
+  width:7px; height:7px; border-radius:50%; background:var(--dourado-c); flex:0 0 auto;
 }
-@keyframes pulsa{0%,100%{opacity:1}50%{opacity:.35}}
 
 /* ---------- aviso de topo (só aparece se os dados não carregarem) ---------- */
 .aviso-topo{
@@ -113,7 +111,7 @@ a{color:var(--verde)}
   color:var(--verde); font-weight:600; border-bottom-color:var(--dourado);
 }
 .aba .cnt{
-  display:inline-block; margin-left:7px; padding:1px 7px; font-size:.68rem;
+  display:inline-block; margin-left:7px; padding:1px 7px; font-size:.72rem;
   background:var(--neutro-bg); color:var(--ink-2); font-variant-numeric:tabular-nums;
 }
 .aba.urgente .cnt{background:var(--critico); color:#fff}
@@ -122,7 +120,7 @@ a{color:var(--verde)}
 
 /* ---------- blocos genéricos ---------- */
 .rotulo{
-  font-size:9px; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+  font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
   color:var(--ink-3);
 }
 .cartao{background:var(--surface); border:1px solid var(--line)}
@@ -141,7 +139,7 @@ a{color:var(--verde)}
   margin-bottom:var(--s4);
 }
 .campo{display:flex; flex-direction:column; gap:5px; min-width:0}
-.campo label{font-size:9px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3)}
+.campo label{font-size:11px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3)}
 .campo input,.campo select{
   font:inherit; font-size:.82rem; padding:8px 10px; background:var(--surface);
   border:1px solid var(--line-forte); border-radius:0; color:var(--ink);
@@ -222,7 +220,7 @@ a{color:var(--verde)}
 }
 .aviso-pessoa .rolagem{margin-top:var(--s2)}
 .selo-aviso{
-  font-size:.66rem; padding:3px 8px; background:var(--alerta-bg); color:var(--alerta);
+  font-size:.72rem; padding:3px 8px; background:var(--alerta-bg); color:var(--alerta);
   border:1px solid rgba(138,90,18,.3); white-space:nowrap;
 }
 .acoes-admin{display:flex; gap:var(--s3); align-items:center; flex-wrap:wrap; margin-top:var(--s4)}
@@ -238,7 +236,7 @@ a{color:var(--verde)}
 .btn-exp.btn-sippes{background:var(--neutro-bg); color:var(--neutro); border-color:var(--line-forte)}
 .btn-exp.btn-sippes.lancado{background:var(--ok); color:#fff; border-color:var(--ok)}
 .selo-mantido{
-  font-size:.66rem; padding:3px 8px; background:var(--neutro-bg); color:var(--verde);
+  font-size:.72rem; padding:3px 8px; background:var(--neutro-bg); color:var(--verde);
   border:1px solid var(--verde); white-space:nowrap;
 }
 .aviso-mantido{
@@ -267,7 +265,7 @@ a{color:var(--verde)}
 table{border-collapse:collapse; width:100%; font-size:.8rem}
 thead th{
   position:sticky; top:0; background:var(--verde); color:#fff; z-index:2;
-  text-align:left; padding:9px 12px; font-size:.68rem; font-weight:600;
+  text-align:left; padding:9px 12px; font-size:.72rem; font-weight:600;
   letter-spacing:.1em; text-transform:uppercase; white-space:nowrap;
 }
 thead th.ord{cursor:pointer; user-select:none}
@@ -407,7 +405,7 @@ body.modo-relatorio .rodape{display:none !important}
 .rel-capa{border-top:3px solid var(--verde); padding-top:var(--s5)}
 .rel-capa-marca{display:flex; align-items:center; gap:14px}
 .rel-capa-marca img{width:56px; height:56px; object-fit:contain; flex:0 0 auto}
-.rel-org{font-size:9px; letter-spacing:.15em; text-transform:uppercase; color:var(--ink-3); margin:0 0 3px}
+.rel-org{font-size:11px; letter-spacing:.15em; text-transform:uppercase; color:var(--ink-3); margin:0 0 3px}
 .rel-unid{font-family:var(--serif); font-size:1.05rem; font-weight:600; margin:0}
 .rel-tit{font-family:var(--serif); font-size:2.1rem; font-weight:700; letter-spacing:-.02em;
   line-height:1.1; margin:var(--s5) 0 var(--s3)}
@@ -418,7 +416,7 @@ body.modo-relatorio .rodape{display:none !important}
 .rel-ind{display:grid; grid-template-columns:repeat(auto-fit,minmax(176px,1fr)); gap:1px;
   background:var(--line-forte); border:1px solid var(--line-forte); margin-top:var(--s5)}
 .rel-ind div{background:var(--surface); padding:12px 14px}
-.rel-ind .r{font-size:8.5px; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+.rel-ind .r{font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
   color:var(--ink-3); margin:0}
 .rel-ind .v{font-family:var(--serif); font-size:1.5rem; font-weight:600; margin:3px 0 0;
   font-variant-numeric:tabular-nums; line-height:1.05}
@@ -460,13 +458,13 @@ body.modo-relatorio .rodape{display:none !important}
 }
 .rel-tab .selo.ausente{color:var(--ink-3); font-style:italic}
 .rel-tab th{background:var(--verde); color:#fff; text-align:left; padding:6px 8px;
-  font-size:.63rem; letter-spacing:.08em; text-transform:uppercase; font-weight:600}
+  font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; font-weight:600}
 .rel-tab td{padding:5px 8px; border-top:1px solid var(--line); vertical-align:top}
 .rel-tab .num{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap}
 .rel-tab .mono{font-variant-numeric:tabular-nums; white-space:nowrap}
 .rel-tab .rel-parecer td{background:var(--surface-2); color:var(--ink-2); font-size:.7rem;
   white-space:pre-wrap; overflow-wrap:anywhere}
-.rel-sublegenda{font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3);
+.rel-sublegenda{font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3);
   margin:var(--s4) 0 6px}
 /* resumo 80/20: frase de abertura, barra de acumulado e a linha de corte */
 .rel-destaque{font-size:.86rem; line-height:1.55; margin:0 0 var(--s3);
@@ -475,7 +473,7 @@ body.modo-relatorio .rodape{display:none !important}
   border:1px solid var(--line-forte)}
 .rel-barra-int{display:block; height:100%; background:var(--neutro)}
 .rel-barra-int.vital{background:var(--verde)}
-.rel-tab .rel-corte td{background:var(--dourado); color:#2A2A22; font-size:.64rem;
+.rel-tab .rel-corte td{background:var(--dourado); color:#2A2A22; font-size:.72rem;
   letter-spacing:.06em; text-transform:uppercase; font-weight:700; padding:3px 8px}
 .rel-vazio{font-size:.8rem; color:var(--ink-3); padding:var(--s5); text-align:center;
   border:1px dashed var(--line-forte)}
@@ -853,7 +851,7 @@ body.modo-relatorio .rodape{display:none !important}
       <div class="campo" style="flex:1 1 240px">
         <label for="f-sit">Situação vigente</label>
         <select id="f-sit"><option value="">Todas</option></select>
-        <span style="font-size:.68rem;color:var(--ink-3)">Acompanhamento; para os que aguardam o CPEx, a aba DEA</span>
+        <span style="font-size:.72rem;color:var(--ink-3)">Acompanhamento; para os que aguardam o CPEx, a aba DEA</span>
       </div>
       <button class="btn secundario" id="f-limpar" type="button">Limpar</button>
     </div>
@@ -3504,7 +3502,7 @@ document.getElementById('rj-pdf').addEventListener('click', function(){
       repetidos.map(function(m, i){
         return '<tr><td class="num">'+(i+1)+'</td>'+
           '<td class="parecer-txt">'+esc(m.exemplo)+
-          (m.variacoes > 1 ? '<br><span style="font-size:.66rem;color:var(--ink-2)">'+
+          (m.variacoes > 1 ? '<br><span style="font-size:.72rem;color:var(--ink-2)">'+
             m.variacoes+' redações que só diferem em números ou acentuação; acima, a mais '+
             'curta</span>' : '')+'</td>'+
           '<td class="num">'+num(m.qtd)+'</td>'+

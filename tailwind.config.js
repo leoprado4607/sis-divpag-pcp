@@ -7,25 +7,11 @@ export default {
     './components/**/*.{ts,tsx}',
     './services/**/*.{ts,tsx}',
   ],
-  // Classes construídas dinamicamente (template strings) não são detectadas pelo
-  // scanner estático do Tailwind. O ComparisonApp monta classes a partir de
-  // `item.color` e o ResultCard deriva variações de cor em runtime, então essas
-  // precisam ser preservadas explicitamente para não sumirem no build de produção.
-  safelist: [
-    {
-      pattern: /(bg|text|border)-(army-green|army-blue|yellow-600)/,
-      variants: ['hover', 'group-hover'],
-    },
-    {
-      pattern: /(bg|text)-(red|orange|purple|blue|rose|slate)-(50|500|600|700)/,
-    },
-  ],
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"DM Sans"', 'Inter', 'sans-serif'],
+        sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
         cormorant: ['"Cormorant Garamond"', 'serif'],
-        montserrat: ['Montserrat', 'sans-serif'],
         playfair: ['"Playfair Display"', 'serif'],
       },
       colors: {
@@ -35,23 +21,12 @@ export default {
           light:    '#6B7A42',
           gold:     '#A8832A',
           'gold-light': '#C9A84C',
+          // dourado para texto pequeno sobre fundo claro (5,7:1 no branco; o gold dá 3,3:1)
+          'gold-deep': '#7F6220',
           blue:     '#002776',
           cream:    '#F5F2EA',
           'cream-dark': '#EAE5D5',
           charcoal: '#1A1D12',
-        },
-        divpag: {
-          50: '#f4f7f4',
-          100: '#e3ebe3',
-          200: '#c5d9c5',
-          300: '#9dbf9d',
-          400: '#76a076',
-          500: '#568356',
-          600: '#426842',
-          700: '#365336',
-          800: '#1a3c1a',
-          900: '#132b13',
-          950: '#0a180a',
         },
       },
       keyframes: {

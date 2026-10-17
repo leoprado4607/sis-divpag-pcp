@@ -3,10 +3,10 @@ import { BarChart3, Search, FileText, GitCompare, Activity, Calculator, Library 
 import { SystemLink } from './types';
 
 // Símbolos Oficiais
-export const LOGO_URL = "https://lh3.googleusercontent.com/d/1z58eVvaJZ55IAZ_ebEeLXzpPZCXO2fBU=s240";
+// Brasão servido do próprio site: sem depender do Google Drive nem de reserva externa.
+export const LOGO_URL = "/brasao.png";
 export const PLANILHA_BIZURADA_LOGO = "https://lh3.googleusercontent.com/d/1Qq4nhmU87T2PALVyaGjyDEROlWyZZgXb=s240";
 export const DAP_LOGO = "/Logo_DAP.png";
-export const PLACEHOLDER_LOGO = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Coat_of_arms_of_the_Brazilian_Army.svg/1200px-Coat_of_arms_of_the_Brazilian_Army.svg.png";
 
 export const SYSTEM_LINKS: SystemLink[] = [
   {

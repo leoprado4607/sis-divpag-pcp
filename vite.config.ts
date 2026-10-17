@@ -134,15 +134,6 @@ export default defineConfig(({ mode }) => {
               ) {
                 return 'vendor-pdf';
               }
-              // Cadeia do recharts (gráficos) — usada só no Painel DEA (lazy).
-              if (
-                id.includes('recharts') || id.includes('d3-') ||
-                id.includes('victory-vendor') || id.includes('internmap') ||
-                id.includes('decimal.js-light') || id.includes('react-smooth') ||
-                id.includes('fast-equals') || id.includes('eventemitter3')
-              ) {
-                return 'vendor-charts';
-              }
               if (id.includes('lucide')) {
                 return 'vendor-ui';
               }

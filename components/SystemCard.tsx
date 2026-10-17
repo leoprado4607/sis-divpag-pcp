@@ -13,7 +13,7 @@ const SystemCard: React.FC<SystemCardProps> = React.memo(({ system, onNavigate }
   const renderTitle = (text: string) => {
     if (!text.includes('*')) return text;
     return text.split('*').map((part, i) =>
-      i % 2 === 1 ? <em key={i} className="not-italic font-bold text-army-gold">{part}</em> : part
+      i % 2 === 1 ? <em key={i} className="not-italic font-bold text-army-gold-deep">{part}</em> : part
     );
   };
 
@@ -24,16 +24,25 @@ const SystemCard: React.FC<SystemCardProps> = React.memo(({ system, onNavigate }
     }
   };
 
+  // Card interno é um div (o conteúdo em bloco não cabe em <button>): precisa
+  // de tabIndex e de Enter/Espaço para funcionar pelo teclado.
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (internalRoute && onNavigate && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      onNavigate(internalRoute);
+    }
+  };
+
   const Wrapper = internalRoute ? 'div' : 'a';
   const wrapperProps = internalRoute
-    ? { onClick: handleClick, role: 'button' as const }
+    ? { onClick: handleClick, onKeyDown: handleKeyDown, role: 'button' as const, tabIndex: 0 }
     : { href: url, target: "_blank" as const, rel: "noopener noreferrer" };
 
   return (
     <Wrapper
       {...(wrapperProps as any)}
       className="group relative flex flex-col bg-white border border-army-green/8 hover:border-army-gold/40
-                 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden
+                 transition-colors duration-300 overflow-hidden
                  cursor-pointer h-full"
     >
       {/* Bottom accent line that grows on hover */}
@@ -41,14 +50,14 @@ const SystemCard: React.FC<SystemCardProps> = React.memo(({ system, onNavigate }
 
       {/* Construction badge */}
       {isUnderConstruction && (
-        <div className="absolute top-3 right-3 bg-red-50 text-red-500 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border border-red-200 z-10">
+        <div className="absolute top-3 right-3 bg-red-50 text-red-500 text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 border border-red-200 z-10">
           Em construção
         </div>
       )}
 
       {/* Restricted badge */}
       {isRestricted && (
-        <div className="absolute top-3 right-3 bg-red-50 text-red-600 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 border border-red-200 z-10">
+        <div className="absolute top-3 right-3 bg-red-50 text-red-600 text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 border border-red-200 z-10">
           Restrito
         </div>
       )}
@@ -63,14 +72,14 @@ const SystemCard: React.FC<SystemCardProps> = React.memo(({ system, onNavigate }
               <Icon size={24} className="text-army-green" />
             )}
           </div>
-          <h3 className="font-cormorant font-semibold text-[1.15rem] leading-snug text-army-charcoal
+          <h3 className="font-cormorant font-semibold text-lg leading-snug text-army-charcoal
                          group-hover:text-army-green transition-colors">
             {renderTitle(title)}
           </h3>
         </div>
 
         {/* Description */}
-        <p className="text-sm text-army-green/55 leading-relaxed flex-grow line-clamp-2">
+        <p className="text-sm text-army-green/75 leading-relaxed flex-grow line-clamp-2">
           {description}
         </p>
       </div>

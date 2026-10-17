@@ -49,7 +49,6 @@ Helpers internos (prefixo `_`): `_gemini.ts`, `_ratelimit.ts`, `_http.ts`, `_sup
 - **`geminiClient.ts`** — `callGemini()`: faz POST para `/api/gemini`.
 - **`adminClient.ts`** — `adminRequest()`: faz POST para `/api/admin` com o token. Lança `AdminUnavailableError` em 404/503 para ativar fallback local.
 - **`supabaseClient.ts`** — Cria o cliente anon do Supabase (leitura pública, RLS).
-- **`csvUtils.ts`** — Parse de CSV com números no formato BR (1.000,00).
 
 ### Modo offline/demo
 
@@ -92,4 +91,4 @@ Ver [.env.example](.env.example) para a lista completa. As mais críticas:
 
 ## Tema / Design
 
-Paleta `army-*` definida em [tailwind.config.js](tailwind.config.js). Fontes: Cormorant Garamond (títulos) + Inter (corpo), carregadas via CDN no [index.html](index.html).
+Paleta `army-*` definida em [tailwind.config.js](tailwind.config.js). Fontes: Cormorant Garamond (títulos) + DM Sans (corpo) + Playfair Display (só o nome da Divisão no cabeçalho), auto-hospedadas em `public/fonts` via [fonts.css](fonts.css). Regras visuais em [DESIGN.md](DESIGN.md).

@@ -192,138 +192,170 @@ const ComparisonApp: React.FC<ComparisonAppProps> = ({ onBack }) => {
     setModalOpen(true);
   };
 
-  const ResultCard = ({ title, count, description, color, icon: Icon, onClick }: any) => (
-    <button 
-      onClick={onClick} 
-      className={`bg-white rounded-xl shadow-sm border border-slate-200 p-5 text-left transition-all hover:shadow-lg hover:-translate-y-1 relative overflow-hidden group h-full flex flex-col justify-between`}
+  // Tom de cada resultado: classes completas (o Tailwind não enxerga classes montadas).
+  const TONS = {
+    critico: 'bg-red-50 text-red-700',
+    alerta:  'bg-amber-50 text-amber-800',
+    nome:    'bg-purple-50 text-purple-700',
+    prec:    'bg-blue-50 text-blue-700',
+    cpf:     'bg-rose-50 text-rose-700',
+    neutro:  'bg-army-cream text-army-green',
+  } as const;
+
+  const ResultCard = ({ title, count, description, tone, icon: Icon, onClick }: {
+    title: string; count: number; description: string; tone: keyof typeof TONS;
+    icon: React.ElementType; onClick: () => void;
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group relative bg-white border border-army-green/10 hover:border-army-gold/50 p-5 text-left transition-colors h-full flex flex-col gap-4 overflow-hidden"
     >
-        <div className={`absolute top-0 left-0 w-1.5 h-full ${color}`}></div>
-        <div className="flex justify-between items-start mb-3">
-            <div className={`p-2 rounded-lg ${color.replace('bg-', 'bg-').replace('500', '50').replace('600', '50').replace('700', '50')}`}>
-                <Icon size={20} className={color.replace('bg-', 'text-')} />
-            </div>
-            <span className={`text-3xl font-black text-slate-800 group-hover:scale-110 transition-transform`}>{count}</span>
+      <div className="flex justify-between items-start">
+        <div className={`p-2 ${TONS[tone]}`}>
+          <Icon size={20} />
         </div>
-        <div>
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{title}</h4>
-            <p className="text-[10px] text-slate-400 font-medium leading-tight">{description}</p>
-        </div>
+        <span className="font-cormorant font-semibold text-4xl leading-none text-army-charcoal tabular-nums">{count}</span>
+      </div>
+      <div>
+        <h4 className="text-sm font-semibold text-army-green mb-1">{title}</h4>
+        <p className="text-[13px] text-army-green/75 leading-snug">{description}</p>
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-army-green scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300" />
     </button>
   );
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
   if (currentView === 'landing') {
+    const PUBLICOS = [
+      { id: 'active',     title: 'Militares da Ativa', icon: Shield, iconClass: 'text-army-green' },
+      { id: 'veterans',   title: 'Veteranos',          icon: Award,  iconClass: 'text-army-blue' },
+      { id: 'pensioners', title: 'Pensionistas',       icon: Users,  iconClass: 'text-army-gold-deep' },
+    ] as const;
     return (
-      <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
-        <header className="bg-army-green text-white shadow-xl border-b-[6px] border-army-gold sticky top-0 z-50">
-          <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
-          <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between relative z-10">
-            <div className="flex items-center gap-4">
-              <button onClick={onBack} aria-label="Voltar" className="p-2 hover:bg-white/10 rounded-full transition-colors"><ArrowLeft className="w-6 h-6 text-army-gold" /></button>
-              <div>
-                  <h1 className="text-xl font-montserrat font-bold leading-none">Comparador de Relações</h1>
-                  <p className="text-army-gold text-[10px] font-bold uppercase mt-1 tracking-widest">Auditoria de Folha de Pagamento</p>
-              </div>
+      <div className="flex flex-col flex-1 bg-army-cream">
+        <header className="bg-army-green text-white sticky top-0 z-50 border-b-2 border-army-gold">
+          <div className="max-w-[1600px] mx-auto px-5 sm:px-8 h-16 flex items-center gap-4">
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Voltar ao portal"
+              className="flex-shrink-0 min-h-[44px] flex items-center gap-1.5 text-white/70 hover:text-army-gold-light transition-colors text-[11px] font-medium tracking-[0.14em] uppercase"
+            >
+              <ArrowLeft size={13} />
+              <span className="hidden sm:inline">Portal</span>
+            </button>
+            <div className="h-4 w-px bg-white/15" />
+            <GitCompare size={20} className="text-army-gold-light flex-shrink-0" />
+            <div className="leading-tight min-w-0">
+              <h1 className="font-cormorant font-semibold text-xl text-white leading-none truncate">Comparador de Relações</h1>
+              <p className="text-xs text-white/70 mt-1 truncate">Auditoria de folha de pagamento</p>
             </div>
           </div>
         </header>
-        <main className="flex-1 flex flex-col items-center justify-center p-6 animate-fade-in relative">
-          <div className="absolute inset-0 opacity-[0.03] pointer-events-none flex items-center justify-center overflow-hidden">
-             <GitCompare size={800} />
+        <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-12 animate-fade-in">
+          <div className="text-center mb-10 max-w-xl">
+              <h2 className="font-cormorant font-semibold text-3xl sm:text-4xl text-army-green leading-tight mb-3 text-balance">Módulo de Confronto de Dados</h2>
+              <p className="text-army-green/75 leading-relaxed">Selecione a categoria para iniciar o processamento cruzado entre as bases do CPEx e SiCaPEx.</p>
           </div>
-          <div className="text-center mb-12 relative z-10">
-              <h2 className="text-3xl font-bold text-army-green mb-3 font-montserrat">Módulo de Confronto de Dados</h2>
-              <p className="text-slate-500 max-w-lg mx-auto font-medium">Selecione a categoria para iniciar o processamento cruzado entre as bases do CPEx e SiCaPEx.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full relative z-10">
-              {[
-                { id: 'active', title: 'Militares da Ativa', icon: Shield, color: 'army-green', label: 'Shield' },
-                { id: 'veterans', title: 'Veteranos', icon: Award, color: 'army-blue', label: 'Award' },
-                { id: 'pensioners', title: 'Pensionistas', icon: Users, color: 'yellow-600', label: 'Users' }
-              ].map((item) => (
-                <button 
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-army-green/10 border border-army-green/10 max-w-5xl w-full">
+              {PUBLICOS.map((item) => (
+                <button
                   key={item.id}
-                  onClick={() => { setTextT1(''); setTextT2(''); setResult(null); setCurrentView(item.id as any); }} 
-                  className={`bg-white rounded-2xl shadow-lg border border-slate-200 p-10 flex flex-col items-center text-center hover:scale-105 transition-all duration-300 group hover:border-${item.color} relative overflow-hidden`}
+                  type="button"
+                  onClick={() => { setTextT1(''); setTextT2(''); setResult(null); setCurrentView(item.id); }}
+                  className="group relative bg-white p-8 flex flex-col items-start text-left hover:bg-army-cream/50 transition-colors overflow-hidden"
                 >
-                  <div className={`absolute top-0 left-0 w-full h-2 bg-${item.color}`}></div>
-                  <div className={`w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 group-hover:bg-${item.color} transition-colors`}>
-                    <item.icon size={40} className={`text-${item.color} group-hover:text-white`} />
+                  <div className="p-3 bg-army-cream border border-army-green/10 mb-6">
+                    <item.icon size={28} className={item.iconClass} />
                   </div>
-                  <h3 className="text-xl font-black text-slate-800 mb-6 font-montserrat uppercase tracking-tight">{item.title}</h3>
-                  <span className={`text-[10px] font-black text-${item.color} uppercase tracking-widest flex items-center gap-2 border-b-2 border-transparent group-hover:border-${item.color} pb-1`}>
-                    Iniciar Análise <ChevronRight size={14} />
+                  <h3 className="font-cormorant font-semibold text-2xl text-army-charcoal mb-6">{item.title}</h3>
+                  <span className="mt-auto text-[13px] font-medium text-army-green group-hover:text-army-gold-deep flex items-center gap-1.5 transition-colors">
+                    Iniciar análise <ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" />
                   </span>
+                  <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-army-green scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300" />
                 </button>
               ))}
           </div>
         </main>
-        <footer className="bg-army-light text-white py-3 border-t-4 border-army-gold text-center text-[10px] font-bold uppercase tracking-widest">
-            Divisão de Pagamento de Pessoal - EB
-        </footer>
       </div>
     );
   }
 
+  const areaClass = "w-full h-48 p-4 text-[13px] font-mono bg-white border border-army-green/15 focus:border-army-green outline-none resize-none custom-scrollbar text-army-charcoal placeholder-army-green/75";
+  const chipClass = "text-[11px] font-mono bg-army-cream text-army-green/75 border border-army-green/10 px-2 py-0.5";
+
   return (
-    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
-      <header className="bg-army-green text-white shadow-xl border-b-[6px] border-army-gold sticky top-0 z-50">
-        <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setCurrentView('landing')} aria-label="Voltar" className="p-2 hover:bg-white/10 rounded-full transition-colors"><ArrowLeft className="w-6 h-6 text-army-gold" /></button>
-            <div className="flex items-center gap-3">
-               <GitCompare className="w-8 h-8 text-army-gold" />
-               <div>
-                  <h1 className="text-lg font-montserrat font-bold leading-none">{isPensioners ? 'Pensionistas' : isVeterans ? 'Veteranos' : 'Ativa'}</h1>
-                  <p className="text-army-gold text-[9px] font-black uppercase tracking-widest mt-1">Comparação CPEx X SiCaPEx</p>
-               </div>
+    <div className="flex flex-col h-screen bg-army-cream overflow-hidden">
+        <header className="bg-army-green text-white sticky top-0 z-50 border-b-2 border-army-gold">
+          <div className="max-w-[1600px] mx-auto px-5 sm:px-8 h-16 flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setCurrentView('landing')}
+              aria-label="Voltar à escolha do público"
+              className="flex-shrink-0 min-h-[44px] flex items-center gap-1.5 text-white/70 hover:text-army-gold-light transition-colors text-[11px] font-medium tracking-[0.14em] uppercase"
+            >
+              <ArrowLeft size={13} />
+              <span className="hidden sm:inline">Públicos</span>
+            </button>
+            <div className="h-4 w-px bg-white/15" />
+            <GitCompare size={20} className="text-army-gold-light flex-shrink-0" />
+            <div className="leading-tight min-w-0">
+              <h1 className="font-cormorant font-semibold text-xl text-white leading-none truncate">{isPensioners ? 'Pensionistas' : isVeterans ? 'Veteranos' : 'Militares da Ativa'}</h1>
+              <p className="text-xs text-white/70 mt-1 truncate">Comparação CPEx × SiCaPEx</p>
             </div>
+            <div className="flex-1" />
+            <button
+              type="button"
+              onClick={handleCompare}
+              disabled={processing || !textT1 || !textT2}
+              className="flex-shrink-0 min-h-[44px] bg-army-gold-light hover:bg-white text-army-charcoal px-4 sm:px-5 text-[13px] font-semibold transition-colors flex items-center gap-2 disabled:opacity-40 disabled:hover:bg-army-gold-light"
+            >
+              {processing ? <RefreshCw className="animate-spin" size={16} /> : <GitCompare size={16} />}
+              <span className="hidden sm:inline">{processing ? 'Processando…' : 'Executar comparação'}</span>
+              <span className="sm:hidden">{processing ? '…' : 'Comparar'}</span>
+            </button>
+            <button type="button" onClick={() => { setTextT1(''); setTextT2(''); setResult(null); }} className="flex-shrink-0 w-11 h-11 flex items-center justify-center text-white/70 hover:text-white transition-colors" title="Limpar tudo" aria-label="Limpar tudo"><Trash2 size={18}/></button>
           </div>
-          <div className="flex gap-2">
-              <button onClick={handleCompare} disabled={processing || !textT1 || !textT2} className="bg-army-gold hover:bg-white text-army-green px-5 py-2 rounded-lg text-xs font-black shadow-md transition-all flex items-center gap-2 disabled:opacity-30">
-                {processing ? <RefreshCw className="animate-spin" size={16} /> : <GitCompare size={16} />} 
-                {processing ? 'PROCESSANDO...' : 'EXECUTAR COMPARAÇÃO'}
-              </button>
-              <button onClick={() => { setTextT1(''); setTextT2(''); setResult(null); }} className="p-2 text-white/50 hover:text-white transition-colors" title="Limpar Tudo" aria-label="Limpar tudo"><Trash2 size={20}/></button>
-          </div>
-        </div>
       </header>
 
       <main className="flex-1 overflow-auto p-4 md:p-8 custom-scrollbar">
           <div className="max-w-[1600px] mx-auto space-y-8">
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
                   {/* T1 - CPEx */}
-                  <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                          <label className="text-[10px] font-black text-army-green uppercase tracking-[0.2em] flex items-center gap-2">
-                             <ClipboardList size={14} className="text-army-gold" /> Relação CPEx
+                  <div className="space-y-2">
+                      <div className="flex justify-between items-center gap-3 flex-wrap">
+                          <label htmlFor="cmp-t1" className="text-sm font-semibold text-army-green flex items-center gap-2">
+                             <ClipboardList size={15} className="text-army-gold-deep" /> Relação CPEx
                           </label>
-                          <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-bold">
+                          <span className={chipClass}>
                              {isPensioners ? 'Prec | CPF | Nome | Valor' : 'Prec | CPF | P/G | Nome | Valor'}
                           </span>
                       </div>
-                      <textarea 
-                          className="w-full h-48 p-4 text-[11px] font-mono bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-army-green/5 focus:border-army-green outline-none resize-none shadow-inner custom-scrollbar"
+                      <textarea
+                          id="cmp-t1"
+                          className={areaClass}
                           placeholder="Cole aqui os dados copiados do PDF/Excel do CPEx..."
                           value={textT1}
                           onChange={(e) => setTextT1(e.target.value)}
                       />
                   </div>
-                  
+
                   {/* T2 - SiCaPEx */}
-                  <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                          <label className="text-[10px] font-black text-army-green uppercase tracking-[0.2em] flex items-center gap-2">
-                             <Database size={14} className="text-army-gold" /> Efetivo SiCaPEx
+                  <div className="space-y-2">
+                      <div className="flex justify-between items-center gap-3 flex-wrap">
+                          <label htmlFor="cmp-t2" className="text-sm font-semibold text-army-green flex items-center gap-2">
+                             <Database size={15} className="text-army-gold-deep" /> Efetivo SiCaPEx
                           </label>
-                          <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-bold">
+                          <span className={chipClass}>
                              {isPensioners ? 'Nome | CPF | Prec' : isVeterans ? 'P/G | Nome | CPF | Prec' : 'P/G | Nome | Prec | CPF'}
                           </span>
                       </div>
-                      <textarea 
-                          className="w-full h-48 p-4 text-[11px] font-mono bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-army-green/5 focus:border-army-green outline-none resize-none shadow-inner custom-scrollbar"
+                      <textarea
+                          id="cmp-t2"
+                          className={areaClass}
                           placeholder="Cole aqui os dados copiados do SiCaPEx..."
                           value={textT2}
                           onChange={(e) => setTextT2(e.target.value)}
@@ -332,123 +364,127 @@ const ComparisonApp: React.FC<ComparisonAppProps> = ({ onBack }) => {
               </div>
 
               {result && (
-                  <div className="space-y-6 animate-fade-in-up">
-                      <div className="flex items-center gap-3 border-b border-slate-200 pb-2">
-                         <div className="h-4 w-1 bg-army-gold"></div>
-                         <h3 className="text-sm font-black text-army-green uppercase tracking-widest">Resultado do Cruzamento de Dados</h3>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
-                          <ResultCard 
+                  <section className="space-y-5 animate-fade-in-up" aria-label="Resultado da comparação">
+                      <h3 className="font-cormorant font-semibold text-2xl text-army-green border-b border-army-green/10 pb-2">Resultado do cruzamento de dados</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4">
+                          <ResultCard
                               title="Faltam no SiCaPEx"
                               description="Presentes no CPEx mas não localizados no SiCaPEx (por CPF)"
                               count={result.missingInT2.length}
-                              color="bg-red-500"
+                              tone="critico"
                               icon={UserX}
                               onClick={() => openModal("Não constam no SiCaPEx", result.missingInT2, 'simple')}
                           />
-                          <ResultCard 
+                          <ResultCard
                               title="Faltam no CPEx"
                               description="Militar ativo no SiCaPEx mas ausente na folha do CPEx"
                               count={result.missingInT1.length}
-                              color="bg-orange-500"
+                              tone="alerta"
                               icon={AlertTriangle}
                               onClick={() => openModal("Não constam no CPEx", result.missingInT1, 'simple')}
                           />
-                          <ResultCard 
+                          <ResultCard
                               title="CPF x Nome Divergente"
                               description="CPF coincidente porém com nomes diferentes nas bases"
                               count={result.sameCpfDifferentName.length}
-                              color="bg-purple-500"
+                              tone="nome"
                               icon={RefreshCw}
                               onClick={() => openModal("Divergência: CPF x Nome", result.sameCpfDifferentName, 'conflict')}
                           />
-                          <ResultCard 
+                          <ResultCard
                               title="CPF x Prec Divergente"
                               description="Mesmo CPF vinculado a Prec-CPs distintos entre as tabelas"
                               count={result.sameCpfDifferentPrec.length}
-                              color="bg-blue-500"
+                              tone="prec"
                               icon={ShieldAlert}
                               onClick={() => openModal("Divergência: CPF x Prec-CP", result.sameCpfDifferentPrec, 'conflict')}
                           />
-                          <ResultCard 
+                          <ResultCard
                               title="Prec-CP x CPF Divergente"
                               description="Mesmo Prec-CP vinculado a CPFs distintos entre as tabelas"
                               count={result.samePrecDifferentCpf.length}
-                              color="bg-rose-700"
+                              tone="cpf"
                               icon={AlertCircle}
                               onClick={() => openModal("Divergência: Prec-CP x CPF", result.samePrecDifferentCpf, 'conflict')}
                           />
-                          <ResultCard 
+                          <ResultCard
                               title="Pagamento Zerado no CPEx"
                               description="Militares com valor líquido igual a R$ 0,00 na folha do CPEx"
                               count={result.zeroValueInT1.length}
-                              color="bg-slate-600"
+                              tone="neutro"
                               icon={BadgeMinus}
                               onClick={() => openModal("Pagamento Zerado (R$ 0,00)", result.zeroValueInT1, 'simple')}
                           />
                       </div>
-                  </div>
+                  </section>
               )}
           </div>
       </main>
 
       {/* Modal de Detalhes */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border-t-8 border-army-green">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                    <div>
-                        <h3 className="text-lg font-black text-army-green uppercase tracking-widest font-montserrat">{modalTitle}</h3>
-                        <p className="text-xs text-slate-400 font-bold mt-1">Total: {currentData.length} registros</p>
+        <div className="fixed inset-0 bg-army-charcoal/60 z-[100] flex items-center justify-center p-4 animate-fade-in" onClick={() => setModalOpen(false)}>
+            <div
+              className="bg-white w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border-t-2 border-army-gold"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="cmp-modal-titulo"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.key === 'Escape' && setModalOpen(false)}
+            >
+                <div className="px-6 py-5 border-b border-army-green/10 flex justify-between items-center gap-4">
+                    <div className="min-w-0">
+                        <h3 id="cmp-modal-titulo" className="font-cormorant font-semibold text-2xl text-army-green leading-tight">{modalTitle}</h3>
+                        <p className="text-[13px] text-army-green/75 mt-1 tabular-nums">Total: {currentData.length} registros</p>
                     </div>
-                    <button onClick={() => setModalOpen(false)} aria-label="Fechar" className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={24} className="text-slate-400" /></button>
+                    <button type="button" autoFocus onClick={() => setModalOpen(false)} aria-label="Fechar" className="flex-shrink-0 w-11 h-11 flex items-center justify-center hover:bg-army-cream transition-colors"><X size={22} className="text-army-green" /></button>
                 </div>
-                
-                <div className="flex-1 overflow-auto p-4 custom-scrollbar">
-                    <table className="w-full text-[11px] text-left border-separate border-spacing-y-2">
-                        <thead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] sticky top-0 bg-white z-10">
+
+                <div className="flex-1 overflow-auto custom-scrollbar">
+                    <table className="w-full text-[13px] text-left">
+                        <thead className="text-[11px] font-semibold text-army-green/75 uppercase tracking-[0.12em] sticky top-0 bg-white z-10 border-b border-army-green/10">
                             <tr>
-                                <th className="px-4 py-2 w-12 text-center">#</th>
+                                <th className="px-4 py-3 w-12 text-center">#</th>
                                 {currentType === 'simple' ? (
                                     <>
-                                        <th className="px-4 py-2">Prec-CP</th>
-                                        {!isPensioners && <th className="px-4 py-2">P/G</th>}
-                                        <th className="px-4 py-2">Nome</th>
-                                        <th className="px-4 py-2">CPF</th>
-                                        <th className="px-4 py-2 text-right">Valor Líquido</th>
+                                        <th className="px-4 py-3">Prec-CP</th>
+                                        {!isPensioners && <th className="px-4 py-3">P/G</th>}
+                                        <th className="px-4 py-3">Nome</th>
+                                        <th className="px-4 py-3">CPF</th>
+                                        <th className="px-4 py-3 text-right">Valor Líquido</th>
                                     </>
                                 ) : (
-                                    <th className="px-4 py-2">Comparativo CPEx vs SiCaPEx</th>
+                                    <th className="px-4 py-3">Comparativo CPEx vs SiCaPEx</th>
                                 )}
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-army-green/[0.07]">
                             {currentData.map((item, idx) => (
-                                <tr key={idx} className="bg-slate-50 hover:bg-white transition-all shadow-sm rounded-lg overflow-hidden group">
-                                    <td className="px-4 py-3 text-center font-bold text-slate-300 border-l-4 border-army-gold group-hover:border-army-green">{idx + 1}</td>
+                                <tr key={idx} className="hover:bg-army-cream/60 transition-colors">
+                                    <td className="px-4 py-3 text-center text-army-green/75 tabular-nums">{idx + 1}</td>
                                     {currentType === 'simple' ? (
                                         <>
-                                            <td className="px-4 py-3 font-mono font-bold text-army-green">{item.precCp}</td>
-                                            {!isPensioners && <td className="px-4 py-3 font-bold text-slate-600">{item.postoGraduacao}</td>}
-                                            <td className="px-4 py-3 font-bold text-slate-800 uppercase">{item.nome}</td>
-                                            <td className="px-4 py-3 font-mono text-slate-500">{item.cpf}</td>
-                                            <td className="px-4 py-3 text-right font-mono font-bold text-army-green">{formatCurrency(item.valorLiquido)}</td>
+                                            <td className="px-4 py-3 font-mono font-semibold text-army-green tabular-nums">{item.precCp}</td>
+                                            {!isPensioners && <td className="px-4 py-3 font-medium text-army-charcoal/80">{item.postoGraduacao}</td>}
+                                            <td className="px-4 py-3 font-semibold text-army-charcoal uppercase">{item.nome}</td>
+                                            <td className="px-4 py-3 font-mono text-army-charcoal/80 tabular-nums">{item.cpf}</td>
+                                            <td className="px-4 py-3 text-right font-mono font-semibold text-army-green tabular-nums">{formatCurrency(item.valorLiquido)}</td>
                                         </>
                                     ) : (
                                         <td className="px-4 py-3">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="bg-red-50 p-3 rounded-lg border border-red-100">
-                                                    <span className="text-[9px] font-black text-red-400 uppercase block mb-1">CPEx</span>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div className="bg-red-50 p-3 border border-red-100">
+                                                    <span className="text-[11px] font-semibold text-red-700 uppercase tracking-wide block mb-1">CPEx</span>
                                                     <div className="flex flex-col">
-                                                       <span className="font-bold text-slate-800 text-[10px]">{item.t1.nome}</span>
-                                                       <span className="font-mono text-[9px] text-slate-500">Prec: {item.t1.precCp} | CPF: {item.t1.cpf}</span>
+                                                       <span className="font-semibold text-army-charcoal">{item.t1.nome}</span>
+                                                       <span className="font-mono text-xs text-army-charcoal/75 tabular-nums">Prec: {item.t1.precCp} | CPF: {item.t1.cpf}</span>
                                                     </div>
                                                 </div>
-                                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                                    <span className="text-[9px] font-black text-blue-400 uppercase block mb-1">SiCaPEx</span>
+                                                <div className="bg-blue-50 p-3 border border-blue-100">
+                                                    <span className="text-[11px] font-semibold text-blue-700 uppercase tracking-wide block mb-1">SiCaPEx</span>
                                                     <div className="flex flex-col">
-                                                       <span className="font-bold text-slate-800 text-[10px]">{item.t2.nome}</span>
-                                                       <span className="font-mono text-[9px] text-slate-500">Prec: {item.t2.precCp} | CPF: {item.t2.cpf}</span>
+                                                       <span className="font-semibold text-army-charcoal">{item.t2.nome}</span>
+                                                       <span className="font-mono text-xs text-army-charcoal/75 tabular-nums">Prec: {item.t2.precCp} | CPF: {item.t2.cpf}</span>
                                                     </div>
                                                 </div>
                                             </div>
