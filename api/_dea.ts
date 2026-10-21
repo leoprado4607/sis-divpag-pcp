@@ -199,7 +199,7 @@ const HEADERS_PRIVADOS = {
 
 const PAGINA_401 = '<!doctype html><meta charset="utf-8"><title>Acesso restrito</title>'
   + '<p style="font:14px sans-serif;padding:2rem">Sessão expirada ou inexistente. '
-  + 'Volte à ferramenta "Exercícios Anteriores" e entre novamente.</p>';
+  + 'Volte à ferramenta "Consulta DEA" e entre novamente.</p>';
 
 // ---------------------------------------------------------------------------
 // dados.js — lido do bucket PRIVADO com a service_role (REST do Storage).

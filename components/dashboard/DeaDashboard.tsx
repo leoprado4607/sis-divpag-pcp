@@ -352,7 +352,7 @@ const DeaDashboard: React.FC<DeaDashboardProps> = ({ onBack }) => {
               <div className="p-3 bg-army-cream border border-army-green/10 flex-shrink-0"><Lock size={24} className="text-army-green" /></div>
               <div className="min-w-0">
                 <h3 className="font-cormorant font-semibold text-3xl text-army-green leading-tight">Acesso Restrito</h3>
-                <p className="text-[13px] text-army-green/75">Exercícios Anteriores</p>
+                <p className="text-[13px] text-army-green/75">Consulta DEA</p>
               </div>
             </div>
             <div className="space-y-4">

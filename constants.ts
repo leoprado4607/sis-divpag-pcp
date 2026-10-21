@@ -29,7 +29,7 @@ export const SYSTEM_LINKS: SystemLink[] = [
   },
   {
     id: 'dea',
-    title: 'Exercícios Anteriores',
+    title: 'Consulta DEA',
     description: 'Dados estatísticos e análise',
     url: '#',
     icon: BarChart3,
@@ -47,20 +47,20 @@ export const SYSTEM_LINKS: SystemLink[] = [
     variant: 'accent'
   },
   {
-    id: 'calculo-dea',
-    title: 'Cálculo de DEA',
-    description: 'Auxílio nos cálculos para confecção de DEA',
-    url: 'https://painel-ea.vercel.app/login',
-    icon: Calculator,
-    variant: 'accent'
-  },
-  {
     id: 'repositorio-dap',
     title: 'Repositório DAP',
     description: 'Consulte a biblioteca da DAP (Intranet)',
     url: 'http://a3e7.infra.7cta.eb.mil.br/rcdap/menu/',
     icon: Library,
     iconImage: DAP_LOGO,
+    variant: 'accent'
+  },
+  {
+    id: 'calculo-dea',
+    title: 'Cálculo de DEA',
+    description: 'Auxílio nos cálculos para confecção de DEA',
+    url: 'https://painel-ea.vercel.app/login',
+    icon: Calculator,
     variant: 'accent'
   }
 ];
