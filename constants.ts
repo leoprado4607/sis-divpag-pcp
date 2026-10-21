@@ -61,6 +61,7 @@ export const SYSTEM_LINKS: SystemLink[] = [
     description: 'Auxílio nos cálculos para confecção de DEA',
     url: 'https://painel-ea.vercel.app/login',
     icon: Calculator,
-    variant: 'accent'
+    variant: 'accent',
+    isRestricted: true
   }
 ];
