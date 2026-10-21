@@ -47,10 +47,10 @@ export const SYSTEM_LINKS: SystemLink[] = [
     variant: 'accent'
   },
   {
-    id: 'eb-calc',
-    title: 'EB#Calc',
-    description: 'Pecuniária, diárias e Grat Rep',
-    url: 'https://ebcalc.net/',
+    id: 'calculo-dea',
+    title: 'Cálculo de DEA',
+    description: 'Auxílio nos cálculos para confecção de DEA',
+    url: 'https://painel-ea.vercel.app/login',
     icon: Calculator,
     variant: 'accent'
   },
